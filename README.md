@@ -13,6 +13,9 @@
 - **⭐ 重要性评分** — LLM 自动评估每条事实的重要性（1-10），关键信息永不沉没
 - **📊 信任度反馈** — 用户可标记有用/无用，好事实上升、坏事实下沉
 - **🔗 实体关系图** — 自动提取实体并建立关系，支持多跳推理
+- **🖼️ 多媒体记忆** — 图片/音频/视频文件的存储与检索，支持描述/字幕/语音转写的 FTS5 全文搜索
+- **📦 自动压缩** — 图片(Pillow→JPEG)、视频(ffmpeg→H.264)、音频(ffmpeg→MP3)自动压缩，默认开启，可配置质量/码率/分辨率
+- **🛡️ 大文件保护** — 超过 `max_size_mb`（默认 100MB）的文件跳过压缩，避免长时间卡顿
 - **🔄 增量更新** — 新事实无缝加入，无需重建索引
 - **🧩 HRR 向量编码** — 基于 Holographic Reduced Representations 的高密度语义编码
 - **🔌 即插即用** — 标准 Hermes MemoryProvider 接口，一行配置启用
@@ -52,6 +55,19 @@ plugins:
       recency_half_life_days: 30
     min_trust_threshold: 0.3
     default_trust: 0.5
+    compression:
+      enabled: true          # 媒体压缩总开关
+      max_size_mb: 100       # 超过此大小(MB)跳过压缩
+      timeout: 600           # ffmpeg 超时秒数
+      image:
+        quality: 85           # JPEG quality
+        max_dim: 1920         # 最大尺寸（缩放）
+      video:
+        bitrate: "1M"         # 视频码率
+        max_dim: 1280
+      audio:
+        bitrate: "128k"       # 音频比特率
+        sample_rate: 44100
 ```
 
 然后设置 memory provider：
@@ -143,10 +159,12 @@ butterfly-dream/
 ├── .gitignore
 ├── src/
 │   └── butterfly_dream/
-│       ├── __init__.py        # MemoryProvider 入口
-│       ├── store.py           # SQLite 存储层
-│       ├── retrieval.py       # 三维检索器
+│       ├── __init__.py        # MemoryProvider 入口 + 工具 handler(fact_store, media_attach, etc.)
+│       ├── store.py           # SQLite 存储层 + 媒体附件表
+│       ├── retrieval.py       # 三维检索器（含媒体 FTS5 并行搜索）
 │       ├── holographic.py     # HRR 向量引擎
+│       ├── media_utils.py     # 缩略图生成 + 文件 GC
+│       ├── media_compressor.py# 图片/视频/音频自动压缩
 │       └── plugin.yaml        # 插件元数据
 └── tests/
     └── ...
@@ -162,6 +180,8 @@ butterfly-dream/
 | 时效衰减 | ⚠️ 可选（默认关闭） | ✅ 默认启用，可配置半衰期 |
 | 实体图谱 | ✅ 基础实体解析 | ✅ 增强实体关系 |
 | 事实合并/冲突解决 | ❌ | ✅ 同实体事实自动归并 |
+| 多媒体附件 | ❌ | ✅ 图片/音频/视频 CAS 存储 + FTS5 搜索 |
+| 媒体自动压缩 | ❌ | ✅ Pillow + ffmpeg，可配置 |
 | 多场景权重 | ❌ | ✅ 按场景预设权重模板 |
 
 ## 📝 License
