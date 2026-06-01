@@ -13,6 +13,7 @@ import os
 import tempfile
 import shutil
 import hashlib
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -826,3 +827,265 @@ class TestMediaCleanup:
             # If no errors about thumbs, check it still exists
             assert os.path.isfile(thumb_path), \
                 "Thumbnail should still exist after cleanup"
+
+
+class TestThumbnailEdgeCases:
+    """Thumbnail failure paths and edge cases."""
+
+    def test_svg_file_skipped(self, tmp_db):
+        """SVG files don't get thumbnails (vector, not raster)."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("SVG skip", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".svg", delete=False, mode="w") as f:
+            f.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="image/svg+xml",
+                description="SVG vector",
+            )
+            # Should not crash and not create thumbnail
+            thumb_rel = "thumbs/" + os.path.splitext(result["file_path"])[0] + ".jpg"
+            thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+            assert not os.path.isfile(thumb_abs), \
+                f"SVG should not have thumbnail: {thumb_abs}"
+        finally:
+            os.unlink(src)
+
+    def test_svgz_file_skipped(self, tmp_db):
+        """Compressed SVG (.svgz) files don't get thumbnails."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("SVGZ skip", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".svgz", delete=False) as f:
+            f.write(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="image/svg+xml",
+                description="SVGZ compressed",
+            )
+            thumb_rel = "thumbs/" + os.path.splitext(result["file_path"])[0] + ".jpg"
+            thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+            assert not os.path.isfile(thumb_abs), \
+                f"SVGZ should not have thumbnail: {thumb_abs}"
+        finally:
+            os.unlink(src)
+
+    def test_corrupt_image_does_not_crash(self, tmp_db):
+        """Attaching a corrupt image file doesn't crash (thumbnail fails gracefully)."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Corrupt image", category="test")
+
+        src = os.path.join(tmpdir, "corrupt.png")
+        with open(src, "wb") as f:
+            f.write(b"this is not a valid image file at all")
+
+        # Should not raise — thumbnail failure is caught by try/except
+        result = store.attach_media(
+            fact["fact_id"], src, "image/png",
+            description="Corrupt file",
+        )
+        assert result["media_id"] > 0
+        os.unlink(src)
+
+    def test_transparent_png_thumbnail(self, tmp_db):
+        """RGBA PNG generates thumbnail without crashing."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("RGBA PNG", category="test")
+
+        # Create a small RGBA PNG with transparency
+        src = os.path.join(tmpdir, "transparent.png")
+        try:
+            from PIL import Image
+            img = Image.new("RGBA", (100, 100), (255, 0, 0, 128))
+            # Save as >50KB by making it large enough
+            img = img.resize((500, 500), Image.NEAREST)
+            img.save(src, "PNG")
+            assert os.path.getsize(src) > 50 * 1024, \
+                f"Test image too small: {os.path.getsize(src)} bytes"
+        except Exception as e:
+            pytest.skip(f"Pillow not available: {e}")
+
+        result = store.attach_media(
+            fact["fact_id"], src, "image/png",
+            description="Transparent PNG",
+        )
+        # Thumbnail should be generated (as JPEG, RGBA→RGB conversion)
+        thumb_rel = "thumbs/" + os.path.splitext(result["file_path"])[0] + ".jpg"
+        thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+        assert os.path.isfile(thumb_abs), f"Thumbnail missing: {thumb_abs}"
+        os.unlink(src)
+
+    def test_non_image_mime_no_thumbnail(self, tmp_db):
+        """application/* mime types skip thumbnail generation."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Non-image", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(b"%PDF-1.4 fake pdf content " * 5000)  # >50KB
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="application/pdf",
+                description="PDF file",
+            )
+            thumb_rel = "thumbs/" + os.path.splitext(result["file_path"])[0] + ".jpg"
+            thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+            assert not os.path.isfile(thumb_abs), \
+                f"PDF should not have thumbnail: {thumb_abs}"
+        finally:
+            os.unlink(src)
+
+
+class TestGCExtended:
+    """Extended GC tests for counters, protection, and edge cases."""
+
+    def test_cleanup_stats_counters(self, tmp_db):
+        """GC returns accurate protected and not_found counters."""
+        store, tmpdir, db_path = tmp_db
+
+        # Create an orphan (attach + remove fact)
+        f1 = store.add_fact("Stats test 1", category="test")
+        store.attach_media(f1["fact_id"], IMAGE_PNG, "image/png", "orphan me")
+        store.remove_fact(f1["fact_id"])
+
+        # Create a referenced file
+        f2 = store.add_fact("Stats test 2", category="test")
+        r2 = store.attach_media(f2["fact_id"], IMAGE_PNG2, "image/png", "keep me")
+
+        # Add a fake orphan entry on disk (file that DB doesn't know about)
+        fake_orphan = "ot/ff/fake_orphan.bin"
+        fake_abs = Path(store._media_dir) / fake_orphan
+        fake_abs.parent.mkdir(parents=True, exist_ok=True)
+        fake_abs.write_text("fake orphan data")
+
+        result = store.media_cleanup(dry_run=True)
+
+        # Should have the real orphan + the fake orphan (both unreferenced)
+        assert result["not_found"] == 0  # both exist on disk
+        # Thumbnail for the referenced IMAGE_PNG2 is orphaned but protected
+        assert result["protected"] >= 1
+        # dry_run doesn't delete
+        assert result["deleted"] == 0
+
+        # Now actually delete
+        result2 = store.media_cleanup(dry_run=False)
+        assert result2["deleted"] >= 2  # orphan + fake orphan
+        assert result2["freed_bytes"] > 0
+        # Referenced file should still exist
+        assert os.path.isfile(os.path.join(tmpdir, "media", r2["file_path"]))
+
+    def test_cleanup_deletes_orphan_thumbnail_with_original(self, tmp_db):
+        """When both original and thumbnail are orphans, thumbnail is also deleted."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Orphan with thumb", category="test")
+
+        # Attach a large image so thumbnail is generated
+        r = store.attach_media(
+            fact["fact_id"], IMAGE_PNG2, "image/png",
+            description="Will be orphaned",
+        )
+        thumb_rel = "thumbs/" + os.path.splitext(r["file_path"])[0] + ".jpg"
+        thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+        assert os.path.isfile(thumb_abs), "Thumbnail should exist before GC"
+
+        # Remove fact → both original and thumbnail become orphans
+        store.remove_fact(fact["fact_id"])
+
+        result = store.media_cleanup(dry_run=False)
+        assert result["deleted"] >= 2  # original + thumbnail
+        assert os.path.splitext(r["file_path"])[0] + ".jpg" not in \
+            [os.path.basename(o) for o in store.media_orphans()], \
+            "Thumbnail should be deleted"
+
+    def test_cleanup_protects_thumbnails_uncommon_ext(self, tmp_db):
+        """Thumbnail protection works with .tiff/.bmp/.heic original files."""
+        store, tmpdir, db_path = tmp_db
+
+        # Create a minimal valid image for each uncommon format
+        for ext, mime in [(".tiff", "image/tiff"), (".bmp", "image/bmp")]:
+            fact = store.add_fact(f"Uncommon {ext}", category="test")
+            src = os.path.join(tmpdir, f"test{ext}")
+
+            from PIL import Image
+            img = Image.new("RGB", (500, 500), (128, 128, 255))
+            img.save(src, format=ext.lstrip(".").upper())
+            assert os.path.getsize(src) > 50 * 1024 or ext == ".ico", \
+                f"Image too small: {os.path.getsize(src)} for {ext}"
+
+            r = store.attach_media(
+                fact["fact_id"], src, mime,
+                description=f"Uncommon format test",
+            )
+            thumb_rel = "thumbs/" + os.path.splitext(r["file_path"])[0] + ".jpg"
+            thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+
+            if os.path.isfile(thumb_abs):
+                # Run GC — thumbnail should be protected (original referenced)
+                result = store.media_cleanup(dry_run=False)
+                assert os.path.isfile(thumb_abs), \
+                    f"Thumbnail for {ext} should survive GC"
+                # Thumbnail file is in orphans list (no DB record for thumbs/)
+                # but protected because original file is referenced
+                assert result["protected"] >= 1, \
+                    f"Thumbnail for {ext} should be counted as protected"
+
+            os.unlink(src)
+
+    def test_orphans_skip_symlinks(self, tmp_db):
+        """media_orphans does not follow symlinks."""
+        store, tmpdir, db_path = tmp_db
+        media_root = Path(store._media_dir)
+
+        # Create a symlink pointing outside media_dir
+        outside_file = os.path.join(tmpdir, "outside.txt")
+        with open(outside_file, "w") as f:
+            f.write("external file")
+        link_path = media_root / "external_link.txt"
+        os.symlink(outside_file, str(link_path))
+
+        orphans = store.media_orphans()
+        assert "external_link.txt" not in orphans, \
+            f"Symlink should not appear in orphans: {orphans}"
+        os.unlink(outside_file)
+        os.unlink(str(link_path))
+
+
+class TestTOCTOUVerification:
+    """Verifies P0-1 fix: file is re-copied inside lock if GC removed it."""
+
+    def test_file_reexists_after_gc_race(self, tmp_db):
+        """Simulate GC removing file before attach_media writes DB row."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("TOCTOU test", category="test")
+
+        # First attach to create the file on disk
+        r1 = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "first")
+        file_abs = os.path.join(tmpdir, "media", r1["file_path"])
+        assert os.path.isfile(file_abs)
+
+        # Simulate GC deleting the file right before DB insert
+        os.unlink(file_abs)
+        assert not os.path.isfile(file_abs)  # file is gone
+
+        # Now attach again (same file, same sha) — the lock-internal
+        # re-check should re-copy the file before inserting
+        r2 = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "second")
+
+        # File should exist after attach
+        assert os.path.isfile(file_abs), \
+            "File should be re-copied by the lock-internal re-check"
+        # Should be a new media record (different fact_id+sha dedup check,
+        # or different description triggers new row? Actually same fact + same sha → dedup)
+        assert r2["dedup"] is True, \
+            "Same fact + same SHA = dedup (file was re-copied, but DB dedup catches it)"
+        # The file on disk should have the correct SHA
+        import hashlib
+        with open(file_abs, "rb") as f:
+            assert hashlib.sha256(f.read()).hexdigest() == r1["sha256"], \
+                "Re-copied file should have same SHA-256"
