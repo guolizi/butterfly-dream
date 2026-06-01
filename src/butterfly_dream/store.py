@@ -611,6 +611,11 @@ class MemoryStore:
                 return {"media_id": existing[0], "file_path": rel_path,
                         "sha256": sha256_val, "dedup": True}
 
+            # Re-verify file exists (GC might have removed it between step 6 and here)
+            if not abs_path.exists():
+                abs_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_path, str(abs_path))
+
             cursor = self._conn.execute(
                 """INSERT INTO media_attachments
                    (fact_id, file_path, mime_type, file_size, sha256,
@@ -701,7 +706,7 @@ class MemoryStore:
 
         orphans = []
         for fpath in media_root.rglob("*"):
-            if not fpath.is_file():
+            if not fpath.is_file() or fpath.is_symlink():
                 continue
             rel = str(fpath.relative_to(media_root))
             if rel not in db_paths:

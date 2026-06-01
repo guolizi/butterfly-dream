@@ -775,7 +775,6 @@ class TestMediaCleanup:
         result = store.media_cleanup(dry_run=True)
         assert result["dry_run"] is True
         assert result["deleted"] == 0  # dry run doesn't delete
-        assert result["skipped"] >= 0
 
         # File still exists after dry run
         assert os.path.isfile(os.path.join(tmpdir, "media", r["file_path"]))

@@ -47,7 +47,7 @@ def generate_thumbnail(
 
     # Skip non-image mime types within image/* (e.g. image/svg+xml is vector)
     ext = source_path.rsplit(".", 1)[-1].lower() if "." in source_path else ""
-    if ext in ("svg",):
+    if ext in ("svg", "svgz") or mime_type in ("image/svg+xml", "image/svg"):
         return None
 
     # Check file size — skip if already small
@@ -125,28 +125,36 @@ def media_cleanup(store, dry_run: bool = True) -> dict:
 
     media_root = Path(store._media_dir)
     deleted = 0
+    protected = 0
+    not_found = 0
     freed_bytes = 0
     errors = []
 
     for rel in orphans:
         fpath = media_root / rel
         if not fpath.exists():
+            not_found += 1
             continue
 
         # Protect thumbnails — only delete if the original is also orphaned
-        if "thumbs/" in rel:
+        if rel.startswith("thumbs/"):
             # Check if original file is also an orphan
             # Thumbnail saves as .jpg regardless of original extension
             orig_rel = rel.replace("thumbs/", "", 1)
-            # Try both the derived path and with common extensions
+            # Try with common image extensions (thumbnail always .jpg)
             orig_no_ext = os.path.splitext(orig_rel)[0]
             orig_found = any(
                 o in orphans
                 for o in [orig_rel, orig_no_ext + ".png",
                           orig_no_ext + ".jpg", orig_no_ext + ".jpeg",
-                          orig_no_ext + ".gif", orig_no_ext + ".webp"]
+                          orig_no_ext + ".gif", orig_no_ext + ".webp",
+                          orig_no_ext + ".tiff", orig_no_ext + ".tif",
+                          orig_no_ext + ".bmp", orig_no_ext + ".heic",
+                          orig_no_ext + ".heif", orig_no_ext + ".avif",
+                          orig_no_ext + ".ico"]
             )
             if not orig_found:
+                protected += 1
                 continue  # original exists, keep thumbnail
 
         try:
@@ -173,7 +181,8 @@ def media_cleanup(store, dry_run: bool = True) -> dict:
 
     return {
         "deleted": deleted,
-        "skipped": len(orphans) - deleted - len(errors),
+        "protected": protected,
+        "not_found": not_found,
         "freed_bytes": freed_bytes,
         "dry_run": dry_run,
         "errors": errors,
