@@ -1,0 +1,7 @@
+name: butterfly-dream
+description: "3-Dimensional memory — Relevance × Recency × Importance"
+version: 0.1.0
+author: guolizi
+homepage: https://github.com/guolizi/butterfly-dream
+requires: [numpy]
+memory_provider: true

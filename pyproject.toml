@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:Backend"
+
+[project]
+name = "butterfly-dream"
+version = "0.1.0"
+description = "3-Dimensional memory plugin for Hermes Agent — Relevance × Recency × Importance"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["hermes-agent", "memory", "plugin", "ai-agent", "holographic"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/guolizi/butterfly-dream"
+"Bug Tracker" = "https://github.com/guolizi/butterfly-dream/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
