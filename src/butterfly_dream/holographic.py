@@ -52,11 +52,17 @@ def encode_atom(word: str, dim: int = 1024) -> "np.ndarray":
     return phases
 
 
+def _check_dim(a: "np.ndarray", b: "np.ndarray") -> None:
+    if a.shape != b.shape:
+        raise ValueError(f"HRR dimension mismatch: {a.shape} vs {b.shape}")
+
+
 def bind(a: "np.ndarray", b: "np.ndarray") -> "np.ndarray":
     """Circular convolution = element-wise phase addition.
     Associates two concepts into a single composite vector.
     """
     _require_numpy()
+    _check_dim(a, b)
     return (a + b) % _TWO_PI
 
 
@@ -65,6 +71,7 @@ def unbind(memory: "np.ndarray", key: "np.ndarray") -> "np.ndarray":
     Retrieves the value associated with a key from a memory vector.
     """
     _require_numpy()
+    _check_dim(memory, key)
     return (memory - key) % _TWO_PI
 
 
@@ -83,6 +90,7 @@ def similarity(a: "np.ndarray", b: "np.ndarray") -> float:
     1.0 = identical, near 0.0 = unrelated, -1.0 = anti-correlated.
     """
     _require_numpy()
+    _check_dim(a, b)
     return float(np.mean(np.cos(a - b)))
 
 

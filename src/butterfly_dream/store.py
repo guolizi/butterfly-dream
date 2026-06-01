@@ -12,6 +12,7 @@ import re
 import sqlite3
 import threading
 from pathlib import Path
+from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -19,6 +20,8 @@ try:
     from . import holographic as hrr
 except ImportError:
     import holographic as hrr  # type: ignore[no-redef]
+
+from .retrieval import tokenize, jaccard_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +67,7 @@ CREATE TABLE IF NOT EXISTS entity_relations (
 CREATE TABLE IF NOT EXISTS merge_log (
     merge_id       INTEGER PRIMARY KEY AUTOINCREMENT,
     kept_fact_id   INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
-    absorbed_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    absorbed_fact_id INTEGER REFERENCES facts(fact_id) ON DELETE CASCADE,
     merged_content TEXT,
     merge_reason  TEXT DEFAULT 'auto',
     created_at    TEXT DEFAULT (datetime('now'))
@@ -133,6 +136,7 @@ class MemoryStore:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
@@ -156,6 +160,17 @@ class MemoryStore:
         When merging, content is intelligently combined, importance is max'd,
         tags are union'd, and a merge_log entry is created.
         """
+        # Type validation
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("content must be a non-empty string")
+        if not isinstance(category, str):
+            category = "general"
+        if not isinstance(tags, str):
+            tags = str(tags) if tags is not None else ""
+        if not isinstance(importance, (int, float)):
+            importance = 5.0
+        importance = max(1.0, min(10.0, float(importance)))
+
         with self._lock:
             # Extract entities from content
             extracted = self._extract_entities(content)
@@ -188,11 +203,15 @@ class MemoryStore:
         new_trust = max(old_trust, self._default_trust)
         # Merge tags
         merged_tags = self._merge_tags(old_tags, tags)
+        # Re-encode HRR to reflect updated importance/trust
+        hrr_vector = self._encode_hrr(old_content)
+        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         self._conn.execute(
             """UPDATE facts SET importance=?, trust_score=?, tags=?,
-               updated_at=datetime('now') WHERE fact_id=?""",
-            (new_importance, new_trust, merged_tags, fact_id),
+               hrr_vector=?, updated_at=datetime('now') WHERE fact_id=?""",
+            (new_importance, new_trust, merged_tags, hrr_blob, fact_id),
         )
+        self._conn.commit()
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
         return {"fact_id": fact_id, "content": old_content, "importance": new_importance,
                 "merged": True, "merge_type": "exact"}
@@ -204,7 +223,10 @@ class MemoryStore:
 
         Returns (fact_id, content, importance, trust_score, tags) or None.
         """
-        # Strategy A: facts sharing the most entities
+        # Cap entities to prevent DoS via enormous query
+        entities = entities[:20]
+        if not entities:
+            return None
         shared_facts = self._conn.execute(
             """SELECT f.fact_id, f.content, f.importance, f.trust_score, f.tags,
                       COUNT(fe.entity_id) AS entity_count
@@ -227,13 +249,12 @@ class MemoryStore:
             return None
 
         # Strategy B: among entity-sharing facts, pick best FTS5 match
-        from .retrieval import tokenize, jaccard_similarity
         query_tokens = tokenize(content)
         best = None
-        best_score = 0.4  # minimum similarity threshold
+        best_score = 0.15  # minimum similarity threshold (jaccard × trust)
 
         for row in shared_facts:
-            fid, fact_content, fact_imp, fact_trust, fact_tags = row[:5]
+            fid, fact_content, fact_imp, fact_trust, fact_tags = (row[0], row[1], row[2], row[3], row[4])
             content_tokens = tokenize(fact_content)
             tag_tokens = tokenize(fact_tags or "")
             all_tokens = content_tokens | tag_tokens
@@ -275,7 +296,7 @@ class MemoryStore:
         # Log the merge
         self._conn.execute(
             """INSERT INTO merge_log (kept_fact_id, absorbed_fact_id, merged_content, merge_reason)
-               VALUES (?, 0, ?, 'semantic')""",
+               VALUES (?, NULL, ?, 'semantic')""",
             (fact_id, merged_content),
         )
 
@@ -307,6 +328,10 @@ class MemoryStore:
         - If one contains the other, keep the longer one
         - If they talk about different aspects, join with separator
         - If they contradict, keep both with [conflict] marker
+
+        Note: contradiction detection is heuristic-only (token-level negation
+        and limited antonym check). Full NLP contradiction detection is out of
+        scope — this catches clear-cut cases only.
         """
         e_lower = existing.lower().strip()
         n_lower = new.lower().strip()
@@ -324,16 +349,36 @@ class MemoryStore:
         # Check for contradiction
         negation_words = {"not", "don't", "doesn't", "didn't", "won't", "can't",
                          "isn't", "aren't", "wasn't", "weren't", "never", "no",
-                         "不喜欢", "不要", "不是", "没有", "不行"}
+                         "不喜欢", "不要", "不是", "没有", "不行", "不会", "不能", "拒绝"}
+        # Antonym pairs — one fact uses one, the other uses its opposite
+        antonym_pairs = [
+            ({"love", "like", "enjoy", "prefer", "favorite"},
+             {"hate", "dislike", "loathe", "detest", "讨厌", "不喜欢"}),
+        ]
         e_tokens = set(e_lower.split())
         n_tokens = set(n_lower.split())
         common = e_tokens & n_tokens
         e_has_neg = any(w in e_tokens for w in negation_words)
         n_has_neg = any(w in n_tokens for w in negation_words)
-        is_contradiction = len(common) >= 3 and e_has_neg != n_has_neg
+        is_contradiction = False
+
+        # Heuristic 1: shared tokens but one negated
+        if len(common) >= 2 and e_has_neg != n_has_neg:
+            is_contradiction = True
+
+        # Heuristic 2: antonym-like pairs without shared negation
+        if not is_contradiction:
+            for pos_words, neg_words in antonym_pairs:
+                e_pos = bool(e_tokens & pos_words)
+                n_pos = bool(n_tokens & pos_words)
+                e_neg = bool(e_tokens & neg_words)
+                n_neg = bool(n_tokens & neg_words)
+                if (e_pos and n_neg) or (e_neg and n_pos):
+                    is_contradiction = True
+                    break
 
         if is_contradiction:
-            return f"{existing} ⚡{new}"  # Conflict marker
+            return f"{existing} [冲突] {new}"
 
         # Different aspects: combine
         # Check if the new info adds details not in existing
@@ -363,12 +408,12 @@ class MemoryStore:
         """Insert a brand-new fact."""
         hrr_vector = self._encode_hrr(content, entities)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
-        self._conn.execute(
+        cursor = self._conn.execute(
             """INSERT INTO facts (content, category, tags, importance, trust_score, hrr_vector)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (content, category, tags, importance, self._default_trust, hrr_blob),
         )
-        fact_id = self._conn.lastrowid
+        fact_id = cursor.lastrowid
         if entities:
             self._link_entities(fact_id, entities)
         self._conn.commit()
@@ -382,7 +427,7 @@ class MemoryStore:
             ).fetchone()
             if not row:
                 return None
-            return dict(row)
+            return {key: row[key] for key in row.keys()}
 
     def update_fact(self, fact_id: int, **kwargs) -> bool:
         allowed = {"content", "category", "tags", "importance", "trust_score"}
@@ -390,8 +435,10 @@ class MemoryStore:
         if not updates:
             return False
         updates["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        set_clause = ", ".join(f"{k}=?" for k in updates)
-        values = list(updates.values()) + [fact_id]
+        # Build safe column list — keys are already whitelisted above
+        columns = list(updates.keys())
+        set_clause = ", ".join(f"{col}=?" for col in columns)
+        values = [updates[col] for col in columns] + [fact_id]
         with self._lock:
             self._conn.execute(
                 f"UPDATE facts SET {set_clause} WHERE fact_id=?", values
@@ -401,9 +448,9 @@ class MemoryStore:
 
     def remove_fact(self, fact_id: int) -> bool:
         with self._lock:
-            self._conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+            cursor = self._conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
             self._conn.commit()
-            return True
+            return cursor.rowcount > 0
 
     def list_facts(self, limit: int = 50, offset: int = 0) -> list[dict]:
         with self._lock:
@@ -411,7 +458,7 @@ class MemoryStore:
                 "SELECT * FROM facts ORDER BY created_at DESC LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [{key: r[key] for key in r.keys()} for r in rows]
 
     def count_facts(self) -> int:
         with self._lock:
@@ -427,7 +474,9 @@ class MemoryStore:
             ).fetchone()
             if not row:
                 return {"error": "fact not found"}
-            trust, importance, helpful_count, retrieval_count = row
+            trust, importance, helpful_count, retrieval_count = (
+                row["trust_score"], row["importance"], row["helpful_count"], row["retrieval_count"]
+            )
             if helpful:
                 trust = min(_TRUST_MAX, trust + _HELPFUL_DELTA)
                 importance = min(_IMPORTANCE_MAX, importance + _IMPORTANCE_DELTA)
@@ -481,25 +530,28 @@ class MemoryStore:
     def get_entity_facts(self, entity_name: str, limit: int = 20) -> list[dict]:
         """Get all facts linked to an entity."""
         with self._lock:
+            # Escape SQL LIKE wildcards in entity name
+            safe_entity = entity_name.replace("%", "\\%").replace("_", "\\_")
             rows = self._conn.execute(
                 """SELECT f.* FROM facts f
                    JOIN fact_entities fe ON f.fact_id = fe.fact_id
                    JOIN entities e ON fe.entity_id = e.entity_id
-                   WHERE e.name = ? OR e.aliases LIKE ?
+                   WHERE e.name = ? OR e.aliases LIKE ? ESCAPE '\\'
                    ORDER BY f.importance DESC, f.trust_score DESC
                    LIMIT ?""",
-                (entity_name, f"%{entity_name}%", limit),
+                (entity_name, f"%{safe_entity}%", limit),
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [{key: r[key] for key in r.keys()} for r in rows]
 
     def get_related_entities(self, entity_name: str, depth: int = 2) -> list[dict]:
         """BFS traversal for related entities up to `depth` hops."""
         with self._lock:
             visited = set()
-            queue = [(entity_name, 0)]
+            queue = deque()
+            queue.append((entity_name, 0))
             results = []
             while queue:
-                name, d = queue.pop(0)
+                name, d = queue.popleft()
                 if name in visited or d > depth:
                     continue
                 visited.add(name)
@@ -511,7 +563,8 @@ class MemoryStore:
                        WHERE e1.name = ?""",
                     (name,),
                 ).fetchall()
-                for (related_name,) in rows:
+                for row in rows:
+                    related_name = row[0]
                     if related_name not in visited:
                         results.append({"source": name, "target": related_name, "depth": d + 1})
                         queue.append((related_name, d + 1))
@@ -551,4 +604,14 @@ class MemoryStore:
     # -- Close ----------------------------------------------------------------
 
     def close(self):
-        self._conn.close()
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    # -- Public connection access for retriever --------------------------------
+
+    def execute_query(self, sql: str, params: tuple = ()) -> list:
+        """Execute a read-only SQL query and return all rows.
+        Used by ThreeDimRetriever to access FTS5 search results."""
+        with self._lock:
+            return self._conn.execute(sql, params).fetchall()

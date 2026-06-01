@@ -22,7 +22,7 @@ from tools.registry import tool_error
 from hermes_cli.config import cfg_get
 
 from .store import MemoryStore
-from .retrieval import ThreeDimRetriever, SCENARIO_WEIGHTS
+from .retrieval import ThreeDimRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +152,13 @@ FACT_FEEDBACK_SCHEMA = {
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
+
+# Truncation limits for LLM extraction
+_MAX_EXTRACT_CHARS = 24000
+_EXTRACT_HEAD_CHARS = 12000
+_EXTRACT_TAIL_CHARS = 10000
+_MAX_MSG_CHARS = 1000
+
 
 def _load_plugin_config() -> dict:
     """Load butterfly-dream config from config.yaml."""
@@ -360,7 +367,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             rel_w /= total
             rec_w /= total
             imp_w /= total
-        SCENARIO_WEIGHTS["custom"] = {
+        custom_weights = {
             "relevance": rel_w,
             "recency": rec_w,
             "importance": imp_w,
@@ -375,6 +382,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             store=self._store,
             half_life_days=half_life,
             hrr_dim=hrr_dim,
+            custom_weights=custom_weights,
         )
         self._session_id = session_id
         self._last_extracted_idx = 0
@@ -412,7 +420,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 return ""
             lines = []
             for r in results:
-                trust = r.get("trust_score", r.get("trust", 0))
+                trust = r.get("trust_score", 0.5)
                 imp = r.get("importance", 5)
                 lines.append(f"- [{trust:.1f} trust | {imp:.0f} imp] {r.get('content', '')}")
             return "## 🦋 Butterfly Dream Memory\n" + "\n".join(lines)
@@ -453,15 +461,24 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         return tool_error(f"Unknown tool: {tool_name}")
 
     def on_session_end(self, messages: List[Dict[str, Any]]) -> None:
-        """Final extraction at session end with importance scoring."""
+        """Final extraction at session end with importance scoring (async)."""
         if not self._store or not messages:
             return
         if self._llm_extract_enabled:
             new_msgs = messages[self._last_extracted_idx:]
             if new_msgs:
-                facts = self._run_llm_extraction(new_msgs)
-                if facts:
-                    logger.info("ButterflyDream session-end extracted %d facts", len(facts))
+                msgs_copy = list(new_msgs)
+
+                def _extract_async():
+                    try:
+                        facts = self._run_llm_extraction(msgs_copy)
+                        if facts:
+                            logger.info("ButterflyDream session-end extracted %d facts", len(facts))
+                    except Exception as e:
+                        logger.debug("ButterflyDream session-end extraction failed: %s", e)
+
+                t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
+                t.start()
 
     def on_memory_write(self, action: str, target: str, content: str) -> None:
         """Mirror built-in memory writes as facts with default importance."""
@@ -495,15 +512,15 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 continue
             if role in ("user", "assistant"):
                 label = "User" if role == "user" else "Assistant"
-                lines.append(f"{label}: {content[:1000]}")
+                lines.append(f"{label}: {content[:_MAX_MSG_CHARS]}")
 
         if len(lines) < 2:
             return []
 
         text = "\n\n".join(lines)
-        if len(text) > 24000:
-            head = text[:12000]
-            tail = text[-10000:]
+        if len(text) > _MAX_EXTRACT_CHARS:
+            head = text[:_EXTRACT_HEAD_CHARS]
+            tail = text[-_EXTRACT_TAIL_CHARS:]
             text = head + "\n\n... [truncated] ...\n\n" + tail
 
         facts = _call_extraction_llm(
@@ -619,31 +636,38 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         for fid in sorted(shared)[:limit]:
             fact = self._store.get_fact(fid)
             if fact:
-                results.append(dict(fact))
+                results.append(fact)
         return json.dumps(results, default=str)
-
     def _handle_contradict(self, args: dict) -> str:
-        """Find facts with conflicting claims (same entity, opposing content)."""
-        # Simple heuristic: find facts sharing entities with opposite sentiment words
+        """Find facts with conflicting claims (same entity, opposing content).
+
+        Uses SQL to find entity-sharing fact pairs, then checks for
+        contradiction heuristics on the result set (up to 200 pairs).
+        """
         contradict_pairs = []
-        entities = self._store._conn.execute(
-            "SELECT name FROM entities LIMIT 50"
-        ).fetchall()
-        for (name,) in entities:
-            facts = self._store.get_entity_facts(name, limit=20)
-            content_list = [(f["fact_id"], f["content"]) for f in facts]
-            for i, (id1, c1) in enumerate(content_list):
-                for j, (id2, c2) in enumerate(content_list):
-                    if j <= i:
-                        continue
-                    if self._is_contradictory(c1, c2):
-                        contradict_pairs.append({
-                            "entity": name,
-                            "fact_id_a": id1,
-                            "content_a": c1,
-                            "fact_id_b": id2,
-                            "content_b": c2,
-                        })
+        # Find pairs of facts that share at least one entity
+        pairs = self._store.execute_query(
+            """SELECT e.name, f1.fact_id, f1.content, f2.fact_id, f2.content
+               FROM entities e
+               JOIN fact_entities fe1 ON e.entity_id = fe1.entity_id
+               JOIN facts f1 ON fe1.fact_id = f1.fact_id
+               JOIN fact_entities fe2 ON e.entity_id = fe2.entity_id AND fe2.fact_id > fe1.fact_id
+               JOIN facts f2 ON fe2.fact_id = f2.fact_id
+               WHERE f1.content < f2.content
+               ORDER BY e.name
+               LIMIT 200"""
+        )
+        for row in pairs:
+            name = row[0]
+            id1, c1, id2, c2 = row[1], row[2], row[3], row[4]
+            if self._is_contradictory(c1, c2):
+                contradict_pairs.append({
+                    "entity": name,
+                    "fact_id_a": id1,
+                    "content_a": c1,
+                    "fact_id_b": id2,
+                    "content_b": c2,
+                })
         return json.dumps(contradict_pairs[:20], default=str)
 
     @staticmethod
@@ -673,9 +697,17 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         except (ValueError, TypeError):
             return json.dumps({"error": "invalid fact_id"})
         kwargs = {}
-        for key in ("content", "category", "tags", "importance", "trust_delta"):
+        for key in ("content", "category", "tags", "importance"):
             if key in args:
                 kwargs[key] = args[key]
+        # trust_delta is a relative adjustment — resolve to absolute trust_score
+        if "trust_delta" in args:
+            current = self._store.get_fact(fact_id)
+            if current:
+                delta = float(args["trust_delta"])
+                kwargs["trust_score"] = max(0.0, min(1.0, current["trust_score"] + delta))
+            else:
+                return json.dumps({"error": "fact not found", "fact_id": fact_id})
         if self._store.update_fact(fact_id, **kwargs):
             return json.dumps({"success": True, "fact_id": fact_id})
         return json.dumps({"error": "fact not found", "fact_id": fact_id})

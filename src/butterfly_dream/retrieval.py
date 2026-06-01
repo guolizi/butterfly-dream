@@ -93,10 +93,12 @@ class ThreeDimRetriever:
         jaccard_weight: float = 0.3,
         hrr_weight: float = 0.3,
         hrr_dim: int = 1024,
+        custom_weights: dict | None = None,
     ):
         self.store = store
         self.half_life_days = half_life_days
         self.hrr_dim = hrr_dim
+        self._custom_weights = custom_weights
 
         # Auto-redistribute weights if numpy unavailable
         if hrr_weight > 0 and not hrr._HAS_NUMPY:
@@ -135,8 +137,11 @@ class ThreeDimRetriever:
         Returns:
             List of fact dicts with 'score' field, sorted descending.
         """
-        # Resolve weights
-        weights = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["balanced"]).copy()
+        # Resolve weights — merge scenario presets with instance custom weights
+        base = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["balanced"])
+        if scenario == "custom" and self._custom_weights:
+            base = self._custom_weights
+        weights = base.copy()
         if relevance_weight is not None:
             weights["relevance"] = relevance_weight
         if recency_weight is not None:
@@ -216,33 +221,32 @@ class ThreeDimRetriever:
         limit: int = 30,
     ) -> list[dict]:
         """Stage 1: Fetch candidates from FTS5 full-text search."""
-        conn = self.store._conn
         # Sanitize query for FTS5 special characters
         safe_query = self._sanitize_fts_query(query)
         if not safe_query:
             return []
 
         if category:
-            rows = conn.execute(
+            rows = self.store.execute_query(
                 """SELECT f.*, rank FROM facts_fts
                    JOIN facts f ON facts_fts.rowid = f.fact_id
                    WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ?
                    ORDER BY rank LIMIT ?""",
                 (safe_query, category, min_trust, limit),
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
+            rows = self.store.execute_query(
                 """SELECT f.*, rank FROM facts_fts
                    JOIN facts f ON facts_fts.rowid = f.fact_id
                    WHERE facts_fts MATCH ? AND f.trust_score >= ?
                    ORDER BY rank LIMIT ?""",
                 (safe_query, min_trust, limit),
-            ).fetchall()
+            )
 
         results = []
         for row in rows:
-            d = dict(row)
-            d["fts_rank"] = 1.0 / (1.0 + abs(d.get("rank", 0) or 0))
+            d = {key: row[key] for key in row.keys()}
+            d["fts_rank"] = 1.0 / (1.0 + math.exp(d.get("rank", 0) or 0))
             results.append(d)
         return results
 
