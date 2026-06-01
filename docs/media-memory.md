@@ -12,7 +12,7 @@
 
 ```
 fact ← 1:N → media_attachments
-  │              ├── file_path (相对路径)
+  │              ├── file_path (相对路径, CAS存储)
   │              ├── mime_type
   │              ├── description → FTS5 可搜索
   │              ├── caption
@@ -40,7 +40,7 @@ CREATE TABLE media_attachments (
     description   TEXT NOT NULL DEFAULT '',
     caption       TEXT DEFAULT '',
     transcript    TEXT DEFAULT '',
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at    TEXT DEFAULT (datetime('now'))
 );
 
 -- FTS5 全文索引（让 media 描述/字幕/转写可搜索）
@@ -48,41 +48,53 @@ CREATE VIRTUAL TABLE media_attachments_fts USING fts5(
     description, caption, transcript,
     content=media_attachments, content_rowid=media_id
 );
+```
 
+### 索引
+
+```sql
 CREATE INDEX idx_media_fact    ON media_attachments(fact_id);
 CREATE INDEX idx_media_sha256  ON media_attachments(sha256) WHERE sha256 != '';
+CREATE INDEX idx_media_path    ON media_attachments(file_path);
 CREATE INDEX idx_media_mime    ON media_attachments(mime_type);
 CREATE INDEX idx_media_created ON media_attachments(created_at DESC);
 ```
 
 ### 与现有表的交互
 
-- **merge_log**：语义合并时，被吸收 fact 的媒体附件自动 re-parent 到保留 fact（`UPDATE media_attachments SET fact_id=?`）
+- **merge_log**：语义合并时，新内容被吸收到已有 fact，不产生新的 fact_id，无需 re-parent
 - **entity_relations**：媒体本身不创建实体关系，但父 fact 的实体关系保持不变
+- **CASCADE**：`PRAGMA foreign_keys=ON` 启用后，删除 fact 自动清理其 media_attachments 行
 
 ## 文件存储
 
+内容寻址存储（Content-Addressable Storage, CAS），使用 SHA-256 哈希作为文件名和子目录分片：
+
 ```
-$HERMES_HOME/
-  ├── butterfly_memory.db        ← SQLite
-  └── media/
-      ├── images/                ← image/jpeg, image/png, image/webp
-      ├── audio/                 ← audio/ogg, audio/mp4, audio/wav
-      └── video/                 ← video/mp4, video/webm
+{media_dir}/
+├── im/              ← image/*
+│   └── {sha[:2]}/
+│       └── {sha256}.{ext}
+├── au/              ← audio/*
+├── vi/              ← video/*
+├── ot/              ← other (application/octet-stream 等)
+└── thumbs/          ← 缩略图 (自动生成, JPEG 格式)
+    ├── im/
+    └── ...
 ```
 
 **路径规则**：
-- 入库存相对 `$HERMES_HOME` 的路径（如 `media/images/abc123.jpg`）
-- 运行时解析为绝对路径
-- 文件名用 `sha256[:16]_timestamp.ext` 防冲突
+- 类型编码：`image/` → `im`，`audio/` → `au`，`video/` → `vi`，其他 → `ot`
+- 文件名：完整 `sha256.{ext}`（自动去重）
+- 扩展名：从 MIME 类型解析并映射（`jpeg→jpg`, `mpeg→mp3`, `svg+xml→svg` 等）
+- 路径安全：使用 `realpath` 验证路径在 `media_dir` 内，防止 `../../../etc/passwd`
+
+**缩略图**（`media_utils.py`）：
+- 仅对 `image/*` 且 >50KB 的文件自动生成
+- 最大 320×240，JPEG 格式，quality=75
+- 存在 `thumbs/{原路径}.jpg` 下，同名文件复用
 
 ## 检索管道改造
-
-### 当前流程
-
-```
-FTS5 MATCH facts_fts → 三维评分 → 返回 facts
-```
 
 ### 改造后流程
 
@@ -96,26 +108,18 @@ UNION 结果集（按 fact_id 去重）
 三维评分（以父 fact 为准）
         │
         ▼
-LEFT JOIN media_attachments → 返回带附件的 facts
+返回带附件的 facts（含 media: [...] 字段）
 ```
 
 **关键变更点**：
 1. `_fts_candidates` 增加 `media_attachments_fts` 的并行搜索
-2. 媒体匹配到的 description/transcript 内容合并到父 fact 的 relevance 评分中
-3. 返回结果中增加 `media: [...]` 字段
+2. 媒体匹配到的 description/transcript 提升父 fact 的 relevance 评分
+3. 返回结果中增加 `media` 字段和 `_media_match` 标志
+4. 媒体结果对应的父 fact 即使没被 `facts_fts` 匹配也会包含在结果中
 
 ### HRR 向量集成
 
-媒体 `description` 应在写入时编码到父 fact 的 `hrr_vector` 中：
-
-```python
-# store.py add_media() 时
-if hrr_vector is not None:
-    media_hrr = hrr.encode_text(description, self._hrr_dim)
-    new_hrr = hrr.bundle(existing_hrr, media_hrr)  # bundle 进父 vector
-```
-
-这样代数检索（probe/reason）也能命中包含媒体描述的事实。
+媒体 `description` 在写入时编码到父 fact 的 `hrr_vector` 中，使得代数检索（probe/reason）也能命中包含媒体描述的事实。
 
 ## 新增操作
 
@@ -142,47 +146,40 @@ if hrr_vector is not None:
 
 ### 工具：`media_orphans`
 
-列出磁盘上有但 DB 中无引用的孤儿文件，支持清理。
+列出磁盘上有但 DB 中无引用的孤儿文件。
+
+### 工具：`media_cleanup`
+
+删除孤儿文件。支持 `dry_run=True`（预览）和 `dry_run=False`（实际删除）。
 
 ## 实现路线
 
-| 阶段 | 内容 | 涉及文件 | 工作量 |
-|:----|:----|:---------|:------|
-| **P0** | Schema + FTS5 + 文件存储 + 基本 attach/detach + 路径安全 | `store.py`, `__init__.py` | 1-2 天 |
-| **P1** | 检索管道改造（并行 FTS5 + 三维评分） + HRR 集成 | `retrieval.py`, `store.py` | 1 天 |
-| **P2** | 新工具操作 + 文件 GC + 路径验证 | `__init__.py` | 1 天 |
-| **P3** | SHA-256 去重 + EXIF 剥离 + 缩略图 + 会话权限 | `media_utils.py` | 2 天 |
+| 阶段 | 内容 | 涉及文件 | 状态 |
+|:----|:----|:---------|:----:|
+| **P0** | Schema + FTS5 + CAS文件存储 + attach/detach + 路径安全 | `store.py` | ✅ |
+| **P1** | 检索管道改造（并行FTS5 + 三维评分）+ HRR 向量集成 | `retrieval.py`, `store.py` | ✅ |
+| **P2** | 工具操作 + 路径验证 + EXIF 剥离 | `__init__.py`, `media_utils.py` | ✅ (路径/工具, EXIF 待做) |
+| **P3** | 缩略图 + 文件GC + 会话权限 + EXIF | `media_utils.py` | ✅ (缩略图+GC, 会话权限+EXIF 待做) |
 
-## 已知缺陷（P0 实施前需处理）
+## 已知缺陷
 
-### P0 — 必须先修
+### P0 — 已修复
+1. ✅ **媒体描述不可检索**：`description/caption/transcript` 不进 FTS5 → 已修复，FTS5 同步触发器已添加
+2. ✅ **文件孤儿**：`ON DELETE CASCADE` 只删数据库行 → 已修复，`PRAGMA foreign_keys=ON` + `media_orphans()` + `media_cleanup()` 三管齐下
+3. ✅ **不用 BLOB**：已采用文件系统存储 + 数据库存路径 + SHA-256 的架构
 
-1. **媒体描述不可检索**：`description/caption/transcript` 不进 FTS5 → 用户搜关键词匹配不到媒体
-2. **文件孤儿**：`ON DELETE CASCADE` 只删数据库行，不删磁盘文件 → 需 GC 机制
-3. **不用 BLOB**：SQLite BLOB 存媒体导致 WAL 爆炸、死锁、备份灾难
+### P2 — 待修复
+4. ❌ **EXIF 数据泄露**：JPEG/HEIC 存储时未剥离 GPS 坐标 → 待实现
+5. ❌ **URL SSRF**：`storage_type='url'` 只允许 `https://` → 待实现
 
-### P1 — 性能
-
-4. **N+1 查询**：检索 10 个 facts 若逐个 JOIN 查 media → 1+10=11 次查询 → 改为 LEFT JOIN
-5. **HRR 向量集成**：媒体 `description` 应 bundle 到父 fact 的 `hrr_vector`
-6. **三维评分一致性**：媒体匹配的结果应继承父 fact 的 recency/importance
-
-### P2 — 安全
-
-7. **路径遍历攻击**：`file_path` 必须 `os.path.realpath` 验证在 `media/` 目录内
-8. **URL SSRF**：`storage_type='url'` 只允许 `https://`
-9. **EXIF 数据泄露**：JPEG/HEIC 存储时剥离 GPS 坐标
-10. **路径可移植性**：存相对 `$HERMES_HOME` 路径
-
-### P3 — 增强
-
-11. **SHA-256 去重**：相同文件多次引用不重复存储
-12. **缩略图**：大图预览前缩略
-13. **会话权限**：不同 session 不互相看到对方媒体
+### P3 — 待实现
+6. ❌ **会话权限**：不同 session 的媒体隔离 → 待实现
 
 ## 相关文件
 
-- `src/butterfly_dream/store.py` — SQLite 存储层（加 media 表）
-- `src/butterfly_dream/retrieval.py` — 检索管道（加并行 FTS5）
+- `src/butterfly_dream/store.py` — SQLite 存储层（media_attachments 表 + attach/detach/orphans/cleanup）
+- `src/butterfly_dream/retrieval.py` — 检索管道（并行 FTS5 搜索）
+- `src/butterfly_dream/media_utils.py` — 缩略图生成 + 文件 GC
 - `src/butterfly_dream/holographic.py` — HRR 编码引擎（不变）
-- `src/butterfly_dream/__init__.py` — 插件入口（加工具 handler）
+- `src/butterfly_dream/__init__.py` — 插件入口（工具 handler）
+- `tests/test_media_real.py` — 132 个测试（含真实媒体文件）

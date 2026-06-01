@@ -195,6 +195,27 @@ MEDIA_ORPHANS_SCHEMA = {
     },
 }
 
+MEDIA_CLEANUP_SCHEMA = {
+    "name": "media_cleanup",
+    "description": (
+        "Remove orphaned media files from disk. Orphans are files in the "
+        "media directory that have no corresponding database record. "
+        "Use dry_run=True first to see what would be deleted, "
+        "then dry_run=False to actually delete."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "dry_run": {
+                "type": "boolean",
+                "description": "If True, only report what would be deleted without removing anything",
+                "default": True,
+            },
+        },
+        "required": [],
+    },
+}
+
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -499,7 +520,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
         return [FACT_STORE_SCHEMA, FACT_FEEDBACK_SCHEMA,
-                MEDIA_ATTACH_SCHEMA, MEDIA_DETACH_SCHEMA, MEDIA_ORPHANS_SCHEMA]
+                MEDIA_ATTACH_SCHEMA, MEDIA_DETACH_SCHEMA, MEDIA_ORPHANS_SCHEMA,
+                MEDIA_CLEANUP_SCHEMA]
 
     def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
         if tool_name == "fact_store":
@@ -512,6 +534,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return self._handle_media_detach(args)
         elif tool_name == "media_orphans":
             return self._handle_media_orphans(args)
+        elif tool_name == "media_cleanup":
+            return self._handle_media_cleanup(args)
         return tool_error(f"Unknown tool: {tool_name}")
 
     def on_session_end(self, messages: List[Dict[str, Any]]) -> None:
@@ -836,6 +860,13 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
     def _handle_media_orphans(self, args: dict) -> str:
         orphans = self._store.media_orphans()
         return json.dumps({"orphans": orphans, "count": len(orphans)}, default=str)
+
+    def _handle_media_cleanup(self, args: dict) -> str:
+        dry_run = args.get("dry_run", True)
+        if not isinstance(dry_run, bool):
+            dry_run = True
+        result = self._store.media_cleanup(dry_run=dry_run)
+        return json.dumps(result, default=str)
 
 
 # ---------------------------------------------------------------------------

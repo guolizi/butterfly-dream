@@ -606,6 +606,8 @@ class MemoryStore:
                 (fact_id, sha256_val),
             ).fetchone()
             if existing:
+                logger.info("Media dedup: fact_id=%d sha256=%s rel_path=%s (same fact+sha)",
+                            fact_id, sha256_val, rel_path)
                 return {"media_id": existing[0], "file_path": rel_path,
                         "sha256": sha256_val, "dedup": True}
 
@@ -640,6 +642,16 @@ class MemoryStore:
 
             self._conn.commit()
 
+        logger.info("Media attached: media_id=%d fact_id=%d sha256=%s type=%s size=%d path=%s",
+                     media_id, fact_id, sha256_val, mime_type, file_size, rel_path)
+
+        # 9. Generate thumbnail (best-effort, non-critical)
+        try:
+            from .media_utils import generate_thumbnail
+            generate_thumbnail(str(abs_path), mime_type, str(media_root))
+        except Exception:
+            pass  # thumbnail failure is non-fatal
+
         return {"media_id": media_id, "file_path": rel_path,
                 "sha256": sha256_val, "dedup": False}
 
@@ -650,7 +662,12 @@ class MemoryStore:
                 "DELETE FROM media_attachments WHERE media_id=?", (media_id,),
             )
             self._conn.commit()
-            return cursor.rowcount > 0
+            success = cursor.rowcount > 0
+        if success:
+            logger.info("Media detached: media_id=%d", media_id)
+        else:
+            logger.warning("Media detach failed: media_id=%d not found", media_id)
+        return success
 
     def get_fact_media(self, fact_id: int) -> list[dict]:
         """Get all media attachments for a fact, ordered by creation time."""
@@ -660,7 +677,9 @@ class MemoryStore:
                    ORDER BY created_at DESC""",
                 (fact_id,),
             ).fetchall()
-            return [{key: row[key] for key in row.keys()} for row in rows]
+            result = [{key: row[key] for key in row.keys()} for row in rows]
+        logger.debug("get_fact_media(fact_id=%d): %d records", fact_id, len(result))
+        return result
 
     def media_orphans(self) -> list[str]:
         """Find files on disk not referenced in DB.
@@ -687,7 +706,24 @@ class MemoryStore:
             rel = str(fpath.relative_to(media_root))
             if rel not in db_paths:
                 orphans.append(rel)
+        if orphans:
+            logger.info("media_orphans: %d orphan file(s) found (e.g. %s)",
+                         len(orphans), orphans[0])
+        else:
+            logger.debug("media_orphans: no orphan files")
         return orphans
+
+    def media_cleanup(self, dry_run: bool = True) -> dict:
+        """Remove orphaned media files from disk via media_utils.
+
+        Args:
+            dry_run: If True, only report orphans without deleting.
+
+        Returns:
+            Dict with deleted, skipped, freed_bytes, dry_run, errors.
+        """
+        from .media_utils import media_cleanup as _do_cleanup
+        return _do_cleanup(self, dry_run=dry_run)
 
     # -- List / Count ---------------------------------------------------------
 

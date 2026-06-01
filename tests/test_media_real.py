@@ -680,3 +680,150 @@ class TestCJKAndUnicode:
         media = store.get_fact_media(fact["fact_id"])
         assert media[0]["description"] == long_desc
         assert len(media[0]["description"]) == len(long_desc)
+
+
+class TestThumbnailGeneration:
+    """Thumbnail is generated for large images during attach."""
+
+    def test_thumbnail_created_for_large_image(self, tmp_db):
+        """Attaching a >50KB image generates a thumbnail."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Thumbnail test", category="test")
+
+        result = store.attach_media(
+            fact["fact_id"], IMAGE_PNG2, "image/png",
+            description="Large image for thumbnail",
+        )
+        # Thumbnail should exist
+        thumb_rel = "thumbs/" + result["file_path"]
+        thumb_rel_jpg = os.path.splitext(thumb_rel)[0] + ".jpg"
+        thumb_abs = os.path.join(tmpdir, "media", thumb_rel_jpg)
+        # Note: banner.png is only 12KB, below _THUMB_MIN_BYTES=50KB
+        # neko_sunset.png is 1.8MB, should get a thumbnail
+        assert os.path.isfile(thumb_abs), f"Thumbnail not found at {thumb_abs}"
+        # Thumbnail should be JPEG
+        assert thumb_abs.endswith(".jpg"), \
+            f"Expected .jpg thumbnail, got: {thumb_abs}"
+        # Thumbnail should be smaller than original
+        orig_size = os.path.getsize(IMAGE_PNG2)
+        thumb_size = os.path.getsize(thumb_abs)
+        assert thumb_size < orig_size, \
+            f"Thumbnail ({thumb_size}) larger than original ({orig_size})"
+
+    def test_small_image_no_thumbnail(self, tmp_db):
+        """Small images (<50KB) don't get thumbnails."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Small image", category="test")
+
+        result = store.attach_media(
+            fact["fact_id"], IMAGE_PNG, "image/png",  # 12KB
+            description="Small PNG",
+        )
+        thumb_rel = "thumbs/" + result["file_path"]
+        thumb_rel_jpg = os.path.splitext(thumb_rel)[0] + ".jpg"
+        thumb_abs = os.path.join(tmpdir, "media", thumb_rel_jpg)
+        assert not os.path.isfile(thumb_abs), \
+            f"Small file should not have thumbnail: {thumb_abs}"
+
+    def test_audio_no_thumbnail(self, tmp_db):
+        """Audio files don't get thumbnails."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Audio no thumb", category="test")
+
+        result = store.attach_media(
+            fact["fact_id"], AUDIO_MP3, "audio/mpeg",
+            description="Audio file",
+        )
+        thumb_rel = "thumbs/" + result["file_path"]
+        thumb_abs = os.path.join(tmpdir, "media", thumb_rel)
+        assert not os.path.isfile(thumb_abs), \
+            f"Audio should not have thumbnail: {thumb_abs}"
+
+    def test_thumbnail_cached_reuse(self, tmp_db):
+        """Same file attached again reuses existing thumbnail."""
+        store, tmpdir, db_path = tmp_db
+        f1 = store.add_fact("Fact one", category="test")
+        f2 = store.add_fact("Fact two", category="test")
+
+        r1 = store.attach_media(
+            f1["fact_id"], IMAGE_PNG2, "image/png",
+            description="First",
+        )
+        thumb_path = os.path.join(tmpdir, "media", "thumbs",
+                                   os.path.splitext(r1["file_path"])[0] + ".jpg")
+        assert os.path.isfile(thumb_path)
+        thumb_mtime = os.path.getmtime(thumb_path)
+
+        r2 = store.attach_media(
+            f2["fact_id"], IMAGE_PNG2, "image/png",
+            description="Second (same file)",
+        )
+        assert os.path.getmtime(thumb_path) == thumb_mtime, \
+            "Thumbnail should be reused, not regenerated"
+
+
+class TestMediaCleanup:
+    """media_cleanup removes orphaned files."""
+
+    def test_cleanup_dry_run(self, tmp_db):
+        """dry_run=True reports orphans without deleting."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Cleanup test", category="test")
+        r = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "to delete")
+        store.remove_fact(fact["fact_id"])  # makes media orphan
+
+        result = store.media_cleanup(dry_run=True)
+        assert result["dry_run"] is True
+        assert result["deleted"] == 0  # dry run doesn't delete
+        assert result["skipped"] >= 0
+
+        # File still exists after dry run
+        assert os.path.isfile(os.path.join(tmpdir, "media", r["file_path"]))
+
+    def test_cleanup_deletes_orphans(self, tmp_db):
+        """dry_run=False actually deletes orphan files."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Delete test", category="test")
+        r = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "delete me")
+        file_path = os.path.join(tmpdir, "media", r["file_path"])
+        store.remove_fact(fact["fact_id"])  # makes media orphan
+
+        result = store.media_cleanup(dry_run=False)
+        assert result["dry_run"] is False
+        assert result["deleted"] >= 1
+        assert result["freed_bytes"] > 0
+        assert not os.path.isfile(file_path), f"File should be deleted: {file_path}"
+
+    def test_cleanup_no_orphans(self, tmp_db):
+        """No orphans = nothing deleted."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("No orphan", category="test")
+        store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "keep me")
+        # File still referenced, not orphan
+
+        result = store.media_cleanup(dry_run=False)
+        assert result["deleted"] == 0
+        assert result["freed_bytes"] == 0
+
+    def test_cleanup_protects_thumbnails_of_referenced_files(self, tmp_db):
+        """GC does not delete thumbnails whose original is still referenced."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Thumbnail protect", category="test")
+        r = store.attach_media(
+            fact["fact_id"], IMAGE_PNG2, "image/png",
+            description="Has thumbnail",
+        )
+        # Verify thumbnail exists
+        thumb_path = os.path.join(tmpdir, "media", "thumbs",
+                                   os.path.splitext(r["file_path"])[0] + ".jpg")
+        assert os.path.isfile(thumb_path)
+
+        # Cleanup should keep it (original file is referenced)
+        result = store.media_cleanup(dry_run=False)
+        for orphan in result.get("errors", []):
+            if "thumbs" in orphan:
+                break
+        else:
+            # If no errors about thumbs, check it still exists
+            assert os.path.isfile(thumb_path), \
+                "Thumbnail should still exist after cleanup"
