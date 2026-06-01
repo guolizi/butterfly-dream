@@ -274,9 +274,7 @@ class ThreeDimRetriever:
 
         for row in media_rows:
             media = {key: row[key] for key in row.keys()}
-            if "rank" in media:
-                del media["rank"]
-            media_rank = row.get("rank", 0) if isinstance(row, dict) else (row[-1] if hasattr(row, "__getitem__") else 0)
+            media_rank = media.pop("rank", 0)  # pop rank before ma.* columns shadow it
             media_fts_score = 1.0 / (1.0 + math.exp(float(media_rank or 0)))
             fid = media["fact_id"]
 

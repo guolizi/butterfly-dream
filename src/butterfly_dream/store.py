@@ -95,6 +95,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS media_attachments_fts
 
 CREATE INDEX IF NOT EXISTS idx_media_fact    ON media_attachments(fact_id);
 CREATE INDEX IF NOT EXISTS idx_media_sha256  ON media_attachments(sha256) WHERE sha256 != '';
+CREATE INDEX IF NOT EXISTS idx_media_path    ON media_attachments(file_path);
 CREATE INDEX IF NOT EXISTS idx_media_mime    ON media_attachments(mime_type);
 CREATE INDEX IF NOT EXISTS idx_media_created ON media_attachments(created_at DESC);
 
@@ -156,6 +157,21 @@ _MEDIA_TYPE_DIR = {
     "image/": "im",
     "audio/": "au",
     "video/": "vi",
+}
+
+# MIME type → file extension mapping (common aliases)
+_EXT_MAP = {
+    "jpeg": "jpg",
+    "mpeg": "mp3",
+    "quicktime": "mov",
+    "x-msvideo": "avi",
+    "x-matroska": "mkv",
+    "webm": "webm",
+    "ogg": "ogg",
+    "3gpp": "3gp",
+    "mp2t": "ts",
+    "x-ms-wmv": "wmv",
+    "x-flv": "flv",
 }
 
 
@@ -542,22 +558,23 @@ class MemoryStore:
         if not os.path.isfile(source_path):
             raise FileNotFoundError(f"Source file not found: {source_path}")
 
-        # 3. Read file, compute hash
+        # 3. Compute hash (chunked, memory-safe for large files)
+        sha256_hash = hashlib.sha256()
+        file_size = 0
         with open(source_path, "rb") as f:
-            data = f.read()
-        sha256_val = hashlib.sha256(data).hexdigest()
-        file_size = len(data)
+            while True:
+                chunk = f.read(64 * 1024)  # 64KB chunks
+                if not chunk:
+                    break
+                sha256_hash.update(chunk)
+                file_size += len(chunk)
+        sha256_val = sha256_hash.hexdigest()
 
         # 4. Determine target path (content-addressed)
         type_code = _media_type_prefix(mime_type)
         ext = mime_type.split("/")[-1]
-        # Common mime extension aliases
-        _EXT_MAP = {
-            "jpeg": "jpg",
-            "mpeg": "mp3",
-            "quicktime": "mov",
-            "x-msvideo": "avi",
-        }
+        # Strip +xml / +json suffix (e.g. svg+xml → svg)
+        ext = ext.split("+")[0]
         ext = _EXT_MAP.get(ext, ext)
 
         rel_dir = f"{type_code}/{sha256_val[:2]}"
@@ -648,22 +665,25 @@ class MemoryStore:
         Walks the media directory tree and returns paths of files
         whose relative path doesn't exist in media_attachments.
         """
-        orphans = []
         media_root = Path(self._media_dir)
         if not media_root.exists():
             return []
 
+        # Load DB paths under a brief lock, then walk disk without holding it
         with self._lock:
-            for fpath in media_root.rglob("*"):
-                if not fpath.is_file():
-                    continue
-                rel = str(fpath.relative_to(media_root))
-                row = self._conn.execute(
-                    "SELECT 1 FROM media_attachments WHERE file_path=?",
-                    (rel,),
-                ).fetchone()
-                if not row:
-                    orphans.append(rel)
+            db_paths = {
+                row[0] for row in self._conn.execute(
+                    "SELECT file_path FROM media_attachments"
+                ).fetchall()
+            }
+
+        orphans = []
+        for fpath in media_root.rglob("*"):
+            if not fpath.is_file():
+                continue
+            rel = str(fpath.relative_to(media_root))
+            if rel not in db_paths:
+                orphans.append(rel)
         return orphans
 
     # -- List / Count ---------------------------------------------------------
