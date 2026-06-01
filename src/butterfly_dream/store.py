@@ -549,8 +549,14 @@ class MemoryStore:
         # 4. Determine target path (content-addressed)
         type_code = _media_type_prefix(mime_type)
         ext = mime_type.split("/")[-1]
-        if ext == "jpeg":
-            ext = "jpg"
+        # Common mime extension aliases
+        _EXT_MAP = {
+            "jpeg": "jpg",
+            "mpeg": "mp3",
+            "quicktime": "mov",
+            "x-msvideo": "avi",
+        }
+        ext = _EXT_MAP.get(ext, ext)
 
         rel_dir = f"{type_code}/{sha256_val[:2]}"
         filename = f"{sha256_val}.{ext}"
