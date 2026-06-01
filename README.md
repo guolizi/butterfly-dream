@@ -1,9 +1,9 @@
-# 🦋 Butterfly Dream — 三维记忆插件 for Hermes Agent
+# 🦋 Butterfly Dream — 全维记忆插件 for Hermes Agent
 
 > *"昔者庄周梦为蝴蝶，栩栩然蝴蝶也。"*
-> 记忆如蝶，翩跹于时间、意义与关联的三维空间。
+> 记忆如蝶，翩跹于时间、意义与关联的多维空间。
 
-**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的高级记忆插件，基于 Holographic 记忆架构重构，引入**三维检索**（Relevance × Recency × Importance）让 Agent 的记忆更贴近人类的认知方式。
+**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的高级记忆插件，在 Holographic 架构上构建了**多维检索（Relevance × Recency × Importance）+ 实体图谱 + 多媒体存储 + 事实合并**的完整记忆系统。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度。
 
 ## ✨ 特性
 
