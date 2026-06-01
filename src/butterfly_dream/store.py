@@ -61,10 +61,19 @@ CREATE TABLE IF NOT EXISTS entity_relations (
     UNIQUE(source_id, target_id, relation)
 );
 
-CREATE INDEX IF NOT EXISTS idx_facts_trust    ON facts(trust_score DESC);
-CREATE INDEX IF NOT EXISTS idx_facts_importance ON facts(importance DESC);
-CREATE INDEX IF NOT EXISTS idx_facts_created   ON facts(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_facts_category  ON facts(category);
+CREATE TABLE IF NOT EXISTS merge_log (
+    merge_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    kept_fact_id   INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    absorbed_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    merged_content TEXT,
+    merge_reason  TEXT DEFAULT 'auto',
+    created_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_facts_trust       ON facts(trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_importance  ON facts(importance DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_created     ON facts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_category    ON facts(category);
 CREATE INDEX IF NOT EXISTS idx_entities_name   ON entities(name);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
@@ -136,46 +145,235 @@ class MemoryStore:
         tags: str = "",
         importance: float = 5.0,
         entities: Optional[list[str]] = None,
+        merge: bool = True,
     ) -> dict:
-        """Store a fact with importance scoring. Merges with existing if duplicate content."""
+        """Store a fact with three-level merging strategy.
+
+        1. Exact content match → merge (keep higher importance/trust)
+        2. Shared entities + FTS5 similarity >= threshold → merge content
+        3. No match → insert as new fact
+
+        When merging, content is intelligently combined, importance is max'd,
+        tags are union'd, and a merge_log entry is created.
+        """
         with self._lock:
-            # Check for duplicate by content
+            # Extract entities from content
+            extracted = self._extract_entities(content)
+            if entities:
+                extracted.extend(entities)
+            extracted = list(dict.fromkeys(extracted))  # dedup
+
+            # Level 1: Exact content match
             existing = self._conn.execute(
-                "SELECT fact_id, importance, trust_score FROM facts WHERE content = ?",
+                "SELECT fact_id, importance, trust_score, content, tags FROM facts WHERE content = ?",
                 (content,),
             ).fetchone()
 
             if existing:
-                # Merge: keep higher importance, keep higher trust
-                fact_id, old_imp, old_trust = existing
-                new_importance = max(old_imp, importance)
-                new_trust = max(old_trust, self._default_trust)
+                return self._merge_exact_match(existing, importance, tags)
+
+            # Level 2: Semantic merge (shared entities + FTS5 similarity)
+            if merge and extracted:
+                candidate = self._find_merge_candidate(content, extracted, category)
+                if candidate:
+                    return self._merge_semantic(candidate, content, extracted, category, tags, importance)
+
+            # Level 3: Insert new fact
+            return self._insert_new(content, category, tags, importance, extracted)
+
+    def _merge_exact_match(self, existing: tuple, importance: float, tags: str) -> dict:
+        """Merge when content is identical."""
+        fact_id, old_imp, old_trust, old_content, old_tags = existing
+        new_importance = max(old_imp, importance)
+        new_trust = max(old_trust, self._default_trust)
+        # Merge tags
+        merged_tags = self._merge_tags(old_tags, tags)
+        self._conn.execute(
+            """UPDATE facts SET importance=?, trust_score=?, tags=?,
+               updated_at=datetime('now') WHERE fact_id=?""",
+            (new_importance, new_trust, merged_tags, fact_id),
+        )
+        logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
+        return {"fact_id": fact_id, "content": old_content, "importance": new_importance,
+                "merged": True, "merge_type": "exact"}
+
+    def _find_merge_candidate(
+        self, content: str, entities: list[str], category: str,
+    ) -> Optional[tuple]:
+        """Find best existing fact to merge with, using entity overlap + FTS5.
+
+        Returns (fact_id, content, importance, trust_score, tags) or None.
+        """
+        # Strategy A: facts sharing the most entities
+        shared_facts = self._conn.execute(
+            """SELECT f.fact_id, f.content, f.importance, f.trust_score, f.tags,
+                      COUNT(fe.entity_id) AS entity_count
+               FROM facts f
+               JOIN fact_entities fe ON f.fact_id = fe.fact_id
+               JOIN entities e ON fe.entity_id = e.entity_id
+               WHERE e.name IN ({})
+               AND f.category = ?
+               AND f.fact_id NOT IN (
+                   SELECT absorbed_fact_id FROM merge_log
+               )
+               GROUP BY f.fact_id
+               HAVING entity_count >= ?
+               ORDER BY entity_count DESC, f.importance DESC
+               LIMIT 3""".format(",".join("?" * len(entities))),
+            entities + [category, max(1, len(entities) // 2)],
+        ).fetchall()
+
+        if not shared_facts:
+            return None
+
+        # Strategy B: among entity-sharing facts, pick best FTS5 match
+        from .retrieval import tokenize, jaccard_similarity
+        query_tokens = tokenize(content)
+        best = None
+        best_score = 0.4  # minimum similarity threshold
+
+        for row in shared_facts:
+            fid, fact_content, fact_imp, fact_trust, fact_tags = row[:5]
+            content_tokens = tokenize(fact_content)
+            tag_tokens = tokenize(fact_tags or "")
+            all_tokens = content_tokens | tag_tokens
+            jaccard = jaccard_similarity(query_tokens, all_tokens)
+
+            # Weighted score: Jaccard similarity × trust
+            score = jaccard * (fact_trust or 0.5)
+            if score > best_score:
+                best_score = score
+                best = (fid, fact_content, fact_imp, fact_trust, fact_tags)
+
+        return best
+
+    def _merge_semantic(
+        self, candidate: tuple, new_content: str, entities: list[str],
+        category: str, tags: str, importance: float,
+    ) -> dict:
+        """Merge new content into existing fact via content combining."""
+        fact_id, existing_content, old_imp, old_trust, old_tags = candidate
+
+        # Combine content intelligently
+        merged_content = self._combine_fact_content(existing_content, new_content)
+        merged_tags = self._merge_tags(old_tags, tags)
+        new_importance = max(old_imp, importance)
+        new_trust = max(old_trust, self._default_trust)
+
+        # Re-encode HRR with merged content
+        hrr_vector = self._encode_hrr(merged_content, entities)
+        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
+
+        self._conn.execute(
+            """UPDATE facts SET content=?, category=?, tags=?, importance=?,
+               trust_score=?, hrr_vector=?, updated_at=datetime('now')
+               WHERE fact_id=?""",
+            (merged_content, category, merged_tags, new_importance,
+             new_trust, hrr_blob, fact_id),
+        )
+
+        # Log the merge
+        self._conn.execute(
+            """INSERT INTO merge_log (kept_fact_id, absorbed_fact_id, merged_content, merge_reason)
+               VALUES (?, 0, ?, 'semantic')""",
+            (fact_id, merged_content),
+        )
+
+        # Link any new entities
+        for entity_name in entities:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO entities (name) VALUES (?)", (entity_name,)
+            )
+            row = self._conn.execute(
+                "SELECT entity_id FROM entities WHERE name = ?", (entity_name,)
+            ).fetchone()
+            if row:
                 self._conn.execute(
-                    "UPDATE facts SET importance=?, trust_score=?, updated_at=datetime('now') WHERE fact_id=?",
-                    (new_importance, new_trust, fact_id),
+                    "INSERT OR IGNORE INTO fact_entities (fact_id, entity_id) VALUES (?, ?)",
+                    (fact_id, row[0]),
                 )
-                logger.debug("Merged duplicate fact #%d (importance %.1f)", fact_id, new_importance)
-            else:
-                # Encode HRR vector
-                hrr_vector = self._encode_hrr(content, entities or [])
-                hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
 
-                self._conn.execute(
-                    """INSERT INTO facts (content, category, tags, importance, trust_score, hrr_vector)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (content, category, tags, importance, self._default_trust, hrr_blob),
-                )
-                fact_id = self._conn.lastrowid
+        self._conn.commit()
+        logger.debug("Semantic merge into fact #%d: '%s' ← '%s'",
+                     fact_id, existing_content[:60], new_content[:60])
+        return {"fact_id": fact_id, "content": merged_content, "importance": new_importance,
+                "merged": True, "merge_type": "semantic"}
 
-            # Process entities
-            extracted = self._extract_entities(content)
-            if entities:
-                extracted.extend(entities)
-            if extracted:
-                self._link_entities(fact_id, extracted)
+    @staticmethod
+    def _combine_fact_content(existing: str, new: str) -> str:
+        """Intelligently combine two fact statements about the same topic.
 
-            self._conn.commit()
-            return {"fact_id": fact_id, "content": content, "importance": importance}
+        Strategies:
+        - If one contains the other, keep the longer one
+        - If they talk about different aspects, join with separator
+        - If they contradict, keep both with [conflict] marker
+        """
+        e_lower = existing.lower().strip()
+        n_lower = new.lower().strip()
+
+        # Same content (case-insensitive)
+        if e_lower == n_lower:
+            return existing
+
+        # One is substring of the other (within similar length)
+        if len(e_lower) >= len(n_lower) * 0.7 and n_lower in e_lower:
+            return existing
+        if len(n_lower) >= len(e_lower) * 0.7 and e_lower in n_lower:
+            return new
+
+        # Check for contradiction
+        negation_words = {"not", "don't", "doesn't", "didn't", "won't", "can't",
+                         "isn't", "aren't", "wasn't", "weren't", "never", "no",
+                         "不喜欢", "不要", "不是", "没有", "不行"}
+        e_tokens = set(e_lower.split())
+        n_tokens = set(n_lower.split())
+        common = e_tokens & n_tokens
+        e_has_neg = any(w in e_tokens for w in negation_words)
+        n_has_neg = any(w in n_tokens for w in negation_words)
+        is_contradiction = len(common) >= 3 and e_has_neg != n_has_neg
+
+        if is_contradiction:
+            return f"{existing} ⚡{new}"  # Conflict marker
+
+        # Different aspects: combine
+        # Check if the new info adds details not in existing
+        new_words = set(n_lower.split()) - set(e_lower.split())
+        if len(new_words) >= 2:
+            return f"{existing}；{new}"
+        return existing  # No meaningful new info
+
+    @staticmethod
+    def _merge_tags(old_tags: str, new_tags: str) -> str:
+        """Merge two comma-separated tag strings, deduplicated."""
+        all_tags = set()
+        for t in old_tags.split(","):
+            t = t.strip()
+            if t:
+                all_tags.add(t)
+        for t in new_tags.split(","):
+            t = t.strip()
+            if t:
+                all_tags.add(t)
+        return ", ".join(sorted(all_tags))
+
+    def _insert_new(
+        self, content: str, category: str, tags: str,
+        importance: float, entities: list[str],
+    ) -> dict:
+        """Insert a brand-new fact."""
+        hrr_vector = self._encode_hrr(content, entities)
+        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
+        self._conn.execute(
+            """INSERT INTO facts (content, category, tags, importance, trust_score, hrr_vector)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (content, category, tags, importance, self._default_trust, hrr_blob),
+        )
+        fact_id = self._conn.lastrowid
+        if entities:
+            self._link_entities(fact_id, entities)
+        self._conn.commit()
+        return {"fact_id": fact_id, "content": content, "importance": importance,
+                "merged": False}
 
     def get_fact(self, fact_id: int) -> Optional[dict]:
         with self._lock:

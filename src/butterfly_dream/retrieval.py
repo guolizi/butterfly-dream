@@ -262,26 +262,33 @@ class ThreeDimRetriever:
     @staticmethod
     def _tokenize(text: str) -> set[str]:
         """Tokenize text into a set of normalized tokens."""
-        # Split on whitespace and common CJK separators
-        import re
-        tokens = set()
-        # English words
-        for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-]{1,}', text):
-            tokens.add(token.lower())
-        # CJK bigrams
-        cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
-        for i in range(len(cjk_chars) - 1):
-            tokens.add(cjk_chars[i] + cjk_chars[i + 1])
-        # Single CJK chars as well
-        for char in cjk_chars:
-            tokens.add(char)
-        return tokens
+        return tokenize(text)
 
     @staticmethod
     def _jaccard_similarity(a: set[str], b: set[str]) -> float:
         """Jaccard similarity between two token sets."""
-        if not a or not b:
-            return 0.0
-        intersection = a & b
-        union = a | b
-        return len(intersection) / len(union)
+        return jaccard_similarity(a, b)
+
+
+# Module-level helpers (also usable by store.py)
+def tokenize(text: str) -> set[str]:
+    """Tokenize text into a set of normalized tokens."""
+    import re
+    tokens = set()
+    for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-]{1,}', text):
+        tokens.add(token.lower())
+    cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
+    for i in range(len(cjk_chars) - 1):
+        tokens.add(cjk_chars[i] + cjk_chars[i + 1])
+    for char in cjk_chars:
+        tokens.add(char)
+    return tokens
+
+
+def jaccard_similarity(a: set[str], b: set[str]) -> float:
+    """Jaccard similarity between two token sets."""
+    if not a or not b:
+        return 0.0
+    intersection = a & b
+    union = a | b
+    return len(intersection) / len(union)
