@@ -7,6 +7,7 @@ Extends the Holographic store with:
 - Fact merging / conflict resolution for same-entity facts
 """
 
+import copy
 import hashlib
 import logging
 import os
@@ -201,11 +202,13 @@ _RE_QUOTED_CN = re.compile(r'["\u201c\u2018]([^"\u201d\u2019]{2,})["\u201d\u2019
 class MemoryStore:
     """Thread-safe SQLite-backed fact store with importance + trust tracking."""
 
-    def __init__(self, db_path: str, default_trust: float = 0.5, hrr_dim: int = 1024):
+    def __init__(self, db_path: str, default_trust: float = 0.5, hrr_dim: int = 1024,
+                 compression_config: Optional[dict] = None):
         self._db_path = db_path
         self._default_trust = default_trust
         self._hrr_dim = hrr_dim
         self._media_dir = str(Path(db_path).parent / "media")
+        self._compression_config = compression_config
         self._lock = threading.Lock()
 
         # Ensure directory exists
@@ -541,6 +544,7 @@ class MemoryStore:
                      transcript: str = "") -> dict:
         """Attach a media file to a fact.
 
+        - Compresses the file first if compression is enabled (configurable)
         - Copies file to content-addressed path under media_dir
         - Validates path safety (prevents traversal)
         - Computes SHA-256 for dedup
@@ -559,10 +563,38 @@ class MemoryStore:
         if not os.path.isfile(source_path):
             raise FileNotFoundError(f"Source file not found: {source_path}")
 
+        # 2b. Compress file if enabled
+        effective_source = source_path
+        effective_mime = mime_type
+        if self._compression_config:
+            try:
+                from .media_compressor import compress_media, DEFAULT_COMPRESSION_CONFIG
+                # Deep merge user config over defaults (avoid mutating global)
+                merged = copy.deepcopy(DEFAULT_COMPRESSION_CONFIG)
+                if isinstance(self._compression_config, dict):
+                    for key, val in self._compression_config.items():
+                        if key in ("image", "video", "audio") and isinstance(val, dict):
+                            merged.setdefault(key, {})
+                            merged[key].update(val)
+                        else:
+                            merged[key] = val
+
+                result_path, result_mime = compress_media(
+                    source_path, mime_type,
+                    output_dir=self._media_dir,
+                    config=merged,
+                )
+                if result_path:
+                    effective_source = result_path
+                    effective_mime = result_mime
+            except Exception:
+                logger.warning("Compression error for %s, using original", source_path,
+                               exc_info=True)
+
         # 3. Compute hash (chunked, memory-safe for large files)
         sha256_hash = hashlib.sha256()
         file_size = 0
-        with open(source_path, "rb") as f:
+        with open(effective_source, "rb") as f:
             while True:
                 chunk = f.read(64 * 1024)  # 64KB chunks
                 if not chunk:
@@ -572,8 +604,8 @@ class MemoryStore:
         sha256_val = sha256_hash.hexdigest()
 
         # 4. Determine target path (content-addressed)
-        type_code = _media_type_prefix(mime_type)
-        ext = mime_type.split("/")[-1]
+        type_code = _media_type_prefix(effective_mime)
+        ext = effective_mime.split("/")[-1]
         # Strip params (e.g. image/png; charset=utf-8 → png)
         ext = ext.split(";")[0].strip()
         # Strip +xml / +json suffix (e.g. svg+xml → svg)
@@ -591,12 +623,18 @@ class MemoryStore:
 
         # Security: verify resolved path is inside media_root
         if not str(abs_path).startswith(str(media_root) + os.sep):
+            # Clean up temp compressed file if applicable
+            if effective_source != source_path:
+                try:
+                    os.unlink(effective_source)
+                except OSError:
+                    pass
             raise ValueError(f"Path traversal detected: {rel_path}")
 
         # 6. Create directory and copy file (if not already there = dedup)
         abs_dir.mkdir(parents=True, exist_ok=True)
         if not abs_path.exists():
-            shutil.copy2(source_path, str(abs_path))
+            shutil.copy2(effective_source, str(abs_path))
 
         # 7. Insert into DB
         with self._lock:
@@ -608,20 +646,26 @@ class MemoryStore:
             if existing:
                 logger.info("Media dedup: fact_id=%d sha256=%s rel_path=%s (same fact+sha)",
                             fact_id, sha256_val, rel_path)
+                # Clean up temp file before early return
+                if effective_source != source_path:
+                    try:
+                        os.unlink(effective_source)
+                    except OSError:
+                        pass
                 return {"media_id": existing[0], "file_path": rel_path,
                         "sha256": sha256_val, "dedup": True}
 
             # Re-verify file exists (GC might have removed it between step 6 and here)
             if not abs_path.exists():
                 abs_dir.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source_path, str(abs_path))
+                shutil.copy2(effective_source, str(abs_path))
 
             cursor = self._conn.execute(
                 """INSERT INTO media_attachments
                    (fact_id, file_path, mime_type, file_size, sha256,
                     description, caption, transcript)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (fact_id, rel_path, mime_type, file_size, sha256_val,
+                (fact_id, rel_path, effective_mime, file_size, sha256_val,
                  description, caption, transcript),
             )
             media_id = cursor.lastrowid
@@ -646,6 +690,13 @@ class MemoryStore:
                     pass  # non-critical
 
             self._conn.commit()
+
+        # Clean up temp compressed file (after lock so TOCTOU path can still use it)
+        if effective_source != source_path:
+            try:
+                os.unlink(effective_source)
+            except OSError:
+                pass
 
         logger.info("Media attached: media_id=%d fact_id=%d sha256=%s type=%s size=%d path=%s",
                      media_id, fact_id, sha256_val, mime_type, file_size, rel_path)

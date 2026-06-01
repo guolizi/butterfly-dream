@@ -77,10 +77,10 @@ CREATE INDEX idx_media_created ON media_attachments(created_at DESC);
 │       └── {sha256}.{ext}
 ├── au/              ← audio/*
 ├── vi/              ← video/*
-├── ot/              ← other (application/octet-stream 等)
-└── thumbs/          ← 缩略图 (自动生成, JPEG 格式)
-    ├── im/
-    └── ...
+|    ├── ot/              ← other (application/octet-stream 等)
+|    └── thumbs/          ← 缩略图 (自动生成, JPEG 格式)
+|        ├── im/
+|        └── ...
 ```
 
 **路径规则**：
@@ -88,6 +88,42 @@ CREATE INDEX idx_media_created ON media_attachments(created_at DESC);
 - 文件名：完整 `sha256.{ext}`（自动去重）
 - 扩展名：从 MIME 类型解析并映射（`jpeg→jpg`, `mpeg→mp3`, `svg+xml→svg` 等）
 - 路径安全：使用 `realpath` 验证路径在 `media_dir` 内，防止 `../../../etc/passwd`
+
+### 压缩存储
+
+压缩默认开启，可在 YAML 配置中关闭或调整参数：
+
+```yaml
+plugins:
+  butterfly-dream:
+    compression:
+      enabled: true          # 总开关，默认开启
+      max_size_mb: 100       # 超过此大小(MB)的文件跳过压缩，防止卡死
+      timeout: 600           # ffmpeg 超时秒数（默认10分钟）
+      image:
+        quality: 85           # JPEG quality (1-100)
+        max_dim: 1920         # 超过此尺寸则缩放
+        convert_to_jpeg: true # PNG/GIF → JPEG 有损压缩
+      video:
+        bitrate: "1M"         # ffmpeg -b:v
+        max_fps: 30
+        max_dim: 1280
+        audio_bitrate: "128k"
+      audio:
+        bitrate: "128k"       # ffmpeg -b:a
+        sample_rate: 44100
+```
+
+**压缩策略**：
+- **图片**：用 Pillow 转为 JPEG（quality 可调），检测到 PNG 等格式自动转换并重写 MIME 为 `image/jpeg`
+- **视频**：用 ffmpeg 转码为 H.264/AAC MP4，码率和分辨率可调
+- **音频**：用 ffmpeg 转码为 MP3，比特率和采样率可调
+- **智能跳过**：如果压缩后体积没减少（如已压缩的 JPEG/小文件），自动保留原始文件
+- **大文件保护**：超过 `max_size_mb`（默认 100MB）的文件跳过压缩，避免长时间卡顿
+- **可配超时**：`timeout` 控制 ffmpeg 最大等待时间（默认 10 分钟），超时自动回退到原始文件
+- **哈希变更**：压缩后的 SHA-256 基于压缩版本，去重也是在压缩后内容上
+
+**关闭压缩**：`compression: { enabled: false }` 即可恢复原始存储行为。不传 `compression` 参数也不会压缩（向后兼容）。
 
 **缩略图**（`media_utils.py`）：
 - 仅对 `image/*` 且 >50KB 的文件自动生成
@@ -160,6 +196,7 @@ UNION 结果集（按 fact_id 去重）
 | **P1** | 检索管道改造（并行FTS5 + 三维评分）+ HRR 向量集成 | `retrieval.py`, `store.py` | ✅ |
 | **P2** | 工具操作 + 路径验证 + EXIF 剥离 | `__init__.py`, `media_utils.py` | ✅ (路径/工具, EXIF 待做) |
 | **P3** | 缩略图 + 文件GC + 会话权限 + EXIF | `media_utils.py` | ✅ (缩略图+GC, 会话权限+EXIF 待做) |
+| **P4** | 媒体压缩（图片/视频/音频，默认开启） | `media_compressor.py`, `store.py`, `__init__.py` | ✅ |
 
 ## 已知缺陷
 
@@ -175,11 +212,16 @@ UNION 结果集（按 fact_id 去重）
 ### P3 — 待实现
 6. ❌ **会话权限**：不同 session 的媒体隔离 → 待实现
 
+### 不支持的特性
+7. ❌ **媒体自动提取**：`on_pre_compress` / `sync_turn` 等生命周期钩子只提取文本事实，不会自动扫描消息中的图片/音频/视频附件并调用 `attach_media`。媒体需要 LLM 在对话中显式调用 `media_attach` 工具手动存储。
+
 ## 相关文件
 
 - `src/butterfly_dream/store.py` — SQLite 存储层（media_attachments 表 + attach/detach/orphans/cleanup）
 - `src/butterfly_dream/retrieval.py` — 检索管道（并行 FTS5 搜索）
 - `src/butterfly_dream/media_utils.py` — 缩略图生成 + 文件 GC
+- `src/butterfly_dream/media_compressor.py` — 媒体压缩（图片/视频/音频，Pillow + ffmpeg）
 - `src/butterfly_dream/holographic.py` — HRR 编码引擎（不变）
 - `src/butterfly_dream/__init__.py` — 插件入口（工具 handler）
-- `tests/test_media_real.py` — 132 个测试（含真实媒体文件）
+- `tests/test_media_real.py` — 真实媒体文件端到端测试
+- `tests/test_media_compression.py` — 14 个压缩功能测试

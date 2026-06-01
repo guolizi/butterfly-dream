@@ -407,6 +407,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             {"key": "min_trust_threshold", "description": "Minimum trust threshold for retrieval", "default": "0.3"},
             {"key": "recency_half_life_days", "description": "Days for recency score to decay by half", "default": "30"},
             {"key": "hrr_dim", "description": "HRR vector dimensions", "default": "1024"},
+            {"key": "compression", "description": "Media compression settings (YAML block: enabled, image.quality, video.bitrate, etc.)", "default": "{enabled: true}"},
         ]
 
     def initialize(self, session_id: str, **kwargs) -> None:
@@ -445,6 +446,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             db_path=db_path,
             default_trust=default_trust,
             hrr_dim=hrr_dim,
+            compression_config=self._config.get("compression", None),
         )
         self._retriever = ThreeDimRetriever(
             store=self._store,
