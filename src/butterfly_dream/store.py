@@ -7,8 +7,11 @@ Extends the Holographic store with:
 - Fact merging / conflict resolution for same-entity facts
 """
 
+import hashlib
 import logging
+import os
 import re
+import shutil
 import sqlite3
 import threading
 from pathlib import Path
@@ -73,6 +76,46 @@ CREATE TABLE IF NOT EXISTS merge_log (
     created_at    TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS media_attachments (
+    media_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    fact_id       INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    storage_type  TEXT NOT NULL DEFAULT 'file' CHECK(storage_type IN ('file', 'url')),
+    file_path     TEXT NOT NULL,
+    mime_type     TEXT NOT NULL,
+    file_size     INTEGER NOT NULL DEFAULT 0,
+    sha256        TEXT NOT NULL DEFAULT '',
+    description   TEXT NOT NULL DEFAULT '',
+    caption       TEXT DEFAULT '',
+    transcript    TEXT DEFAULT '',
+    created_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS media_attachments_fts
+    USING fts5(description, caption, transcript, content=media_attachments, content_rowid=media_id);
+
+CREATE INDEX IF NOT EXISTS idx_media_fact    ON media_attachments(fact_id);
+CREATE INDEX IF NOT EXISTS idx_media_sha256  ON media_attachments(sha256) WHERE sha256 != '';
+CREATE INDEX IF NOT EXISTS idx_media_mime    ON media_attachments(mime_type);
+CREATE INDEX IF NOT EXISTS idx_media_created ON media_attachments(created_at DESC);
+
+-- FTS5 sync triggers
+CREATE TRIGGER IF NOT EXISTS media_ai AFTER INSERT ON media_attachments BEGIN
+    INSERT INTO media_attachments_fts(rowid, description, caption, transcript)
+        VALUES (new.media_id, new.description, new.caption, new.transcript);
+END;
+
+CREATE TRIGGER IF NOT EXISTS media_ad AFTER DELETE ON media_attachments BEGIN
+    INSERT INTO media_attachments_fts(media_attachments_fts, rowid, description, caption, transcript)
+        VALUES ('delete', old.media_id, old.description, old.caption, old.transcript);
+END;
+
+CREATE TRIGGER IF NOT EXISTS media_au AFTER UPDATE ON media_attachments BEGIN
+    INSERT INTO media_attachments_fts(media_attachments_fts, rowid, description, caption, transcript)
+        VALUES ('delete', old.media_id, old.description, old.caption, old.transcript);
+    INSERT INTO media_attachments_fts(rowid, description, caption, transcript)
+        VALUES (new.media_id, new.description, new.caption, new.transcript);
+END;
+
 CREATE INDEX IF NOT EXISTS idx_facts_trust       ON facts(trust_score DESC);
 CREATE INDEX IF NOT EXISTS idx_facts_importance  ON facts(importance DESC);
 CREATE INDEX IF NOT EXISTS idx_facts_created     ON facts(created_at DESC);
@@ -109,6 +152,21 @@ _TRUST_MAX = 1.0
 _IMPORTANCE_MIN = 1.0
 _IMPORTANCE_MAX = 10.0
 
+_MEDIA_TYPE_DIR = {
+    "image/": "im",
+    "audio/": "au",
+    "video/": "vi",
+}
+
+
+def _media_type_prefix(mime_type: str) -> str:
+    """Map mime type prefix to short directory code."""
+    for prefix, code in _MEDIA_TYPE_DIR.items():
+        if mime_type.startswith(prefix):
+            return code
+    return "ot"  # other
+
+
 # Entity extraction patterns (from Holographic, enhanced for CJK)
 _RE_CAPITALIZED  = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')
 _RE_DOUBLE_QUOTE = re.compile(r'"([^"]+)"')
@@ -130,6 +188,7 @@ class MemoryStore:
         self._db_path = db_path
         self._default_trust = default_trust
         self._hrr_dim = hrr_dim
+        self._media_dir = str(Path(db_path).parent / "media")
         self._lock = threading.Lock()
 
         # Ensure directory exists
@@ -139,6 +198,10 @@ class MemoryStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+
+        # Ensure media subdirectories exist
+        for sub in ("im", "au", "vi", "ot"):
+            (Path(self._media_dir) / sub).mkdir(parents=True, exist_ok=True)
 
     # -- CRUD ------------------------------------------------------------------
 
@@ -451,6 +514,151 @@ class MemoryStore:
             cursor = self._conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
             self._conn.commit()
             return cursor.rowcount > 0
+
+    # -- Media attachments ----------------------------------------------------
+
+    def attach_media(self, fact_id: int, source_path: str, mime_type: str,
+                     description: str = "", caption: str = "",
+                     transcript: str = "") -> dict:
+        """Attach a media file to a fact.
+
+        - Copies file to content-addressed path under media_dir
+        - Validates path safety (prevents traversal)
+        - Computes SHA-256 for dedup
+        - Inserts into media_attachments table
+        - Optionally re-bundles HRR vector with description
+
+        Returns dict with media_id, file_path, sha256.
+        """
+        # 1. Verify fact exists
+        fact = self.get_fact(fact_id)
+        if not fact:
+            raise ValueError(f"Fact {fact_id} not found")
+
+        # 2. Validate source file
+        source_path = str(source_path)
+        if not os.path.isfile(source_path):
+            raise FileNotFoundError(f"Source file not found: {source_path}")
+
+        # 3. Read file, compute hash
+        with open(source_path, "rb") as f:
+            data = f.read()
+        sha256_val = hashlib.sha256(data).hexdigest()
+        file_size = len(data)
+
+        # 4. Determine target path (content-addressed)
+        type_code = _media_type_prefix(mime_type)
+        ext = mime_type.split("/")[-1]
+        if ext == "jpeg":
+            ext = "jpg"
+
+        rel_dir = f"{type_code}/{sha256_val[:2]}"
+        filename = f"{sha256_val}.{ext}"
+        rel_path = f"{rel_dir}/{filename}"
+
+        # 5. Resolve absolute path and validate it stays within media_dir
+        media_root = Path(self._media_dir).resolve()
+        abs_dir = (media_root / rel_dir).resolve()
+        abs_path = (media_root / rel_path).resolve()
+
+        # Security: verify resolved path is inside media_root
+        if not str(abs_path).startswith(str(media_root) + os.sep):
+            raise ValueError(f"Path traversal detected: {rel_path}")
+
+        # 6. Create directory and copy file (if not already there = dedup)
+        abs_dir.mkdir(parents=True, exist_ok=True)
+        if not abs_path.exists():
+            shutil.copy2(source_path, str(abs_path))
+
+        # 7. Insert into DB
+        with self._lock:
+            # Check for existing same-sha attachment on this fact (dedup within fact)
+            existing = self._conn.execute(
+                "SELECT media_id FROM media_attachments WHERE fact_id=? AND sha256=?",
+                (fact_id, sha256_val),
+            ).fetchone()
+            if existing:
+                return {"media_id": existing[0], "file_path": rel_path,
+                        "sha256": sha256_val, "dedup": True}
+
+            cursor = self._conn.execute(
+                """INSERT INTO media_attachments
+                   (fact_id, file_path, mime_type, file_size, sha256,
+                    description, caption, transcript)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (fact_id, rel_path, mime_type, file_size, sha256_val,
+                 description, caption, transcript),
+            )
+            media_id = cursor.lastrowid
+
+            # 8. Re-bundle HRR vector with media description
+            if hrr._HAS_NUMPY and description:
+                try:
+                    fact_hrr = self._conn.execute(
+                        "SELECT hrr_vector FROM facts WHERE fact_id=?",
+                        (fact_id,),
+                    ).fetchone()
+                    if fact_hrr and fact_hrr[0] is not None:
+                        existing_vec = hrr.bytes_to_phases(fact_hrr[0])
+                        media_vec = hrr.encode_text(description, self._hrr_dim)
+                        new_vec = hrr.bundle(existing_vec, media_vec)
+                        new_blob = hrr.phases_to_bytes(new_vec)
+                        self._conn.execute(
+                            "UPDATE facts SET hrr_vector=? WHERE fact_id=?",
+                            (new_blob, fact_id),
+                        )
+                except Exception:
+                    pass  # non-critical
+
+            self._conn.commit()
+
+        return {"media_id": media_id, "file_path": rel_path,
+                "sha256": sha256_val, "dedup": False}
+
+    def detach_media(self, media_id: int) -> bool:
+        """Remove media attachment from DB. Does NOT delete file from disk."""
+        with self._lock:
+            cursor = self._conn.execute(
+                "DELETE FROM media_attachments WHERE media_id=?", (media_id,),
+            )
+            self._conn.commit()
+            return cursor.rowcount > 0
+
+    def get_fact_media(self, fact_id: int) -> list[dict]:
+        """Get all media attachments for a fact, ordered by creation time."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT * FROM media_attachments WHERE fact_id=?
+                   ORDER BY created_at DESC""",
+                (fact_id,),
+            ).fetchall()
+            return [{key: row[key] for key in row.keys()} for row in rows]
+
+    def media_orphans(self) -> list[str]:
+        """Find files on disk not referenced in DB.
+
+        Walks the media directory tree and returns paths of files
+        whose relative path doesn't exist in media_attachments.
+        """
+        orphans = []
+        media_root = Path(self._media_dir)
+        if not media_root.exists():
+            return []
+
+        with self._lock:
+            for fpath in media_root.rglob("*"):
+                if not fpath.is_file():
+                    continue
+                rel = str(fpath.relative_to(media_root))
+                row = self._conn.execute(
+                    "SELECT 1 FROM media_attachments WHERE file_path=?",
+                    (rel,),
+                ).fetchone()
+                if not row:
+                    orphans.append(rel)
+        return orphans
+
+    # -- List / Count ---------------------------------------------------------
 
     def list_facts(self, limit: int = 50, offset: int = 0) -> list[dict]:
         with self._lock:

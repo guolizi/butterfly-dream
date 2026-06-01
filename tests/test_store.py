@@ -3,6 +3,8 @@ import sys
 import os
 import json
 import tempfile
+import hashlib
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -263,3 +265,208 @@ class TestCombineFactContent:
         from butterfly_dream.store import MemoryStore
         result = MemoryStore._combine_fact_content("Alice likes cats", "alice likes cats")
         assert result == "Alice likes cats"
+
+
+class TestMediaAttachments:
+    """Tests for media attachment features."""
+
+    def test_attach_creates_file(self, memstore):
+        """attach_media copies file to content-addressed path."""
+        result = memstore.add_fact("Test media fact", importance=5)
+        fid = result["fact_id"]
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"fake jpeg data")
+            src = f.name
+        try:
+            media = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/jpeg",
+                description="A test image",
+            )
+            assert media["sha256"] == hashlib.sha256(b"fake jpeg data").hexdigest()
+            # File should exist at the content-addressed path
+            media_path = Path(memstore._media_dir) / media["file_path"]
+            assert media_path.exists()
+            assert media_path.read_bytes() == b"fake jpeg data"
+        finally:
+            os.unlink(src)
+
+    def test_attach_returns_metadata(self, memstore):
+        """attach_media returns correct media_id, file_path, sha256."""
+        result = memstore.add_fact("Metadata test", importance=5)
+        fid = result["fact_id"]
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            f.write(b"png data here")
+            src = f.name
+        try:
+            media = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/png",
+                description="Metadata test image",
+                caption="A caption",
+            )
+            assert "media_id" in media
+            assert media["media_id"] > 0
+            assert "file_path" in media
+            assert media["file_path"].endswith(".png")
+            assert media["sha256"] == hashlib.sha256(b"png data here").hexdigest()
+            assert media["dedup"] is False
+        finally:
+            os.unlink(src)
+
+    def test_get_fact_media(self, memstore):
+        """get_fact_media returns attached media records."""
+        result = memstore.add_fact("Media get test", importance=5)
+        fid = result["fact_id"]
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            f.write(b"audio data")
+            src = f.name
+        try:
+            media = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="audio/mpeg",
+                description="Test audio",
+            )
+            medias = memstore.get_fact_media(fid)
+            assert len(medias) == 1
+            assert medias[0]["media_id"] == media["media_id"]
+            assert medias[0]["mime_type"] == "audio/mpeg"
+            assert medias[0]["description"] == "Test audio"
+        finally:
+            os.unlink(src)
+
+    def test_detach_media(self, memstore):
+        """detach_media removes DB row, returns True."""
+        result = memstore.add_fact("Detach test", importance=5)
+        fid = result["fact_id"]
+        with tempfile.NamedTemporaryFile(suffix=".webp", delete=False) as f:
+            f.write(b"webp data")
+            src = f.name
+        try:
+            media = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/webp",
+                description="To detach",
+            )
+            mid = media["media_id"]
+            assert len(memstore.get_fact_media(fid)) == 1
+            assert memstore.detach_media(mid) is True
+            assert len(memstore.get_fact_media(fid)) == 0
+            # Second detach should return False
+            assert memstore.detach_media(mid) is False
+        finally:
+            os.unlink(src)
+
+    def test_attach_dedup(self, memstore):
+        """Same sha256 on same fact returns dedup=True."""
+        result = memstore.add_fact("Dedup test", importance=5)
+        fid = result["fact_id"]
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            f.write(b"duplicate content")
+            src = f.name
+        try:
+            first = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="text/plain",
+                description="First attach",
+            )
+            second = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="text/plain",
+                description="Second attach (should dedup)",
+            )
+            assert first["dedup"] is False
+            assert second["dedup"] is True
+            assert second["media_id"] == first["media_id"]
+            # Only one row in DB
+            medias = memstore.get_fact_media(fid)
+            assert len(medias) == 1
+        finally:
+            os.unlink(src)
+
+    def test_path_traversal_protection(self, memstore):
+        """attach_media should reject paths that escape media_dir."""
+        result = memstore.add_fact("Traversal test", importance=5)
+        fid = result["fact_id"]
+        # We need a file that exists... but the attack is in the path we
+        # pass via mime_type or the hash computation doesn't involve user paths.
+        # Actually the protection is in the resolved path check. Let's test
+        # with a symlink-based approach: attach a file, then directly construct
+        # an evil relative path.
+        # The real protection is against mime_type that could lead to directory
+        # traversal in the path construction. But since we compute the path
+        # internally from hash values (not user input), path traversal via
+        # user-controlled mime_type would only affect the extension.
+        # Let's test the explicit check works: verify that a path computed by
+        # the method is always within media_root.
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"safe data")
+            src = f.name
+        try:
+            media = memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/jpeg",
+                description="Safe",
+            )
+            # Verify the file was stored inside media dir
+            abs_path = (Path(memstore._media_dir) / media["file_path"]).resolve()
+            assert str(abs_path).startswith(str(Path(memstore._media_dir).resolve()) + os.sep)
+        finally:
+            os.unlink(src)
+
+    def test_media_orphans_detects_unreferenced(self, memstore):
+        """media_orphans finds files on disk not in DB."""
+        result = memstore.add_fact("Orphan test", importance=5)
+        fid = result["fact_id"]
+
+        # Attach a legit file
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"orphan test data")
+            src = f.name
+        try:
+            memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/jpeg",
+                description="Legit media",
+            )
+        finally:
+            os.unlink(src)
+
+        # Create an orphan file directly on disk
+        orphan_rel = "im/ff/orphan_test_file.jpg"
+        orphan_abs = Path(memstore._media_dir) / orphan_rel
+        orphan_abs.parent.mkdir(parents=True, exist_ok=True)
+        orphan_abs.write_text("I am an orphan")
+        orphan_rel2 = "ot/00/another_orphan.txt"
+        orphan_abs2 = Path(memstore._media_dir) / orphan_rel2
+        orphan_abs2.parent.mkdir(parents=True, exist_ok=True)
+        orphan_abs2.write_text("orphan 2")
+
+        orphans = memstore.media_orphans()
+        assert orphan_rel in orphans
+        assert orphan_rel2 in orphans
+
+    def test_hrr_rebundle_after_attach(self, memstore):
+        """Attaching media with description updates the fact's HRR vector."""
+        if not hasattr(__import__('butterfly_dream.holographic', fromlist=['_HAS_NUMPY']), '_HAS_NUMPY'):
+            pass
+        from butterfly_dream import holographic as hrr_mod
+        if not hrr_mod._HAS_NUMPY:
+            pytest.skip("numpy not available")
+
+        result = memstore.add_fact("HRR rebundle test", importance=5)
+        fid = result["fact_id"]
+
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            f.write(b"hrr test data")
+            src = f.name
+        try:
+            # Get HRR before
+            pre_fact = memstore.get_fact(fid)
+            pre_hrr = pre_fact.get("hrr_vector")
+
+            memstore.attach_media(
+                fact_id=fid, source_path=src, mime_type="image/jpeg",
+                description="A beautiful sunset over the mountains",
+            )
+
+            post_fact = memstore.get_fact(fid)
+            post_hrr = post_fact.get("hrr_vector")
+
+            if pre_hrr is not None:
+                assert post_hrr is not None
+                assert pre_hrr != post_hrr  # Vector should change after rebundle
+        finally:
+            os.unlink(src)

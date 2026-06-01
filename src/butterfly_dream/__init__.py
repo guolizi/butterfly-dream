@@ -148,6 +148,53 @@ FACT_FEEDBACK_SCHEMA = {
     },
 }
 
+MEDIA_ATTACH_SCHEMA = {
+    "name": "media_attach",
+    "description": (
+        "Attach a media file (image, audio, video) to an existing fact. "
+        "The file is content-addressed (SHA-256 dedup) and its description "
+        "becomes FTS5-searchable. Optionally integrates the description into "
+        "the parent fact's HRR vector for semantic retrieval."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "fact_id": {"type": "integer", "description": "Fact ID to attach media to."},
+            "file_path": {"type": "string", "description": "Absolute path to the media file on disk."},
+            "mime_type": {"type": "string", "description": "MIME type, e.g. 'image/jpeg', 'audio/ogg', 'video/mp4'."},
+            "description": {"type": "string", "description": "Text description for FTS5 search (required for searchability)."},
+            "caption": {"type": "string", "description": "Optional human-readable caption."},
+            "transcript": {"type": "string", "description": "Optional transcription text (for speech/screenshots)."},
+        },
+        "required": ["fact_id", "file_path", "mime_type"],
+    },
+}
+
+MEDIA_DETACH_SCHEMA = {
+    "name": "media_detach",
+    "description": "Remove a media attachment from the database. Does NOT delete the file from disk.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "media_id": {"type": "integer", "description": "Media attachment ID to remove."},
+        },
+        "required": ["media_id"],
+    },
+}
+
+MEDIA_ORPHANS_SCHEMA = {
+    "name": "media_orphans",
+    "description": (
+        "List media files stored on disk that have no corresponding database "
+        "reference. Use this to identify files that can be safely cleaned up."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    },
+}
+
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -451,13 +498,20 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         return ""
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
-        return [FACT_STORE_SCHEMA, FACT_FEEDBACK_SCHEMA]
+        return [FACT_STORE_SCHEMA, FACT_FEEDBACK_SCHEMA,
+                MEDIA_ATTACH_SCHEMA, MEDIA_DETACH_SCHEMA, MEDIA_ORPHANS_SCHEMA]
 
     def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
         if tool_name == "fact_store":
             return self._handle_fact_store(args)
         elif tool_name == "fact_feedback":
             return self._handle_fact_feedback(args)
+        elif tool_name == "media_attach":
+            return self._handle_media_attach(args)
+        elif tool_name == "media_detach":
+            return self._handle_media_detach(args)
+        elif tool_name == "media_orphans":
+            return self._handle_media_orphans(args)
         return tool_error(f"Unknown tool: {tool_name}")
 
     def on_session_end(self, messages: List[Dict[str, Any]]) -> None:
@@ -741,6 +795,47 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return json.dumps({"error": "invalid fact_id"})
         result = self._store.record_feedback(fact_id, helpful=(action == "helpful"))
         return json.dumps(result)
+
+    def _handle_media_attach(self, args: dict) -> str:
+        fact_id = args.get("fact_id")
+        file_path = args.get("file_path", "").strip()
+        mime_type = args.get("mime_type", "").strip()
+        if not fact_id or not file_path or not mime_type:
+            return json.dumps({"error": "fact_id, file_path, and mime_type are required"})
+        try:
+            fact_id = int(fact_id)
+        except (ValueError, TypeError):
+            return json.dumps({"error": "invalid fact_id"})
+        if not os.path.isfile(file_path):
+            return json.dumps({"error": f"file not found: {file_path}"})
+        try:
+            result = self._store.attach_media(
+                fact_id=fact_id,
+                source_path=file_path,
+                mime_type=mime_type,
+                description=args.get("description", ""),
+                caption=args.get("caption", ""),
+                transcript=args.get("transcript", ""),
+            )
+            return json.dumps(result, default=str)
+        except (ValueError, FileNotFoundError) as e:
+            return json.dumps({"error": str(e)})
+
+    def _handle_media_detach(self, args: dict) -> str:
+        media_id = args.get("media_id")
+        if media_id is None:
+            return json.dumps({"error": "media_id is required"})
+        try:
+            media_id = int(media_id)
+        except (ValueError, TypeError):
+            return json.dumps({"error": "invalid media_id"})
+        if self._store.detach_media(media_id):
+            return json.dumps({"success": True, "media_id": media_id})
+        return json.dumps({"error": "media not found", "media_id": media_id})
+
+    def _handle_media_orphans(self, args: dict) -> str:
+        orphans = self._store.media_orphans()
+        return json.dumps({"orphans": orphans, "count": len(orphans)}, default=str)
 
 
 # ---------------------------------------------------------------------------

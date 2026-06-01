@@ -220,12 +220,18 @@ class ThreeDimRetriever:
         min_trust: float = 0.3,
         limit: int = 30,
     ) -> list[dict]:
-        """Stage 1: Fetch candidates from FTS5 full-text search."""
+        """Stage 1: Fetch candidates from FTS5 full-text search.
+
+        Searches both facts_fts and media_attachments_fts in parallel,
+        then merges results by fact_id. Media matches bring in their
+        parent fact and include a 'media' list and '_media_match' flag.
+        """
         # Sanitize query for FTS5 special characters
         safe_query = self._sanitize_fts_query(query)
         if not safe_query:
             return []
 
+        # Query facts_fts
         if category:
             rows = self.store.execute_query(
                 """SELECT f.*, rank FROM facts_fts
@@ -244,11 +250,61 @@ class ThreeDimRetriever:
             )
 
         results = []
+        seen_fact_ids = {}
         for row in rows:
             d = {key: row[key] for key in row.keys()}
             d["fts_rank"] = 1.0 / (1.0 + math.exp(d.get("rank", 0) or 0))
+            d["media"] = []
+            d["_media_match"] = False
             results.append(d)
-        return results
+            seen_fact_ids[d["fact_id"]] = d
+
+        # Also search media_attachments_fts
+        try:
+            media_rows = self.store.execute_query(
+                """SELECT m.rowid AS media_id, m.rank, ma.*
+                   FROM media_attachments_fts m
+                   JOIN media_attachments ma ON m.rowid = ma.media_id
+                   WHERE media_attachments_fts MATCH ?
+                   ORDER BY m.rank LIMIT ?""",
+                (safe_query, limit),
+            )
+        except Exception:
+            media_rows = []  # table might not exist in old DBs
+
+        for row in media_rows:
+            media = {key: row[key] for key in row.keys()}
+            if "rank" in media:
+                del media["rank"]
+            media_rank = row.get("rank", 0) if isinstance(row, dict) else (row[-1] if hasattr(row, "__getitem__") else 0)
+            media_fts_score = 1.0 / (1.0 + math.exp(float(media_rank or 0)))
+            fid = media["fact_id"]
+
+            if fid in seen_fact_ids:
+                # Append media to existing fact result
+                existing = seen_fact_ids[fid]
+                existing["media"].append(media)
+                existing["_media_match"] = True
+                # Boost relevance from media match
+                existing["fts_rank"] = max(existing["fts_rank"], media_fts_score)
+            else:
+                # Fetch the parent fact and add it with media
+                fact_rows = self.store.execute_query(
+                    "SELECT * FROM facts WHERE fact_id=? AND trust_score>=?",
+                    (fid, min_trust),
+                )
+                if fact_rows:
+                    fact_row = fact_rows[0]
+                    fact_dict = {key: fact_row[key] for key in fact_row.keys()}
+                    fact_dict["fts_rank"] = media_fts_score
+                    fact_dict["media"] = [media]
+                    fact_dict["_media_match"] = True
+                    results.append(fact_dict)
+                    seen_fact_ids[fid] = fact_dict
+
+        # Sort by fts_rank descending (best match first)
+        results.sort(key=lambda x: x["fts_rank"], reverse=True)
+        return results[:limit]
 
     @staticmethod
     def _sanitize_fts_query(query: str) -> str:
