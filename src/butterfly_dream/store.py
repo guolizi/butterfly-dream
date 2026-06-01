@@ -196,6 +196,8 @@ class MemoryStore:
 
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # Enable foreign keys so ON DELETE CASCADE works
+        self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 

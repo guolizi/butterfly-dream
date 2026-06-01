@@ -256,20 +256,19 @@ class TestRealMediaAttach:
         with pytest.raises(FileNotFoundError):
             store.attach_media(fact["fact_id"], "/nonexistent/file.png", "image/png")
 
-    def test_non_existent_fact_after_detach(self, tmp_db):
-        """Detached media file persists on disk after fact removal."""
+    def test_cascade_delete_fact_removes_media_db_keeps_file(self, tmp_db):
+        """Removing a fact CASCADE-deletes media DB rows but keeps disk files."""
         store, tmpdir, db_path = tmp_db
         fact = store.add_fact("Transient", category="test")
         fid = fact["fact_id"]
 
         r = store.attach_media(fid, IMAGE_PNG, "image/png", "transient media")
 
-        # Manual detach + remove fact (CASCADE doesn't work without PRAGMA foreign_keys=ON)
-        medias = store.get_fact_media(fid)
-        for m in medias:
-            store.detach_media(m["media_id"])
+        # Remove fact — CASCADE should delete media_attachments row
         store.remove_fact(fid)
+        assert store.get_fact(fid) is None  # fact gone
+        assert len(store.get_fact_media(fid)) == 0  # media DB row cascade-deleted
 
-        # File still on disk after detach
+        # File still on disk
         media_root = os.path.join(tmpdir, "media")
         assert os.path.isfile(os.path.join(media_root, r["file_path"]))
