@@ -39,3 +39,6 @@ htmlcov/
 
 # Config with secrets
 .env
+
+# Code review docs (internal only)
+CODE_REVIEW*.md
