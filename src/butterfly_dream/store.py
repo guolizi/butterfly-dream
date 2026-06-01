@@ -172,6 +172,7 @@ _EXT_MAP = {
     "mp2t": "ts",
     "x-ms-wmv": "wmv",
     "x-flv": "flv",
+    "octet-stream": "bin",
 }
 
 
@@ -573,6 +574,8 @@ class MemoryStore:
         # 4. Determine target path (content-addressed)
         type_code = _media_type_prefix(mime_type)
         ext = mime_type.split("/")[-1]
+        # Strip params (e.g. image/png; charset=utf-8 → png)
+        ext = ext.split(";")[0].strip()
         # Strip +xml / +json suffix (e.g. svg+xml → svg)
         ext = ext.split("+")[0]
         ext = _EXT_MAP.get(ext, ext)

@@ -380,3 +380,303 @@ class TestChunkedHashing:
             fact["fact_id"], IMAGE_PNG, "image/png", "hash verification",
         )
         assert result["sha256"] == ref_hash
+
+
+class TestMimeTypeEdgeCases:
+    """MIME type parsing edge cases."""
+
+    def test_mime_with_charset_param(self, tmp_db):
+        """mime_type with ;charset= parameter strips correctly."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Charset in mime", category="test")
+
+        result = store.attach_media(
+            fact["fact_id"], IMAGE_PNG,
+            mime_type="image/png; charset=utf-8",
+            description="PNG with charset param",
+        )
+        # Should end with .png, not .png; charset=utf-8
+        assert result["file_path"].endswith(".png"), \
+            f"Expected .png, got: {result['file_path']}"
+        assert "charset" not in result["file_path"]
+
+    def test_mime_svg_xml(self, tmp_db):
+        """image/svg+xml strips +xml suffix."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("SVG test", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".svg", delete=False, mode="w") as f:
+            f.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="image/svg+xml",
+                description="SVG vector graphic",
+            )
+            assert result["file_path"].endswith(".svg"), \
+                f"Expected .svg, got: {result['file_path']}"
+            assert "svg+xml" not in result["file_path"]
+        finally:
+            os.unlink(src)
+
+    def test_mime_svg_xml_with_charset(self, tmp_db):
+        """image/svg+xml;charset=utf-8 strips both +xml and charset."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("SVG charset", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".svg", delete=False, mode="w") as f:
+            f.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="image/svg+xml; charset=utf-8",
+                description="SVG with both modifiers",
+            )
+            assert result["file_path"].endswith(".svg"), \
+                f"Expected .svg, got: {result['file_path']}"
+        finally:
+            os.unlink(src)
+
+    def test_mime_octet_stream(self, tmp_db):
+        """application/octet-stream uses 'ot' directory and 'stream' ext."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Octet stream", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+            f.write(b"binary data")
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="application/octet-stream",
+                description="Generic binary blob",
+            )
+            assert result["file_path"].startswith("ot/"), \
+                f"Expected ot/ prefix, got: {result['file_path']}"
+            assert result["file_path"].endswith(".bin"), \
+                f"Expected .bin ext, got: {result['file_path']}"
+        finally:
+            os.unlink(src)
+
+    def test_mime_avif(self, tmp_db):
+        """image/avif gets .avif extension directly (no mapping needed)."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("AVIF test", category="test")
+
+        with tempfile.NamedTemporaryFile(suffix=".avif", delete=False) as f:
+            f.write(b"avif data")
+            src = f.name
+        try:
+            result = store.attach_media(
+                fact["fact_id"], src,
+                mime_type="image/avif",
+                description="AVIF image format",
+            )
+            # avif is not in _EXT_MAP, should stay as-is
+            assert result["file_path"].endswith(".avif")
+            assert result["file_path"].startswith("im/")
+        finally:
+            os.unlink(src)
+
+
+class TestEmptyAndZeroByte:
+    """Empty file and empty description handling."""
+
+    def test_zero_byte_file(self, tmp_db):
+        """Zero-byte file is attachable; SHA-256 is known empty hash."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Zero byte test", category="test")
+
+        # Create zero-byte temp file
+        src = os.path.join(tmpdir, "empty.png")
+        with open(src, "wb"):
+            pass  # zero bytes
+
+        result = store.attach_media(
+            fact["fact_id"], src, "image/png",
+            description="Empty file",
+        )
+        # SHA-256 of empty data
+        assert result["sha256"] == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        assert os.path.isfile(os.path.join(tmpdir, "media", result["file_path"]))
+        assert result["dedup"] is False
+
+    def test_empty_description_default(self, tmp_db):
+        """Default empty description is accepted (no crash)."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Empty desc test", category="test")
+        result = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png")
+        assert result["media_id"] > 0
+        # Verify description is empty string in DB
+        media = store.get_fact_media(fact["fact_id"])
+        assert media[0]["description"] == ""
+
+    def test_empty_caption_and_transcript(self, tmp_db):
+        """Empty caption and transcript defaults work."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Empty caption test", category="test")
+        result = store.attach_media(
+            fact["fact_id"], IMAGE_PNG, "image/png",
+            description="Has description only",
+            caption="",
+            transcript="",
+        )
+        media = store.get_fact_media(fact["fact_id"])
+        assert media[0]["caption"] == ""
+        assert media[0]["transcript"] == ""
+
+
+class TestDetachEdgeCases:
+    """Detach boundary conditions."""
+
+    def test_detach_idempotent(self, tmp_db):
+        """Detaching the same media_id twice returns False second time."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Idempotent detach", category="test")
+        result = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "detach me")
+        mid = result["media_id"]
+
+        assert store.detach_media(mid) is True
+        assert store.detach_media(mid) is False  # already gone
+
+    def test_detach_nonexistent(self, tmp_db):
+        """Detaching a media_id that never existed returns False."""
+        store, tmpdir, db_path = tmp_db
+        assert store.detach_media(99999) is False
+
+    def test_get_fact_media_no_media(self, tmp_db):
+        """Fact with no media returns empty list."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("No media fact", category="test")
+        assert store.get_fact_media(fact["fact_id"]) == []
+
+
+class TestMediaOrphansExtended:
+    """Orphan detection edge cases."""
+
+    def test_orphans_after_remove_fact(self, tmp_db):
+        """Removing a fact with media leaves orphaned disk files."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Orphan creator", category="test")
+        r = store.attach_media(fact["fact_id"], IMAGE_PNG, "image/png", "will be orphan")
+        store.remove_fact(fact["fact_id"])  # CASCADE deletes DB row
+
+        orphans = store.media_orphans()
+        assert r["file_path"] in orphans, f"{r['file_path']} not in orphans: {orphans}"
+
+    def test_orphans_empty_dir(self, tmp_db):
+        """media_orphans returns empty list when no media dir exists."""
+        store, tmpdir, db_path = tmp_db
+        # Don't attach any media
+        assert store.media_orphans() == []
+
+    def test_orphans_with_mixed_state(self, tmp_db):
+        """mix of referenced and orphaned files."""
+        store, tmpdir, db_path = tmp_db
+        f1 = store.add_fact("Referenced fact", category="test")
+        r1 = store.attach_media(f1["fact_id"], IMAGE_PNG, "image/png", "referenced")
+        f2 = store.add_fact("Orphan fact", category="test")
+        r2 = store.attach_media(f2["fact_id"], IMAGE_PNG2, "image/png", "soon orphan")
+        store.remove_fact(f2["fact_id"])
+
+        orphans = store.media_orphans()
+        assert r1["file_path"] not in orphans, f"Referenced file should not be orphan: {r1['file_path']}"
+        assert r2["file_path"] in orphans, f"Expected orphan: {r2['file_path']}"
+
+
+class TestSameFileDifferentMetadata:
+    """Same file attached with different descriptions."""
+
+    def test_same_file_different_descriptions_same_fact(self, tmp_db):
+        """Same file + same fact = dedup, first description is kept."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Dedup desc test", category="test")
+        fid = fact["fact_id"]
+
+        r1 = store.attach_media(fid, IMAGE_PNG, "image/png", description="First version")
+        r2 = store.attach_media(fid, IMAGE_PNG, "image/png", description="Second version")
+
+        assert r2["dedup"] is True  # same file, same fact → dedup
+        # Description from the FIRST insert is kept (dedup returns existing row)
+        media = store.get_fact_media(fid)
+        assert len(media) == 1
+
+    def test_same_file_different_descriptions_different_facts(self, tmp_db):
+        """Same file on different facts = separate records, each keeps its desc."""
+        store, tmpdir, db_path = tmp_db
+        f1 = store.add_fact("Fact 1", category="test")
+        f2 = store.add_fact("Fact 2", category="test")
+
+        r1 = store.attach_media(f1["fact_id"], IMAGE_PNG, "image/png", description="Cat photo")
+        r2 = store.attach_media(f2["fact_id"], IMAGE_PNG, "image/png", description="Dog photo")
+
+        # Different media_ids because different facts
+        assert r1["media_id"] != r2["media_id"]
+        # Each keeps its own description
+        m1 = store.get_fact_media(f1["fact_id"])
+        m2 = store.get_fact_media(f2["fact_id"])
+        assert m1[0]["description"] == "Cat photo"
+        assert m2[0]["description"] == "Dog photo"
+
+
+class TestCJKAndUnicode:
+    """CJK/Unicode in paths, descriptions, and FTS5."""
+
+    def test_chinese_description_fts5(self, tmp_db):
+        """FTS5 search on Chinese descriptions."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("中文测试", category="test")
+        store.attach_media(
+            fact["fact_id"], IMAGE_PNG, "image/png",
+            description="一只可爱的柴犬在樱花树下微笑",
+            caption="柴犬",
+        )
+
+        # Search in Chinese
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+
+        results = conn.execute(
+            """SELECT m.description FROM media_attachments_fts f
+               JOIN media_attachments m ON f.rowid = m.media_id
+               WHERE media_attachments_fts MATCH ?""",
+            ("柴犬",),
+        ).fetchall()
+        assert len(results) >= 1
+        conn.close()
+
+    def test_emoji_in_description(self, tmp_db):
+        """Emoji in description stored and searchable."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Emoji test", category="test")
+        store.attach_media(
+            fact["fact_id"], IMAGE_PNG, "image/png",
+            description="A cute cat 🐱 with a heart ❤️",
+        )
+
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        # Emoji stored correctly
+        media = store.get_fact_media(fact["fact_id"])
+        assert "🐱" in media[0]["description"]
+        assert "❤️" in media[0]["description"]
+        conn.close()
+
+    def test_long_description(self, tmp_db):
+        """Very long description (1000 chars) is stored correctly."""
+        store, tmpdir, db_path = tmp_db
+        fact = store.add_fact("Long desc test", category="test")
+        long_desc = "A photo of " + "very beautiful " * 50 + "cat"
+        assert len(long_desc) > 500
+
+        result = store.attach_media(
+            fact["fact_id"], IMAGE_PNG, "image/png",
+            description=long_desc,
+        )
+        media = store.get_fact_media(fact["fact_id"])
+        assert media[0]["description"] == long_desc
+        assert len(media[0]["description"]) == len(long_desc)
