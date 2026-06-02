@@ -262,3 +262,27 @@ class TestExtractionFlow:
 
         result = provider._run_llm_extraction(messages)
         assert called is True, "LLM should be called after cooldown expires"
+
+    def test_reflection_respects_circuit_breaker(self, monkeypatch):
+        """Reflection should skip LLM call when circuit breaker is active."""
+        provider = ButterflyDreamMemoryProvider({
+            "llm_extract": False,
+            "circuit_breaker": {"max_failures": 1, "cooldown_seconds": 60},
+        })
+
+        called = False
+
+        def mock_llm(**kwargs):
+            nonlocal called
+            called = True
+            return []
+
+        monkeypatch.setattr("butterfly_dream._call_extraction_llm", mock_llm)
+
+        # Trip the circuit breaker
+        provider._mark_extraction_result(False)
+        assert provider._circuit_breaker_ok() is False
+
+        # Reflection should not call LLM
+        provider._run_reflection()
+        assert called is False, "Reflection should not call LLM when circuit breaker is active"

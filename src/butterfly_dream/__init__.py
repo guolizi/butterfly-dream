@@ -239,7 +239,7 @@ _TRIVIAL_PATTERNS = re.compile(
     r'|👍|👌|😊|😄|😁|🙏|💪|❤️'
     r'|我也觉得|确实|不错|nice|great|good|好的吧|好吧|哈哈|呵呵|嘿嘿'
     r'|试一下|试试|先这样|就这样|差不多了'
-    r')[ !~。！～\s]*$',
+    r')[ !~。！～,.?？\s]*$',
     re.IGNORECASE,
 )
 
@@ -358,7 +358,7 @@ def _call_extraction_llm(
         return []
 
     if isinstance(parsed, dict):
-        for key in ("facts", "memories", "extractions", "results"):
+        for key in ("facts", "memories", "extractions", "results", "insights", "patterns"):
             if key in parsed and isinstance(parsed[key], list):
                 parsed = parsed[key]
                 break
@@ -434,6 +434,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         # Reflection state (GenAgents pattern)
         self._reflection_enabled = self._config.get("reflection", True)
         self._extraction_count = 0
+
+        # Thread safety for async extraction state
+        self._extraction_lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -616,22 +619,20 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                         facts = self._run_llm_extraction(msgs_copy)
                         if facts:
                             logger.info("ButterflyDream session-end extracted %d facts", len(facts))
+                        # Reflection: check after extraction for accurate count
+                        if self._reflection_enabled:
+                            with self._extraction_lock:
+                                count = self._extraction_count
+                            if count > 0 and count % _REFLECTION_FREQUENCY == 0:
+                                try:
+                                    self._run_reflection()
+                                except Exception as e:
+                                    logger.debug("ButterflyDream reflection failed: %s", e)
                     except Exception as e:
                         logger.debug("ButterflyDream session-end extraction failed: %s", e)
 
                 t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
                 t.start()
-
-        # Reflection: periodic meta-analysis of stored facts
-        if self._reflection_enabled and self._extraction_count > 0 \
-                and self._extraction_count % _REFLECTION_FREQUENCY == 0:
-            def _reflect_async():
-                try:
-                    self._run_reflection()
-                except Exception as e:
-                    logger.debug("ButterflyDream reflection failed: %s", e)
-            rt = threading.Thread(target=_reflect_async, daemon=True, name="butterfly-reflect")
-            rt.start()
 
     def on_memory_write(self, action: str, target: str, content: str) -> None:
         """Mirror built-in memory writes as facts with default importance."""
@@ -712,7 +713,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
         # Track extraction count for reflection trigger
         if stored:
-            self._extraction_count += 1
+            with self._extraction_lock:
+                self._extraction_count += 1
 
         return stored
 
@@ -733,30 +735,33 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         Returns True if extraction should proceed.
         If cooldown has expired, resets the failure counter and allows through.
         """
-        if self._extraction_failures < self._cb_max_failures:
-            return True
-        now = time.time()
-        if now >= self._cooldown_until:
-            self._extraction_failures = 0
-            self._cooldown_until = 0.0
-            logger.info("ButterflyDream circuit breaker: cooldown expired, resetting")
-            return True
-        return False
+        with self._extraction_lock:
+            if self._extraction_failures < self._cb_max_failures:
+                return True
+            now = time.time()
+            if now >= self._cooldown_until:
+                self._extraction_failures = 0
+                self._cooldown_until = 0.0
+                logger.info("ButterflyDream circuit breaker: cooldown expired, resetting")
+                return True
+            return False
 
     def _mark_extraction_result(self, success: bool) -> None:
         """Record extraction outcome for circuit breaker tracking."""
-        if success:
-            self._extraction_failures = 0
-        else:
-            self._extraction_failures += 1
-            if self._extraction_failures >= self._cb_max_failures:
-                now = time.time()
-                self._cooldown_until = now + self._cb_cooldown
-                logger.warning(
-                    "ButterflyDream circuit breaker: %d consecutive failures, "
-                    "cooling down for %ds",
-                    self._extraction_failures, self._cb_cooldown,
-                )
+        with self._extraction_lock:
+            if success:
+                self._extraction_failures = 0
+                self._cooldown_until = 0.0
+            else:
+                self._extraction_failures += 1
+                if self._extraction_failures >= self._cb_max_failures:
+                    now = time.time()
+                    self._cooldown_until = now + self._cb_cooldown
+                    logger.warning(
+                        "ButterflyDream circuit breaker: %d consecutive failures, "
+                        "cooling down for %ds",
+                        self._extraction_failures, self._cb_cooldown,
+                    )
 
     def _run_reflection(self) -> None:
         """LLM meta-analysis of stored facts → generate pattern insights.
@@ -766,6 +771,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         Triggers every _REFLECTION_FREQUENCY extractions.
         """
         if not self._store:
+            return
+        # Respect circuit breaker: don't call LLM during cooldown
+        if not self._circuit_breaker_ok():
+            logger.debug("ButterflyDream reflection: skipped (circuit breaker cooldown)")
             return
         try:
             all_facts = self._store.list_facts(limit=100)
