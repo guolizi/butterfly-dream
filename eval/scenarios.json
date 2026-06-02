@@ -113,7 +113,7 @@
       {
         "query": "",
         "type": "dedup_check",
-        "params": {},
+        "params": {"expected_count": 1},
         "expected": {"exact_count": 1},
         "unexpected": [],
         "recall_at_k": []
@@ -186,6 +186,433 @@
         "expected": ["喜欢用VS Code", "不喜欢VS Code"],
         "unexpected": [],
         "recall_at_k": [1, 3]
+      }
+    ]
+  },
+
+  {
+    "name": "遗忘曲线-跨查询衰减（英文）",
+    "setup": [
+      {"action": "add_fact", "content": "User was born on March 15, 1995", "importance": 7, "tags": "personal", "category": "user_pref"},
+      {"action": "add_fact", "content": "User works in Tokyo, Japan", "importance": 7, "tags": "job,location", "category": "user_pref"},
+      {"action": "add_fact", "content": "User owns an orange cat named Mochi", "importance": 5, "tags": "pet", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "born March",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["March 15, 1995"],
+        "unexpected": ["Tokyo", "Mochi"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "born March",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["March 15, 1995"],
+        "unexpected": ["Tokyo", "Mochi"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "User visited Hokkaido last week", "importance": 4, "tags": "travel", "category": "general"},
+          {"action": "add_fact", "content": "User project uses FastAPI framework", "importance": 6, "tags": "tech", "category": "project"},
+          {"action": "add_fact", "content": "User enjoys playing badminton", "importance": 4, "tags": "sport", "category": "user_pref"},
+          {"action": "add_fact", "content": "User is reading Computer Systems book", "importance": 5, "tags": "reading", "category": "user_pref"},
+          {"action": "add_fact", "content": "User plans to watch a movie this weekend", "importance": 3, "tags": "plans", "category": "general"}
+        ]
+      },
+      {
+        "query": "born March",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["March 15, 1995"],
+        "unexpected": ["Tokyo", "Mochi"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "User installed Docker yesterday", "importance": 4, "tags": "tech", "category": "tool"},
+          {"action": "add_fact", "content": "User used Vue framework before", "importance": 3, "tags": "tech", "category": "project"},
+          {"action": "add_fact", "content": "User plans to learn Go language", "importance": 5, "tags": "learning", "category": "user_pref"},
+          {"action": "add_fact", "content": "User has a ThinkPad laptop", "importance": 3, "tags": "hardware", "category": "tool"},
+          {"action": "add_fact", "content": "User wakes up at 6am", "importance": 4, "tags": "habit", "category": "user_pref"},
+          {"action": "add_fact", "content": "User likes green tea", "importance": 2, "tags": "drink", "category": "user_pref"},
+          {"action": "add_fact", "content": "User ran a marathon last year", "importance": 5, "tags": "sport", "category": "user_pref"},
+          {"action": "add_fact", "content": "User often studies at the library", "importance": 4, "tags": "habit", "category": "user_pref"},
+          {"action": "add_fact", "content": "User bought a car last year", "importance": 4, "tags": "life", "category": "general"},
+          {"action": "add_fact", "content": "User is learning to cook", "importance": 3, "tags": "learning", "category": "user_pref"},
+          {"action": "add_fact", "content": "User likes jazz music", "importance": 2, "tags": "music", "category": "user_pref"},
+          {"action": "add_fact", "content": "User reads before bed", "importance": 3, "tags": "habit", "category": "user_pref"},
+          {"action": "add_fact", "content": "User goes to the gym twice a week", "importance": 4, "tags": "sport", "category": "user_pref"},
+          {"action": "add_fact", "content": "User uses Notion for notes", "importance": 3, "tags": "tool", "category": "tool"},
+          {"action": "add_fact", "content": "User enjoys skiing in winter", "importance": 4, "tags": "sport", "category": "user_pref"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "遗忘曲线-跨查询衰减（中文）",
+    "setup": [
+      {"action": "add_fact", "content": "用户生日是1995年3月15日", "importance": 7, "tags": "个人", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户目前在日本东京工作", "importance": 7, "tags": "工作,位置", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户养了一只橘猫名叫小胖", "importance": 5, "tags": "宠物", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "生日",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["1995年3月15日"],
+        "unexpected": ["东京", "橘猫"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "生日",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["1995年3月15日"],
+        "unexpected": ["东京", "橘猫"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "用户上周去北海道旅游了", "importance": 4, "tags": "旅行", "category": "general"},
+          {"action": "add_fact", "content": "用户项目使用FastAPI框架", "importance": 6, "tags": "技术", "category": "project"},
+          {"action": "add_fact", "content": "用户喜欢打羽毛球", "importance": 4, "tags": "运动", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户最近在读《深入理解计算机系统》", "importance": 5, "tags": "阅读", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户周末计划去看电影", "importance": 3, "tags": "计划", "category": "general"}
+        ]
+      },
+      {
+        "query": "生日",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["1995年3月15日"],
+        "unexpected": ["东京", "橘猫"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "用户昨天安装了Docker", "importance": 4, "tags": "技术", "category": "tool"},
+          {"action": "add_fact", "content": "用户以前用过Vue框架", "importance": 3, "tags": "技术", "category": "project"},
+          {"action": "add_fact", "content": "用户打算学习Go语言", "importance": 5, "tags": "学习", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户有一台ThinkPad笔记本", "importance": 3, "tags": "硬件", "category": "tool"},
+          {"action": "add_fact", "content": "用户早上6点起床", "importance": 4, "tags": "习惯", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户喜欢喝绿茶", "importance": 2, "tags": "饮品", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户参加过马拉松", "importance": 5, "tags": "运动", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户经常去图书馆学习", "importance": 4, "tags": "习惯", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户去年买了车", "importance": 4, "tags": "生活", "category": "general"},
+          {"action": "add_fact", "content": "用户在学做饭", "importance": 3, "tags": "学习", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户喜欢听爵士乐", "importance": 2, "tags": "音乐", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户有睡前看书的习惯", "importance": 3, "tags": "习惯", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户每周去健身房两次", "importance": 4, "tags": "运动", "category": "user_pref"},
+          {"action": "add_fact", "content": "用户用Notion做笔记", "importance": 3, "tags": "工具", "category": "tool"},
+          {"action": "add_fact", "content": "用户喜欢冬天滑雪", "importance": 4, "tags": "运动", "category": "user_pref"}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "联想记忆-线索到目标",
+    "setup": [
+      {"action": "add_fact", "content": "用户最喜欢的颜色是蓝色", "importance": 6, "tags": "偏好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最喜欢的编程语言是Rust", "importance": 7, "tags": "语言", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最喜欢的食物是寿司", "importance": 6, "tags": "食物", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最喜欢的运动是游泳", "importance": 5, "tags": "运动", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢的音乐是古典乐", "importance": 4, "tags": "音乐", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "颜色 蓝色",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["喜欢的颜色是蓝色"],
+        "unexpected": ["Rust", "寿司", "游泳"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "编程语言 Rust",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Rust"],
+        "unexpected": ["蓝色", "寿司"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "食物 寿司",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["寿司"],
+        "unexpected": ["蓝色", "游泳"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "运动 游泳",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["游泳"],
+        "unexpected": ["蓝色", "古典乐"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "音乐 古典乐",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["古典乐"],
+        "unexpected": ["蓝色", "游泳"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "记忆编辑-信息更新",
+    "setup": [
+      {"action": "add_fact", "content": "用户在阿里巴巴工作", "importance": 8, "tags": "工作", "category": "user_pref", "entities": ["阿里巴巴"]},
+      {"action": "add_fact", "content": "用户团队使用React框架", "importance": 6, "tags": "技术", "category": "project", "entities": ["React"]},
+      {"action": "add_fact", "content": "用户住在北京", "importance": 7, "tags": "居住", "category": "user_pref", "entities": ["北京"]}
+    ],
+    "queries": [
+      {
+        "query": "工作 阿里巴巴",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["阿里巴巴"],
+        "unexpected": ["React", "北京"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "工作 字节跳动",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["字节跳动"],
+        "unexpected": ["阿里巴巴", "北京"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "用户跳槽到字节跳动工作了", "importance": 9, "tags": "工作,更新", "category": "user_pref", "entities": ["字节跳动"]}
+        ]
+      },
+      {
+        "query": "用户住在 北京",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["北京"],
+        "unexpected": ["字节跳动", "React"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "搬到了 上海",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["上海"],
+        "unexpected": ["北京"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "用户搬到了上海", "importance": 8, "tags": "居住,更新", "category": "user_pref", "entities": ["上海"]}
+        ]
+      }
+    ]
+  },
+  {
+    "name": "同义改写鲁棒性-中文",
+    "setup": [
+      {"action": "add_fact", "content": "用户每天都用Neovim写Rust代码", "importance": 7, "tags": "编辑,语言", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用tmux管理终端会话", "importance": 5, "tags": "工具", "category": "tool"}
+    ],
+    "queries": [
+      {
+        "query": "Neovim Rust",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim写Rust"],
+        "unexpected": ["tmux"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Rust 代码",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim写Rust"],
+        "unexpected": ["tmux"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Neovim 代码",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim写Rust"],
+        "unexpected": ["tmux"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Neovim 写 Rust",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim写Rust"],
+        "unexpected": ["tmux"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "同义改写鲁棒性-英文",
+    "setup": [
+      {"action": "add_fact", "content": "User prefers Neovim over VS Code for Rust development", "importance": 7, "tags": "editor,language", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "Neovim Rust",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim over VS Code"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "prefers Rust",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim over VS Code"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Neovim VS Code development",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim over VS Code"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Rust development",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Neovim over VS Code"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "跨会话检索-分阶段信息",
+    "setup": [
+      {"action": "add_fact", "content": "用户正在做一个机器学习项目", "importance": 7, "tags": "项目", "category": "project", "entities": ["机器学习"]},
+      {"action": "add_fact", "content": "项目使用PyTorch框架", "importance": 7, "tags": "技术", "category": "project", "entities": ["PyTorch"]}
+    ],
+    "queries": [
+      {
+        "query": "PyTorch 框架",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["PyTorch"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "TensorFlow 备选",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["TensorFlow"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "项目新增了TensorFlow作为备选框架", "importance": 6, "tags": "技术,更新", "category": "project", "entities": ["TensorFlow"]},
+          {"action": "add_fact", "content": "用户最近在研究Transformer架构", "importance": 6, "tags": "研究", "category": "user_pref", "entities": ["Transformer"]},
+          {"action": "add_fact", "content": "项目数据集包含100万张图片", "importance": 5, "tags": "数据", "category": "project"}
+        ]
+      },
+      {
+        "query": "研究 Transformer",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Transformer"],
+        "unexpected": ["PyTorch"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "大规模压力-50事实检索",
+    "setup": [
+      {"action": "add_fact", "content": "用户最喜欢的食物是拉面", "importance": 5, "tags": "食物", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢的颜色是绿色", "importance": 5, "tags": "偏好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用Arch Linux作为主力系统", "importance": 6, "tags": "系统", "category": "tool"},
+      {"action": "add_fact", "content": "用户使用i3窗口管理器", "importance": 5, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户每天喝3升水", "importance": 3, "tags": "习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢在咖啡厅工作", "importance": 4, "tags": "习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户有10年编程经验", "importance": 7, "tags": "技能", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户精通C++和Python", "importance": 7, "tags": "语言,技能", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户曾在Google工作", "importance": 8, "tags": "工作", "category": "user_pref", "entities": ["Google"]},
+      {"action": "add_fact", "content": "用户去过20个国家旅行", "importance": 4, "tags": "旅行", "category": "general"},
+      {"action": "add_fact", "content": "用户会说中日英三语", "importance": 6, "tags": "技能", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最喜欢的电影是《盗梦空间》", "importance": 4, "tags": "电影", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户有一把Fender吉他", "importance": 3, "tags": "爱好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户每天早上跑步5公里", "importance": 5, "tags": "运动,习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最近在读《设计数据密集型应用》", "importance": 5, "tags": "阅读", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户的开源项目有5000星", "importance": 7, "tags": "开源", "category": "project"},
+      {"action": "add_fact", "content": "用户使用PostgreSQL作为主要数据库", "importance": 6, "tags": "技术", "category": "tool"},
+      {"action": "add_fact", "content": "用户用React写前端", "importance": 6, "tags": "技术", "category": "project"},
+      {"action": "add_fact", "content": "用户用Docker部署所有服务", "importance": 6, "tags": "部署", "category": "tool"},
+      {"action": "add_fact", "content": "用户有AWS认证", "importance": 5, "tags": "认证", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢弹钢琴", "importance": 3, "tags": "爱好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户养了一条金毛犬", "importance": 4, "tags": "宠物", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户从上海搬家到深圳", "importance": 5, "tags": "生活", "category": "general"},
+      {"action": "add_fact", "content": "用户喜欢品茶", "importance": 3, "tags": "爱好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户擅长做川菜", "importance": 3, "tags": "技能", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户参加过一个黑客马拉松", "importance": 4, "tags": "经历", "category": "general"},
+      {"action": "add_fact", "content": "用户用Figma做UI设计", "importance": 5, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户有双显示器配置", "importance": 3, "tags": "硬件", "category": "tool"},
+      {"action": "add_fact", "content": "用户喜欢夜骑自行车", "importance": 3, "tags": "爱好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户订阅了ChatGPT Plus", "importance": 4, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户用Vim作为所有文件的编辑器", "importance": 5, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户喜欢在下雨天看书", "importance": 2, "tags": "习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户最想去日本旅行", "importance": 4, "tags": "旅行,愿望", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢收集机械键盘", "importance": 3, "tags": "爱好", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户每天写技术博客", "importance": 5, "tags": "写作", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用Obsidian做知识管理", "importance": 5, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户喜欢看科幻小说", "importance": 3, "tags": "阅读", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用Zsh作为shell", "importance": 3, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户对函数式编程感兴趣", "importance": 4, "tags": "编程", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户有树莓派集群", "importance": 4, "tags": "硬件", "category": "tool"},
+      {"action": "add_fact", "content": "用户喜欢看纪录片", "importance": 3, "tags": "观影", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用Kubernetes管理容器", "importance": 5, "tags": "技术", "category": "tool"},
+      {"action": "add_fact", "content": "用户每天早上喝一杯美式咖啡", "importance": 4, "tags": "习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户喜欢徒步登山", "importance": 4, "tags": "运动", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用Raspberry Pi做智能家居", "importance": 4, "tags": "硬件,项目", "category": "project"},
+      {"action": "add_fact", "content": "用户对AI安全领域感兴趣", "importance": 6, "tags": "研究", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户参加过PyCon演讲", "importance": 5, "tags": "经历", "category": "general"},
+      {"action": "add_fact", "content": "用户喜欢喝单一麦芽威士忌", "importance": 2, "tags": "饮品", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户用NeoVim写所有配置文件和代码", "importance": 6, "tags": "工具", "category": "tool"},
+      {"action": "add_fact", "content": "用户有30本技术书籍", "importance": 3, "tags": "阅读", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "食物 拉面",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["拉面"],
+        "unexpected": ["绿色", "Arch", "钢琴"],
+        "recall_at_k": [1, 3, 5]
+      },
+      {
+        "query": "编辑器 Vim",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Vim作为所有文件的编辑器"],
+        "unexpected": ["拉面", "PyTorch", "i3"],
+        "recall_at_k": [1, 3, 5]
+      },
+      {
+        "query": "工作 Google",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Google"],
+        "unexpected": ["拉面", "Vim", "Figma"],
+        "recall_at_k": [1, 3, 5]
+      },
+      {
+        "query": "技术 书籍",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["技术书籍"],
+        "unexpected": ["拉面", "Google"],
+        "recall_at_k": [1, 3, 5]
+      },
+      {
+        "query": "PostgreSQL 数据库",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["PostgreSQL"],
+        "unexpected": ["拉面", "金毛"],
+        "recall_at_k": [1, 3, 5]
       }
     ]
   }

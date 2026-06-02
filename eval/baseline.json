@@ -1,18 +1,54 @@
-Building prefix dict from the default dictionary ...
-Loading model from cache /tmp/jieba.cache
-Loading model cost 0.592 seconds.
-Prefix dict has been built successfully.
 {
   "summary": {
-    "scenarios": 10,
-    "queries": 12,
+    "scenarios": 18,
+    "queries": 43,
     "avg_recall_at_k": {
-      "1": 0.6944,
-      "3": 0.875,
-      "5": 0.2083
+      "1": 0.9147,
+      "3": 0.9651,
+      "5": 0.1744
     },
-    "avg_precision": 0.9722,
-    "avg_f1": 0.8722
+    "avg_precision": 0.969,
+    "avg_f1": 0.9643,
+    "avg_latency_ms": 0.94,
+    "forgetting_curve": {
+      "curve": [
+        {
+          "distractors": 0,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 1,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 3,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 5,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 15,
+          "avg_recall@1": 1.0
+        }
+      ],
+      "total_points": 34
+    },
+    "paraphrase_consistency": [
+      {
+        "scenario": "同义改写鲁棒性-中文",
+        "mean_recall@1": 1.0,
+        "variance": 0.0,
+        "consistency_score": 1.0
+      },
+      {
+        "scenario": "同义改写鲁棒性-英文",
+        "mean_recall@1": 1.0,
+        "variance": 0.0,
+        "consistency_score": 1.0
+      }
+    ]
   },
   "results": [
     {
@@ -29,6 +65,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 5.7,
           "n_results": 2,
           "expected_found": 2,
           "expected_total": 2
@@ -49,6 +86,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 0.6667,
+          "latency_ms": 0.8,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 2
@@ -68,6 +106,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 1.0,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -81,6 +120,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 1.1,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -94,11 +134,34 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 1.0,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
         }
-      ]
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "喜欢编程"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "猫咪吃鱼"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "后端框架"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
     },
     {
       "name": "entity探针-获取全部事实",
@@ -113,6 +176,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 0.2,
           "n_results": 2,
           "expected_found": 2,
           "expected_total": 2
@@ -133,6 +197,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 0.2,
           "n_results": 3,
           "expected_found": 3,
           "expected_total": 3
@@ -147,11 +212,13 @@ Prefix dict has been built successfully.
           "query": "",
           "type": "dedup_check",
           "recall_at_k": {},
-          "precision": 1.0,
+          "precision": 0.0,
           "f1": 0.0,
+          "latency_ms": 0.0,
           "n_results": 1,
-          "expected_found": 1,
-          "expected_total": 1
+          "expected_found": 0,
+          "expected_total": 1,
+          "dedup_ok": true
         }
       ]
     },
@@ -168,6 +235,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 0.8,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -187,6 +255,7 @@ Prefix dict has been built successfully.
           },
           "precision": 0.6667,
           "f1": 0.8,
+          "latency_ms": 1.5,
           "n_results": 3,
           "expected_found": 2,
           "expected_total": 2
@@ -206,6 +275,7 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 1.1,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -225,11 +295,710 @@ Prefix dict has been built successfully.
           },
           "precision": 1.0,
           "f1": 1.0,
+          "latency_ms": 0.2,
           "n_results": 2,
           "expected_found": 2,
           "expected_total": 2
         }
       ]
+    },
+    {
+      "name": "遗忘曲线-跨查询衰减（英文）",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "born March",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.9,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "born March",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "born March",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "born March"
+          },
+          {
+            "distractors": 5,
+            "recall@1": 1.0,
+            "query": "born March"
+          },
+          {
+            "distractors": 15,
+            "recall@1": 1.0,
+            "query": "born March"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "遗忘曲线-跨查询衰减（中文）",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "生日",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "生日",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.6,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "生日",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.6,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "生日"
+          },
+          {
+            "distractors": 5,
+            "recall@1": 1.0,
+            "query": "生日"
+          },
+          {
+            "distractors": 15,
+            "recall@1": 1.0,
+            "query": "生日"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "联想记忆-线索到目标",
+      "n_queries": 5,
+      "queries": [
+        {
+          "query": "颜色 蓝色",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "编程语言 Rust",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "食物 寿司",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "运动 游泳",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "音乐 古典乐",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "颜色 蓝色"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "编程语言 Rust"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "食物 寿司"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "运动 游泳"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "音乐 古典乐"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "记忆编辑-信息更新",
+      "n_queries": 4,
+      "queries": [
+        {
+          "query": "工作 阿里巴巴",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "工作 字节跳动",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.1,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户住在 北京",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.3,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "搬到了 上海",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.1,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "工作 阿里巴巴"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "工作 字节跳动"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户住在 北京"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "搬到了 上海"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "同义改写鲁棒性-中文",
+      "n_queries": 4,
+      "queries": [
+        {
+          "query": "Neovim Rust",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.9,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Rust 代码",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Neovim 代码",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Neovim 写 Rust",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Neovim Rust"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Rust 代码"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Neovim 代码"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Neovim 写 Rust"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "同义改写鲁棒性-英文",
+      "n_queries": 4,
+      "queries": [
+        {
+          "query": "Neovim Rust",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.9,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "prefers Rust",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.7,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Neovim VS Code development",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.1,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Rust development",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.7,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Neovim Rust"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "prefers Rust"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Neovim VS Code development"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Rust development"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "跨会话检索-分阶段信息",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "PyTorch 框架",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.9,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "TensorFlow 备选",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "研究 Transformer",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "PyTorch 框架"
+          },
+          {
+            "distractors": 3,
+            "recall@1": 1.0,
+            "query": "TensorFlow 备选"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "研究 Transformer"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "大规模压力-50事实检索",
+      "n_queries": 5,
+      "queries": [
+        {
+          "query": "食物 拉面",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "编辑器 Vim",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "工作 Google",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "技术 书籍",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "PostgreSQL 数据库",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.8,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "食物 拉面"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "编辑器 Vim"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "工作 Google"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "技术 书籍"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "PostgreSQL 数据库"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
     }
   ]
 }

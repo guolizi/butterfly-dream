@@ -1,0 +1,3589 @@
+[
+  {
+    "name": "大规模压力-500事实检索",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "Alice用Neovim写代码",
+        "importance": 5,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢吃甜点",
+        "importance": 8,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice最喜欢的编程语言是TypeScript",
+        "importance": 2,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用Ubuntu",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢听嘻哈",
+        "importance": 4,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice熟悉Vue框架",
+        "importance": 3,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana会说中英日三语",
+        "importance": 3,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana住在New York",
+        "importance": 3,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用screen管理终端",
+        "importance": 5,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用Svelte",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie会说日文和英文",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Vim写代码",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用JAX",
+        "importance": 7,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户使用Git作为主力工具",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve早上7点起床",
+        "importance": 8,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢吃火锅",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank养了一只布偶猫",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户住在杭州",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice在Microsoft工作",
+        "importance": 9,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过杭州和西安旅行",
+        "importance": 3,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Redis部署生产环境",
+        "importance": 6,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice每周去健身房4次",
+        "importance": 4,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户喜欢听嘻哈",
+        "importance": 2,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana会说中英日三语",
+        "importance": 5,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace住在深圳",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob去过西安和Seoul旅行",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用NixOS",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的开源项目有5000星",
+        "importance": 3,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie最喜欢的编程语言是Elixir",
+        "importance": 2,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户使用Ubuntu",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在西安",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Hyprland窗口管理器",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的爱好是写作",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Figma部署生产环境",
+        "importance": 3,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的项目使用Vue",
+        "importance": 5,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace去过成都和Berlin旅行",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用Redis作为主力工具",
+        "importance": 2,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在广州",
+        "importance": 9,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank早上6点起床",
+        "importance": 8,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用Svelte",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Hyprland窗口管理器",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户喜欢用Figma开发",
+        "importance": 2,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace养了一只金毛",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice住在武汉",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户养了一只橘猫",
+        "importance": 7,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve早上7点起床",
+        "importance": 8,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用screen管理终端",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的开源项目有1000星",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice会说中英日三语",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的开源项目有1000星",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice精通Rust和Haskell",
+        "importance": 6,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie在Google工作",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户精通Rust和Zig",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve最喜欢的编程语言是Go",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的开源项目有1000星",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过New York和成都旅行",
+        "importance": 4,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve有15年编程经验",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用zellij管理终端",
+        "importance": 7,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob在腾讯工作",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob最喜欢的编程语言是Haskell",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用KDE窗口管理器",
+        "importance": 3,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢用VS Code开发",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie有6年编程经验",
+        "importance": 5,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana熟悉Vue框架",
+        "importance": 7,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank每周去健身房4次",
+        "importance": 3,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢听爵士乐",
+        "importance": 8,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用GNOME窗口管理器",
+        "importance": 8,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户精通Haskell和Ruby",
+        "importance": 5,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Grafana部署生产环境",
+        "importance": 7,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的爱好是烹饪",
+        "importance": 8,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用PyTorch",
+        "importance": 5,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用zellij管理终端",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过重庆和重庆旅行",
+        "importance": 8,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的开源项目有20000星",
+        "importance": 9,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用screen管理终端",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用tmux管理终端",
+        "importance": 4,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie喜欢用Redis开发",
+        "importance": 9,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用Vim写代码",
+        "importance": 9,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用Grafana作为主力工具",
+        "importance": 3,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用Figma作为主力工具",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的爱好是跑步",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank在字节跳动工作",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的开源项目有5000星",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用Redis作为主力工具",
+        "importance": 6,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve精通C++和Scala",
+        "importance": 4,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用Figma作为主力工具",
+        "importance": 5,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用Git部署生产环境",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank早上9点起床",
+        "importance": 8,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve最喜欢的编程语言是Java",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用Redis作为数据库",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的项目使用JAX",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户喜欢吃饺子",
+        "importance": 3,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢吃火锅",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie熟悉Svelte框架",
+        "importance": 7,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank精通Java和Rust",
+        "importance": 2,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie会说日文和英文",
+        "importance": 2,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用Docker作为主力工具",
+        "importance": 5,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用MongoDB作为数据库",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob会说日文和英文",
+        "importance": 4,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的爱好是摄影",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在杭州",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢用Nginx开发",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve每周去健身房2次",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用Grafana部署生产环境",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢听流行",
+        "importance": 8,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie熟悉Vue框架",
+        "importance": 9,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的开源项目有10000星",
+        "importance": 9,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢听电子音乐",
+        "importance": 6,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana精通Scala和Python",
+        "importance": 3,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用GNOME窗口管理器",
+        "importance": 9,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的开源项目有1000星",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用macOS",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve每周去健身房5次",
+        "importance": 7,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的开源项目有10000星",
+        "importance": 5,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用KDE窗口管理器",
+        "importance": 4,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace早上8点起床",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie有8年编程经验",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用macOS",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用NixOS",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Redis作为数据库",
+        "importance": 4,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace精通Rust和Rust",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户养了一只金毛",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用Nginx作为主力工具",
+        "importance": 5,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的开源项目有10000星",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice在腾讯工作",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie喜欢听摇滚",
+        "importance": 4,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Figma部署生产环境",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用Figma作为主力工具",
+        "importance": 9,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用screen管理终端",
+        "importance": 8,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie去过成都和西安旅行",
+        "importance": 3,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢听民谣",
+        "importance": 3,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用NixOS",
+        "importance": 9,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户住在Berlin",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在北京",
+        "importance": 2,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Redis作为数据库",
+        "importance": 8,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace住在New York",
+        "importance": 7,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用tmux管理终端",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用MongoDB作为数据库",
+        "importance": 2,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve住在西安",
+        "importance": 3,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每周去健身房5次",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve每周去健身房5次",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob精通Java和Kotlin",
+        "importance": 3,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用Vim写代码",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank去过深圳和武汉旅行",
+        "importance": 9,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用VS Code写代码",
+        "importance": 6,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用PostgreSQL作为数据库",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob早上6点起床",
+        "importance": 8,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana每周去健身房2次",
+        "importance": 6,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace养了一只金毛",
+        "importance": 9,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank熟悉Svelte框架",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用VS Code作为主力工具",
+        "importance": 2,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用GNOME窗口管理器",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob喜欢用Nginx开发",
+        "importance": 3,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的爱好是打羽毛球",
+        "importance": 8,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace住在西安",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve住在London",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢用VS Code开发",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank住在杭州",
+        "importance": 9,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用Arch Linux",
+        "importance": 7,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve有8年编程经验",
+        "importance": 4,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank每周去健身房3次",
+        "importance": 4,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank在字节跳动工作",
+        "importance": 9,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Grafana作为主力工具",
+        "importance": 9,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用screen管理终端",
+        "importance": 4,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的开源项目有10000星",
+        "importance": 6,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie有9年编程经验",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的项目使用TensorFlow",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用screen管理终端",
+        "importance": 2,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie有12年编程经验",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana早上7点起床",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的开源项目有10000星",
+        "importance": 3,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank熟悉Django框架",
+        "importance": 4,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana每周去健身房3次",
+        "importance": 9,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用i3窗口管理器",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用Nginx作为主力工具",
+        "importance": 3,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana最喜欢的编程语言是Scala",
+        "importance": 9,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用zellij管理终端",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用screen管理终端",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Vim写代码",
+        "importance": 6,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的爱好是打羽毛球",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的爱好是弹钢琴",
+        "importance": 8,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank会说日文和英文",
+        "importance": 8,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用Redis作为数据库",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的开源项目有5000星",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve会说中英日三语",
+        "importance": 6,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的爱好是游泳",
+        "importance": 2,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie熟悉Django框架",
+        "importance": 3,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie养了一只金毛",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana最喜欢的编程语言是Go",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的爱好是跑步",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve养了一只橘猫",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢吃沙拉",
+        "importance": 3,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的开源项目有1000星",
+        "importance": 5,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用GNOME窗口管理器",
+        "importance": 2,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的项目使用JAX",
+        "importance": 9,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice住在Tokyo",
+        "importance": 3,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve精通Ruby和Elixir",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank在阿里巴巴工作",
+        "importance": 5,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的开源项目有20000星",
+        "importance": 9,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Git部署生产环境",
+        "importance": 7,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob会说日文和英文",
+        "importance": 3,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice住在Berlin",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过Tokyo和杭州旅行",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用KDE窗口管理器",
+        "importance": 7,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie养了一只金毛",
+        "importance": 5,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve会说中英日三语",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过西安和北京旅行",
+        "importance": 6,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve熟悉React框架",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob住在北京",
+        "importance": 5,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Git部署生产环境",
+        "importance": 7,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用i3窗口管理器",
+        "importance": 4,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户在阿里巴巴工作",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Prometheus部署生产环境",
+        "importance": 8,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice早上8点起床",
+        "importance": 3,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用zellij管理终端",
+        "importance": 2,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的项目使用React",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢吃咖喱",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用PostgreSQL作为数据库",
+        "importance": 8,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve每周去健身房2次",
+        "importance": 2,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace最喜欢的编程语言是Rust",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的项目使用Spring",
+        "importance": 8,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob熟悉TensorFlow框架",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用VS Code部署生产环境",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用Rocket",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢听古典乐",
+        "importance": 7,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Hyprland窗口管理器",
+        "importance": 4,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob早上7点起床",
+        "importance": 4,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的开源项目有10000星",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace住在Paris",
+        "importance": 6,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢用Nginx开发",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的开源项目有1000星",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Vim写代码",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的开源项目有10000星",
+        "importance": 4,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的开源项目有10000星",
+        "importance": 4,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Redis作为主力工具",
+        "importance": 7,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank有9年编程经验",
+        "importance": 2,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用Neovim写代码",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用screen管理终端",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob住在New York",
+        "importance": 8,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice在Google工作",
+        "importance": 7,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用zellij管理终端",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana会说中英日三语",
+        "importance": 7,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie早上7点起床",
+        "importance": 3,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的爱好是写作",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的项目使用Django",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢用Git开发",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用Hyprland窗口管理器",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve早上9点起床",
+        "importance": 6,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank每周去健身房3次",
+        "importance": 4,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢用Git开发",
+        "importance": 3,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob住在西安",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在Paris",
+        "importance": 2,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢用Nginx开发",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve住在武汉",
+        "importance": 7,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve使用Ubuntu",
+        "importance": 2,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用MongoDB作为数据库",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户住在西安",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的爱好是弹钢琴",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank使用Grafana作为主力工具",
+        "importance": 3,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户使用MongoDB作为数据库",
+        "importance": 4,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Prometheus部署生产环境",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Grafana部署生产环境",
+        "importance": 7,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每周去健身房5次",
+        "importance": 2,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana会说日文和英文",
+        "importance": 7,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie会说日文和英文",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢用Nginx开发",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的开源项目有5000星",
+        "importance": 3,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢用VS Code开发",
+        "importance": 5,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana熟悉PyTorch框架",
+        "importance": 9,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie喜欢用tmux开发",
+        "importance": 2,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana熟悉Vue框架",
+        "importance": 8,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用GNOME窗口管理器",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用macOS",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用PostgreSQL部署生产环境",
+        "importance": 6,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的爱好是品茶",
+        "importance": 6,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank在腾讯工作",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢用Prometheus开发",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank住在New York",
+        "importance": 2,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace在阿里巴巴工作",
+        "importance": 3,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用VS Code写代码",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用screen管理终端",
+        "importance": 9,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob养了一只布偶猫",
+        "importance": 7,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用Docker作为主力工具",
+        "importance": 9,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice去过西安和西安旅行",
+        "importance": 5,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Ubuntu",
+        "importance": 4,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的开源项目有20000星",
+        "importance": 7,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用macOS",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用macOS",
+        "importance": 3,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie喜欢吃烤肉",
+        "importance": 7,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的开源项目有1000星",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用NixOS",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice熟悉Svelte框架",
+        "importance": 7,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob去过成都和Berlin旅行",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob有5年编程经验",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana每周去健身房2次",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana去过成都和重庆旅行",
+        "importance": 4,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢听爵士乐",
+        "importance": 3,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用Vim写代码",
+        "importance": 8,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用MongoDB作为数据库",
+        "importance": 9,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用screen管理终端",
+        "importance": 3,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢听R&B",
+        "importance": 9,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob熟悉Flask框架",
+        "importance": 7,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢吃沙拉",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的开源项目有10000星",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的爱好是摄影",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢听嘻哈",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace每周去健身房5次",
+        "importance": 9,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank住在Seoul",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve养了一只橘猫",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace在Google工作",
+        "importance": 3,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢吃三明治",
+        "importance": 8,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢用Docker开发",
+        "importance": 7,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank住在Seoul",
+        "importance": 6,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢吃饺子",
+        "importance": 7,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob会说中英日三语",
+        "importance": 2,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob喜欢用Figma开发",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的开源项目有5000星",
+        "importance": 7,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用TensorFlow",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana养了一只柯基",
+        "importance": 7,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用screen管理终端",
+        "importance": 2,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana使用MongoDB作为数据库",
+        "importance": 2,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢听摇滚",
+        "importance": 2,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户早上9点起床",
+        "importance": 8,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用PostgreSQL部署生产环境",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie每周去健身房4次",
+        "importance": 8,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢听嘻哈",
+        "importance": 6,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用PostgreSQL作为数据库",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana有14年编程经验",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve使用MongoDB作为数据库",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank养了一只柯基",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢用Figma开发",
+        "importance": 7,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用Vim写代码",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana去过西安和成都旅行",
+        "importance": 5,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie喜欢用Grafana开发",
+        "importance": 2,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用Figma部署生产环境",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob最喜欢的编程语言是Ruby",
+        "importance": 9,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve有7年编程经验",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过广州和Berlin旅行",
+        "importance": 2,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用MongoDB作为数据库",
+        "importance": 2,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice有8年编程经验",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace去过成都和Seoul旅行",
+        "importance": 6,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的爱好是跑步",
+        "importance": 6,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve最喜欢的编程语言是Java",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用Kubernetes部署生产环境",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢吃意面",
+        "importance": 2,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的项目使用Svelte",
+        "importance": 7,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户养了一只布偶猫",
+        "importance": 5,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用screen管理终端",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用zellij管理终端",
+        "importance": 6,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie在腾讯工作",
+        "importance": 9,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve的开源项目有20000星",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用zellij管理终端",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice养了一只橘猫",
+        "importance": 4,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace熟悉Vue框架",
+        "importance": 9,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace每周去健身房2次",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的开源项目有20000星",
+        "importance": 2,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户精通Haskell和TypeScript",
+        "importance": 2,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice会说日文和英文",
+        "importance": 3,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢用PostgreSQL开发",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank会说中文和英文",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用zellij管理终端",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank去过Seoul和成都旅行",
+        "importance": 2,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace有13年编程经验",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Git作为主力工具",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用i3窗口管理器",
+        "importance": 2,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice早上6点起床",
+        "importance": 9,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户使用PostgreSQL作为主力工具",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob喜欢用Nginx开发",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve养了一只布偶猫",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用screen管理终端",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob去过Berlin和Singapore旅行",
+        "importance": 7,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve每周去健身房5次",
+        "importance": 4,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的项目使用PyTorch",
+        "importance": 5,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob有15年编程经验",
+        "importance": 2,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用PostgreSQL部署生产环境",
+        "importance": 6,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice熟悉Svelte框架",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用i3窗口管理器",
+        "importance": 8,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户在阿里巴巴工作",
+        "importance": 5,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve早上8点起床",
+        "importance": 5,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用GNOME窗口管理器",
+        "importance": 5,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve使用tmux作为主力工具",
+        "importance": 9,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana有8年编程经验",
+        "importance": 9,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用KDE窗口管理器",
+        "importance": 7,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Prometheus部署生产环境",
+        "importance": 4,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank精通Java和Go",
+        "importance": 7,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的项目使用Svelte",
+        "importance": 6,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace用GNOME窗口管理器",
+        "importance": 7,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢吃火锅",
+        "importance": 2,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用tmux管理终端",
+        "importance": 4,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob住在北京",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢用Grafana开发",
+        "importance": 2,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank去过北京和北京旅行",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank每周去健身房3次",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用Prometheus作为主力工具",
+        "importance": 7,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的项目使用Flask",
+        "importance": 9,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用macOS",
+        "importance": 2,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的项目使用Next.js",
+        "importance": 2,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用Arch Linux",
+        "importance": 8,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice养了一只橘猫",
+        "importance": 5,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户精通Rust和Zig",
+        "importance": 2,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户熟悉FastAPI框架",
+        "importance": 8,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob有12年编程经验",
+        "importance": 8,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的项目使用Rocket",
+        "importance": 7,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank的爱好是弹钢琴",
+        "importance": 7,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户熟悉JAX框架",
+        "importance": 9,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve使用Nginx作为主力工具",
+        "importance": 8,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用tmux管理终端",
+        "importance": 5,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice住在西安",
+        "importance": 8,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用KDE窗口管理器",
+        "importance": 3,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana最喜欢的编程语言是Kotlin",
+        "importance": 6,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢吃火锅",
+        "importance": 9,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的爱好是游泳",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve在Microsoft工作",
+        "importance": 6,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的项目使用Rocket",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob喜欢听民谣",
+        "importance": 6,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice喜欢吃火锅",
+        "importance": 6,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace有15年编程经验",
+        "importance": 7,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Prometheus作为主力工具",
+        "importance": 9,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢吃寿司",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace熟悉Flask框架",
+        "importance": 4,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie熟悉Svelte框架",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana熟悉Rocket框架",
+        "importance": 5,
+        "tags": "生活",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的项目使用Next.js",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob早上6点起床",
+        "importance": 5,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice有15年编程经验",
+        "importance": 9,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用Neovim写代码",
+        "importance": 4,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用Kubernetes部署生产环境",
+        "importance": 9,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank去过上海和New York旅行",
+        "importance": 3,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用tmux管理终端",
+        "importance": 8,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Docker部署生产环境",
+        "importance": 6,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie每周去健身房5次",
+        "importance": 8,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用screen管理终端",
+        "importance": 9,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank有4年编程经验",
+        "importance": 4,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve有10年编程经验",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用Redis作为数据库",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户有15年编程经验",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Vim写代码",
+        "importance": 5,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob去过Tokyo和Berlin旅行",
+        "importance": 5,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Neovim写代码",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie用GNOME窗口管理器",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie使用Ubuntu",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的爱好是品茶",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana的爱好是写作",
+        "importance": 7,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank在字节跳动工作",
+        "importance": 7,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的开源项目有10000星",
+        "importance": 4,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的爱好是摄影",
+        "importance": 4,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用NixOS",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Redis部署生产环境",
+        "importance": 4,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob有5年编程经验",
+        "importance": 9,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve喜欢用Docker开发",
+        "importance": 4,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的项目使用Next.js",
+        "importance": 8,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用PostgreSQL作为数据库",
+        "importance": 5,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢用VS Code开发",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace养了一只橘猫",
+        "importance": 6,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户去过Paris和南京旅行",
+        "importance": 3,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户有10年编程经验",
+        "importance": 7,
+        "tags": "项目",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的开源项目有5000星",
+        "importance": 7,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob喜欢听电子音乐",
+        "importance": 2,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana去过广州和Tokyo旅行",
+        "importance": 6,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice精通Go和Ruby",
+        "importance": 6,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob使用Ubuntu",
+        "importance": 7,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用screen管理终端",
+        "importance": 6,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace的项目使用Vue",
+        "importance": 8,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve使用NixOS",
+        "importance": 7,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用GNOME窗口管理器",
+        "importance": 3,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie的项目使用Next.js",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana熟悉Flask框架",
+        "importance": 9,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用tmux管理终端",
+        "importance": 9,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob的爱好是滑雪",
+        "importance": 2,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob早上8点起床",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve用VS Code写代码",
+        "importance": 7,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank喜欢用Grafana开发",
+        "importance": 5,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Vim写代码",
+        "importance": 2,
+        "tags": "习惯",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用PostgreSQL作为数据库",
+        "importance": 9,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve最喜欢的编程语言是Rust",
+        "importance": 4,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie住在London",
+        "importance": 3,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Eve熟悉Spring框架",
+        "importance": 8,
+        "tags": "软件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob用Neovim写代码",
+        "importance": 4,
+        "tags": "爱好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie会说日文和英文",
+        "importance": 8,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice早上6点起床",
+        "importance": 3,
+        "tags": "配置",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank会说中文和英文",
+        "importance": 5,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice用Neovim写代码",
+        "importance": 2,
+        "tags": "开发",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Charlie有11年编程经验",
+        "importance": 8,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Neovim写代码",
+        "importance": 8,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用Grafana作为主力工具",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob熟悉Next.js框架",
+        "importance": 7,
+        "tags": "旅行",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用PostgreSQL作为数据库",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户早上6点起床",
+        "importance": 6,
+        "tags": "学习",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Frank用Kubernetes部署生产环境",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice有11年编程经验",
+        "importance": 4,
+        "tags": "硬件",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice的项目使用Spring",
+        "importance": 5,
+        "tags": "经历",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice使用PostgreSQL作为主力工具",
+        "importance": 9,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob有4年编程经验",
+        "importance": 4,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace喜欢听嘻哈",
+        "importance": 4,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana喜欢吃三明治",
+        "importance": 2,
+        "tags": "技能",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Diana用Nginx部署生产环境",
+        "importance": 6,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Grace使用MongoDB作为数据库",
+        "importance": 2,
+        "tags": "技术栈",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob养了一只布偶猫",
+        "importance": 6,
+        "tags": "工具",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice养了一只金毛",
+        "importance": 2,
+        "tags": "偏好",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "用户使用Redis作为主力工具",
+        "importance": 8,
+        "tags": "项目",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Alice用Neovim写代码",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Alice用Neovim写代码"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "Charlie喜欢听摇滚",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Charlie喜欢听摇滚"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "Bob住在西安",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Bob住在西安"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "Alice熟悉Svelte框架",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Alice熟悉Svelte框架"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "用户使用Redis作为主力工具",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "用户使用Redis作为主力工具"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  }
+]
