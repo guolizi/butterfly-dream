@@ -3,7 +3,7 @@
 > *"昔者庄周梦为蝴蝶，栩栩然蝴蝶也。"*
 > 记忆如蝶，翩跹于时间、意义与关联的多维空间。
 
-**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，**仅借用了 Holographic 的 HRR 向量引擎和 SQLite 存储层**，其余（LLM 提取、重要性评分、三维检索、实体关系图、事实合并、多媒体存储、反射/熔断/过滤等）均为全新设计。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
+**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，**借用了 Holographic 的 HRR 向量引擎和 SQLite 存储层**，在此基础上全新开发了 LLM 提取、重要性评分、三维检索、实体关系图、事实合并、多媒体存储、反射/熔断/过滤等功能。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
 
 ## ✨ 特性
 
@@ -301,7 +301,7 @@ butterfly-dream/
 
 ## 🔄 与 Holographic 对比
 
-> Butterfly Dream **仅借用了 Holographic 的 HRR 向量引擎**（`holographic.py`）和 **SQLite 数据库实现**（`store.py` 基础表结构），其余所有功能均为全新设计。
+> Butterfly Dream **借用了 Holographic 的 HRR 向量引擎**（`holographic.py`）和 **SQLite 数据库实现**（`store.py` 基础表结构），在此基础上全新开发了以下功能。
 
 基于上游 Hermes `main` 分支 `plugins/memory/holographic/__init__.py`（408 行）逐项核查：
 
