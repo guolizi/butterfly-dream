@@ -39,13 +39,13 @@ class TestHelpers:
         assert "test" in tokens
 
     def test_tokenize_cjk(self):
-        """CJK characters get unigram and bigram tokens."""
+        """CJK characters get jieba word-level tokens."""
         tokens = tokenize("蝴蝶梦")
-        assert "蝴" in tokens
-        assert "蝶" in tokens
-        assert "梦" in tokens
-        assert "蝴蝶" in tokens
-        assert "蝶梦" in tokens
+        assert "蝴蝶梦" in tokens
+        tokens2 = tokenize("测试中文分词")
+        assert "测试" in tokens2
+        assert "中文" in tokens2
+        assert "分词" in tokens2
 
     def test_jaccard_similarity(self):
         """Jaccard similarity is correct."""

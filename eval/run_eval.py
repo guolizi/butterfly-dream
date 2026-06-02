@@ -74,7 +74,7 @@ def run_scenario(scenario: dict, tmp_db: str) -> dict:
     retriever = ThreeDimRetriever(store)
 
     # Phase 1: Setup — insert facts
-    fact_id_map = {}  # content -> fact_id
+    fact_id_map = {}
     for step in scenario.get("setup", []):
         result = store.add_fact(
             content=step["content"],

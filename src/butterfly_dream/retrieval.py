@@ -368,16 +368,21 @@ class ThreeDimRetriever:
 
 # Module-level helpers (also usable by store.py)
 def tokenize(text: str) -> set[str]:
-    """Tokenize text into a set of normalized tokens."""
+    """Tokenize text into a set of normalized tokens.
+
+    Uses jieba for CJK word segmentation and regex for English tokens,
+    producing semantically meaningful tokens for both languages.
+    This powers Jaccard similarity in dedup, merge, and retrieval.
+    """
     import re
     tokens = set()
+    # English / Latin words
     for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-+#]{1,}', text):
         tokens.add(token.lower())
-    cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
-    for i in range(len(cjk_chars) - 1):
-        tokens.add(cjk_chars[i] + cjk_chars[i + 1])
-    for char in cjk_chars:
-        tokens.add(char)
+    # CJK text — jieba word segmentation (more accurate than bigrams)
+    cjk_parts = re.findall(r'[\u4e00-\u9fff]+', text)
+    for part in cjk_parts:
+        tokens.update(jieba.cut(part))
     return tokens
 
 

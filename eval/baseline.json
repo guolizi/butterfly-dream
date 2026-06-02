@@ -1,13 +1,13 @@
 Building prefix dict from the default dictionary ...
 Loading model from cache /tmp/jieba.cache
-Loading model cost 0.604 seconds.
+Loading model cost 0.603 seconds.
 Prefix dict has been built successfully.
 {
   "summary": {
     "scenarios": 10,
     "queries": 12,
     "avg_recall_at_k": {
-      "1": 0.7222,
+      "1": 0.6944,
       "3": 0.875,
       "5": 0.2083
     },
@@ -127,13 +127,13 @@ Prefix dict has been built successfully.
           "query": "编辑器",
           "type": "timeline",
           "recall_at_k": {
-            "1": 0.6667,
+            "1": 0.3333,
             "3": 1.0,
             "5": 1.0
           },
           "precision": 1.0,
           "f1": 1.0,
-          "n_results": 2,
+          "n_results": 3,
           "expected_found": 3,
           "expected_total": 3
         }
