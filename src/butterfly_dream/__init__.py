@@ -55,11 +55,11 @@ Extract facts about:
 5. Any other information that would be useful to remember across sessions
 
 Rules:
-- IMPORTANT: Always output extracted facts in Chinese (中文), even if the conversation contains English words. The output language must be Chinese regardless of language mix.
 - Only extract concrete, specific facts. Skip small talk and greetings.
 - Prefer concise, self-contained statements.
 - If nothing worth extracting, return an empty array.
 - Deduplicate: don't extract the same fact multiple times.
+- Output extracted facts in the SAME language as the conversation. If the user speaks Chinese, output in Chinese. If the user speaks English, output in English. Match the conversation's primary language.
 
 **Importance scoring (1-10):**
 - 9-10: Critical identity/security info, core project architecture, irreversible decisions
@@ -323,6 +323,12 @@ def _resolve_provider_credentials(provider: str) -> tuple[str, str]:
     return base_url.rstrip("/"), api_key
 
 
+def _detect_has_chinese(text: str) -> bool:
+    """Check if text contains any CJK (Chinese/Japanese/Korean) characters."""
+    import re
+    return bool(re.search(r'[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]', text))
+
+
 def _call_extraction_llm(
     messages_text: str,
     provider: str,
@@ -350,11 +356,18 @@ def _call_extraction_llm(
         logger.warning("ButterflyDream LLM extract: no model specified")
         return []
 
+    # Detect conversation language and reinforce output language
+    base_prompt = system_prompt or _EXTRACTION_SYSTEM_PROMPT
+    if _detect_has_chinese(messages_text):
+        lang_hint = "\n\nCRITICAL: The conversation contains Chinese (中文). You MUST output all extracted facts in Chinese (中文), matching the conversation's primary language."
+    else:
+        lang_hint = "\n\nCRITICAL: The conversation is in English. You MUST output all extracted facts in English, matching the conversation's language."
+
     url = f"{base_url}/chat/completions"
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt or _EXTRACTION_SYSTEM_PROMPT},
+            {"role": "system", "content": base_prompt + lang_hint},
             {"role": "user", "content": f"Extract facts from these conversation turns:\n\n{messages_text}"},
         ],
         "response_format": {"type": "json_object"},

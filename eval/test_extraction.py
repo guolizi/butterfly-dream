@@ -432,7 +432,21 @@ def main():
                         help="对比多个模型（忽略 --provider/--model，使用内置列表）")
     parser.add_argument("--models", default="",
                         help="对比模式自定义模型列表，格式: provider1/model1,provider2/model2")
+    parser.add_argument("--scenarios", default="",
+                        help="从 JSON 文件加载外部场景（覆盖内置场景）")
+    parser.add_argument("--length-group", action="store_true",
+                        help="按长度分组输出统计（需外部场景有 _meta.length 字段）")
     args = parser.parse_args()
+
+    # Load external scenarios if specified
+    global SCENARIOS
+    if args.scenarios:
+        with open(args.scenarios, encoding="utf-8") as f:
+            SCENARIOS = json.load(f)
+        if not isinstance(SCENARIOS, list):
+            print("❌ 外部场景文件必须是 JSON 数组")
+            sys.exit(1)
+        print(f"📦 从 {args.scenarios} 加载了 {len(SCENARIOS)} 个外部场景")
 
     if args.compare:
         models = _DEFAULT_MODELS
