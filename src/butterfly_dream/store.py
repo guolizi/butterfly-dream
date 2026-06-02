@@ -344,14 +344,15 @@ class MemoryStore:
         if len(query_tokens) < 3:
             return None  # Too short for meaningful dedup
 
-        # Build a compact FTS5 query from key tokens (first 5 words)
-        # Using the full content risks AND-match failure when new content adds words.
+        # Build a broad FTS5 query (OR) from key tokens to find candidates.
+        # AND is too strict — similar facts may use synonyms ("likes" vs "prefers").
+        # Jaccard check below ensures precision; FTS5 just gathers candidates.
         import re as _re
         safe = _re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
         words = [w for w in safe.split() if len(w) > 1][:5]
         if not words:
             return None
-        safe = ' '.join(words)
+        safe = ' OR '.join(words)
 
         rows = self._conn.execute(
             """SELECT f.fact_id, f.content, f.importance, f.trust_score, f.is_persistent
