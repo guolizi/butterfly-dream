@@ -1017,6 +1017,98 @@ class MemoryStore:
                         queue.append((related_name, d + 1))
             return results
 
+    # -- Entity summary (S6.4) -------------------------------------------------
+
+    def get_entity_summary(self, entity_name: str, limit: int = 50) -> dict:
+        """Return a structured summary card for an entity.
+
+        Groups facts by category, identifies current state (latest per category),
+        detects contradictions, and returns a timeline — all without extra LLM cost.
+
+        Returns:
+            dict with entity, facts_count, by_category, current_state,
+                 timeline, conflicts, related_entities.
+        """
+        facts = self.get_entity_facts(entity_name, limit=limit)
+        if not facts:
+            return {
+                "entity": entity_name, "facts_count": 0,
+                "by_category": {}, "current_state": {},
+                "timeline": [], "conflicts": [],
+                "related_entities": [],
+            }
+
+        # Timeline: sorted chronologically
+        timeline = sorted(facts, key=lambda f: f.get("created_at", ""))
+
+        # Group by category
+        by_category: dict[str, list[dict]] = {}
+        for f in timeline:
+            cat = f.get("category", "general")
+            by_category.setdefault(cat, []).append(f)
+
+        # Current state: latest fact in each category
+        current_state = {}
+        for cat, cat_facts in by_category.items():
+            latest = max(cat_facts, key=lambda f: f.get("created_at", ""))
+            current_state[cat] = {
+                "content": latest.get("content", ""),
+                "importance": latest.get("importance", 5),
+                "trust_score": latest.get("trust_score", 0.5),
+                "updated_at": latest.get("created_at", ""),
+            }
+
+        # Detect conflicts within entity
+        conflicts = self._find_entity_conflicts(timeline)
+
+        # Related entities
+        related = self.get_related_entities(entity_name, depth=1)
+
+        return {
+            "entity": entity_name,
+            "facts_count": len(timeline),
+            "by_category": {k: len(v) for k, v in by_category.items()},
+            "current_state": current_state,
+            "timeline": timeline,
+            "conflicts": conflicts,
+            "related_entities": [r["target"] for r in related],
+        }
+
+    def _find_entity_conflicts(self, facts: list[dict]) -> list[dict]:
+        """Find contradictory fact pairs within a list of facts."""
+        conflicts = []
+        for i in range(len(facts)):
+            for j in range(i + 1, len(facts)):
+                c1 = facts[i].get("content", "")
+                c2 = facts[j].get("content", "")
+                if self._is_contradictory(c1, c2):
+                    conflicts.append({
+                        "fact_id_a": facts[i]["fact_id"],
+                        "content_a": c1,
+                        "fact_id_b": facts[j]["fact_id"],
+                        "content_b": c2,
+                    })
+                    if len(conflicts) >= 10:
+                        return conflicts
+        return conflicts
+
+    @staticmethod
+    def _is_contradictory(a: str, b: str) -> bool:
+        """Rough heuristic: check for negation markers between similar statements."""
+        a_lower = a.lower()
+        b_lower = b.lower()
+        negation_words = {"not", "don't", "doesn't", "didn't", "won't", "can't",
+                          "isn't", "aren't", "wasn't", "weren't", "never", "no",
+                          "不喜欢", "不要", "不是", "没有", "不行"}
+        a_tokens = set(a_lower.split())
+        b_tokens = set(b_lower.split())
+        common = a_tokens & b_tokens
+        if len(common) < 3:
+            return False
+        has_negation_a = any(n in a_tokens for n in negation_words)
+        has_negation_b = any(n in b_tokens for n in negation_words)
+        return has_negation_a != has_negation_b
+
     # -- HRR encoding ----------------------------------------------------------
 
     def _encode_hrr(self, content: str, entities: list[str] = None) -> Optional["np.ndarray"]:

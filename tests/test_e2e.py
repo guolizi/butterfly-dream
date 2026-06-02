@@ -478,3 +478,25 @@ class TestEdgeCases:
         result = json.loads(raw)
         # Should find the persistent fact
         assert len(result) > 0
+
+    def test_summarize_handler(self, provider):
+        """fact_store(action='summarize') dispatches correctly."""
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "add", "content": "Likes Python", "category": "user_pref",
+        })
+        add_result = json.loads(raw)
+        provider._store._link_entities(add_result["fact_id"], ["User"])
+
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "summarize", "entity": "User",
+        })
+        result = json.loads(raw)
+        assert result["facts_count"] >= 1
+        assert "user_pref" in result["current_state"]
+        assert "Likes Python" in result["current_state"]["user_pref"]["content"]
+
+    def test_summarize_requires_entity(self, provider):
+        """summarize without entity returns error."""
+        raw = provider.handle_tool_call("fact_store", {"action": "summarize"})
+        result = json.loads(raw)
+        assert "error" in result

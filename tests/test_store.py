@@ -600,3 +600,47 @@ class TestTimeline:
         """Unknown entity returns empty list."""
         result = memstore.get_entity_timeline("NonExistentEntity")
         assert result == []
+
+
+class TestEntitySummary:
+    """Tests for get_entity_summary (S6.4)."""
+
+    def test_summary_empty_entity(self, memstore):
+        """Unknown entity returns empty summary."""
+        summary = memstore.get_entity_summary("NoSuchEntity")
+        assert summary["facts_count"] == 0
+        assert summary["timeline"] == []
+        assert summary["conflicts"] == []
+
+    def test_summary_current_state(self, memstore):
+        """Latest fact per category becomes current_state."""
+        r1 = memstore.add_fact("User likes cats", category="user_pref", importance=5)
+        memstore._link_entities(r1["fact_id"], ["User"])
+        import time
+        time.sleep(0.05)
+        r2 = memstore.add_fact("User now prefers dogs", category="user_pref", importance=7)
+        memstore._link_entities(r2["fact_id"], ["User"])
+
+        summary = memstore.get_entity_summary("User")
+        assert summary["facts_count"] == 2
+        assert summary["by_category"].get("user_pref") == 2
+        # Current state should be the latest fact
+        assert "dogs" in summary["current_state"]["user_pref"]["content"]
+
+    def test_summary_conflicts_detected(self, memstore):
+        """Contradictory facts flagged as conflicts."""
+        r1 = memstore.add_fact("User likes coffee very much", category="user_pref", importance=7)
+        memstore._link_entities(r1["fact_id"], ["User"])
+        r2 = memstore.add_fact("User does not like coffee very much", category="user_pref", importance=8)
+        memstore._link_entities(r2["fact_id"], ["User"])
+
+        summary = memstore.get_entity_summary("User")
+        assert len(summary["conflicts"]) >= 1
+
+    def test_summary_related_entities(self, memstore):
+        """Related entities listed."""
+        r1 = memstore.add_fact("Works on ProjectX", category="project")
+        memstore._link_entities(r1["fact_id"], ["User", "ProjectX"])
+
+        summary = memstore.get_entity_summary("ProjectX")
+        assert "User" in summary["related_entities"]

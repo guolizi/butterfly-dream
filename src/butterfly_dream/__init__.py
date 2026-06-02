@@ -115,6 +115,8 @@ FACT_STORE_SCHEMA = {
         "• contradict — Memory hygiene: find facts making conflicting claims.\\n"
         "• timeline — Entity facts sorted chronologically (oldest first).\\n"
         "  Trace how preferences/decisions evolved over time.\\n"
+        "• summarize — Entity summary card: current state per category,\\n"
+        "  timeline, conflicts, and related entities. No extra LLM call.\\n"
         "• update/remove/list — CRUD operations.\\n\\n"
         "IMPORTANT: Before answering questions about the user, ALWAYS probe or reason first."
     ),
@@ -123,11 +125,11 @@ FACT_STORE_SCHEMA = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["add", "search", "probe", "related", "reason", "contradict", "timeline", "update", "remove", "list"],
+                "enum": ["add", "search", "probe", "related", "reason", "contradict", "timeline", "summarize", "update", "remove", "list"],
             },
             "content": {"type": "string", "description": "Fact content (required for 'add')."},
             "query": {"type": "string", "description": "Search query (required for 'search')."},
-            "entity": {"type": "string", "description": "Entity name for 'probe'/'related'/'timeline'."},
+            "entity": {"type": "string", "description": "Entity name for 'probe'/'related'/'timeline'/'summarize'."},
             "entities": {
                 "type": "array", "items": {"type": "string"},
                 "description": "Entity names for 'reason'.",
@@ -916,6 +918,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 return self._handle_contradict(args)
             elif action == "timeline":
                 return self._handle_timeline(args)
+            elif action == "summarize":
+                return self._handle_summarize(args)
             elif action == "update":
                 return self._handle_update(args)
             elif action == "remove":
@@ -1100,6 +1104,15 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         facts = self._store.get_entity_timeline(entity, limit=limit,
                                                 min_importance=min_importance)
         return json.dumps(facts, default=str)
+
+    def _handle_summarize(self, args: dict) -> str:
+        """Return a structured summary card for an entity."""
+        entity = args.get("entity", "").strip()
+        if not entity:
+            return json.dumps({"error": "entity is required for summarize"})
+        limit = int(args.get("limit", 50))
+        summary = self._store.get_entity_summary(entity, limit=limit)
+        return json.dumps(summary, default=str)
 
     def _handle_fact_feedback(self, args: dict) -> str:
         action = args.get("action", "")
