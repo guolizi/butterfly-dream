@@ -1,0 +1,235 @@
+Building prefix dict from the default dictionary ...
+Loading model from cache /tmp/jieba.cache
+Loading model cost 0.589 seconds.
+Prefix dict has been built successfully.
+{
+  "summary": {
+    "scenarios": 10,
+    "queries": 12,
+    "avg_recall_at_k": {
+      "1": 0.6944,
+      "3": 0.875,
+      "5": 0.2083
+    },
+    "avg_precision": 0.9722,
+    "avg_f1": 0.8722
+  },
+  "results": [
+    {
+      "name": "英文检索-编辑器偏好",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "VS Code editor",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "中文检索-用户偏好",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "喝咖啡",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 0.5,
+            "5": 0.5
+          },
+          "precision": 1.0,
+          "f1": 0.6667,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "中文检索-jieba分词",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "喜欢编程",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "猫咪吃鱼",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "后端框架",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ]
+    },
+    {
+      "name": "entity探针-获取全部事实",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "VS Code",
+          "type": "probe",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "时间线查询-实体变更",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "编辑器",
+          "type": "timeline",
+          "recall_at_k": {
+            "1": 0.3333,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 3,
+          "expected_found": 3,
+          "expected_total": 3
+        }
+      ]
+    },
+    {
+      "name": "跨源去重-相似内容跳过",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "dedup_check",
+          "recall_at_k": {},
+          "precision": 1.0,
+          "f1": 0.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ]
+    },
+    {
+      "name": "持久标记过滤",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "开发者",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ]
+    },
+    {
+      "name": "重要性排序-高重要应优先",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "editor",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 0.6667,
+          "f1": 0.8,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "混合检索-中英文混合",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "Python Rust tooling",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ]
+    },
+    {
+      "name": "矛盾检测",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "contradict",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    }
+  ]
+}

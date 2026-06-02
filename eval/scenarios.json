@@ -1,0 +1,192 @@
+[
+  {
+    "name": "英文检索-编辑器偏好",
+    "setup": [
+      {"action": "add_fact", "content": "User prefers VS Code for Python development", "tags": "editor,python", "category": "user_pref", "importance": 6},
+      {"action": "add_fact", "content": "User switched from VS Code to Neovim last week", "tags": "editor,change", "category": "user_pref", "importance": 8},
+      {"action": "add_fact", "content": "User knows Python and Rust programming languages", "tags": "skills", "category": "user_pref", "importance": 5}
+    ],
+    "queries": [
+      {
+        "query": "VS Code editor",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["prefers VS Code", "switched from VS Code"],
+        "unexpected": ["Python and Rust"],
+        "recall_at_k": [1, 3, 5]
+      }
+    ]
+  },
+  {
+    "name": "中文检索-用户偏好",
+    "setup": [
+      {"action": "add_fact", "content": "用户喜欢喝咖啡和编程", "tags": "偏好,饮品", "category": "user_pref", "importance": 6, "is_persistent": true},
+      {"action": "add_fact", "content": "用户每天早上喝一杯黑咖啡才开始写代码", "tags": "习惯", "category": "user_pref", "importance": 7},
+      {"action": "add_fact", "content": "用户会用Python和Rust语言", "tags": "技能", "category": "user_pref", "importance": 5},
+      {"action": "add_fact", "content": "用户只在macOS上开发", "tags": "环境", "category": "tool", "importance": 6}
+    ],
+    "queries": [
+      {
+        "query": "喝咖啡",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["用户喜欢喝咖啡和编程", "用户每天早上喝一杯黑咖啡"],
+        "unexpected": ["Python和Rust", "macOS"],
+        "recall_at_k": [1, 3, 5]
+      }
+    ]
+  },
+  {
+    "name": "中文检索-jieba分词",
+    "setup": [
+      {"action": "add_fact", "content": "用户喜欢喝咖啡和编程，最近在学Rust", "tags": "语言", "category": "user_pref", "importance": 6},
+      {"action": "add_fact", "content": "猫咪喜欢吃鱼和睡觉", "tags": "宠物", "category": "user_pref", "importance": 5},
+      {"action": "add_fact", "content": "项目使用FastAPI作为后端框架", "tags": "技术栈", "category": "project", "importance": 7}
+    ],
+    "queries": [
+      {
+        "query": "喜欢编程",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["用户喜欢喝咖啡和编程"],
+        "unexpected": ["猫咪", "FastAPI"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "猫咪吃鱼",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["猫咪喜欢吃鱼和睡觉"],
+        "unexpected": ["喝咖啡", "FastAPI"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "后端框架",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["FastAPI"],
+        "unexpected": ["猫咪", "喝咖啡"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "entity探针-获取全部事实",
+    "setup": [
+      {"action": "add_fact", "content": "用户喜欢用\"VS Code\"写Python", "tags": "editor", "category": "user_pref", "importance": 6, "entities": ["VS Code"]},
+      {"action": "add_fact", "content": "用户从\"VS Code\"切换到Neovim编辑器", "tags": "editor,change", "category": "user_pref", "importance": 8, "entities": ["VS Code", "Neovim"]}
+    ],
+    "queries": [
+      {
+        "query": "VS Code",
+        "type": "probe",
+        "params": {},
+        "expected": ["VS Code", "Neovim"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "时间线查询-实体变更",
+    "setup": [
+      {"action": "add_fact", "content": "Started with VS Code editor", "tags": "editor", "category": "user_pref", "importance": 6, "entities": ["编辑器"]},
+      {"action": "add_fact", "content": "Tried Sublime Text for a while", "tags": "editor,trial", "category": "user_pref", "importance": 5, "entities": ["编辑器"]},
+      {"action": "add_fact", "content": "Settled on Neovim as main editor", "tags": "editor,final", "category": "user_pref", "importance": 8, "entities": ["编辑器"]}
+    ],
+    "queries": [
+      {
+        "query": "编辑器",
+        "type": "timeline",
+        "params": {},
+        "expected": ["VS Code", "Sublime Text", "Neovim"],
+        "recall_at_k": [1, 3, 5]
+      }
+    ]
+  },
+  {
+    "name": "跨源去重-相似内容跳过",
+    "setup": [
+      {"action": "add_fact", "content": "User likes VS Code for Python projects", "dedup_threshold": 0.7},
+      {"action": "add_fact", "content": "User loves VS Code for Python projects", "dedup_threshold": 0.7}
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {},
+        "expected": {"exact_count": 1},
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "持久标记过滤",
+    "setup": [
+      {"action": "add_fact", "content": "用户是一名全栈开发者", "is_persistent": true, "importance": 8},
+      {"action": "add_fact", "content": "当前正在调试数据库连接池问题", "is_persistent": false, "importance": 4}
+    ],
+    "queries": [
+      {
+        "query": "开发者",
+        "type": "search",
+        "params": {"persistent_only": true},
+        "expected": ["全栈开发者"],
+        "unexpected": ["数据库连接池"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "重要性排序-高重要应优先",
+    "setup": [
+      {"action": "add_fact", "content": "用户偶尔用VS Code写脚本", "tags": "editor", "category": "user_pref", "importance": 3},
+      {"action": "add_fact", "content": "用户的核心开发环境是Neovim", "tags": "editor,primary", "category": "user_pref", "importance": 9},
+      {"action": "add_fact", "content": "用户喜欢VS Code的插件生态", "tags": "editor", "category": "user_pref", "importance": 4}
+    ],
+    "queries": [
+      {
+        "query": "editor",
+        "type": "search",
+        "params": {"scenario": "longterm"},
+        "expected": ["核心开发环境是Neovim", "VS Code的插件生态"],
+        "unexpected": ["偶尔用VS Code写脚本"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "混合检索-中英文混合",
+    "setup": [
+      {"action": "add_fact", "content": "用户用Python写后端 and loves Rust for tooling", "tags": "languages", "category": "user_pref", "importance": 7},
+      {"action": "add_fact", "content": "用户喜欢在终端里用tmux和zsh", "tags": "terminal", "category": "tool", "importance": 5}
+    ],
+    "queries": [
+      {
+        "query": "Python Rust tooling",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["Python写后端 and loves Rust"],
+        "unexpected": ["tmux", "zsh"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "矛盾检测",
+    "setup": [
+      {"action": "add_fact", "content": "User prefers VS Code for development", "tags": "editor", "category": "user_pref", "importance": 6},
+      {"action": "add_fact", "content": "User does not prefer VS Code", "tags": "editor,negative", "category": "user_pref", "importance": 7}
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": ["prefers VS Code", "does not prefer"],
+        "unexpected": [],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  }
+]
