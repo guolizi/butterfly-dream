@@ -476,6 +476,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         ]
 
     def initialize(self, session_id: str, **kwargs) -> None:
+        # Clean up previous instance if re-initializing (e.g. session restart)
+        if self._store:
+            self.shutdown()
+
         from hermes_constants import get_hermes_home
         _hermes_home = str(get_hermes_home())
         _default_db = _hermes_home + "/butterfly_memory.db"
@@ -571,6 +575,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         """Extract facts before context compression discards messages — includes importance scoring."""
         if not self._llm_extract_enabled or not self._store or not messages:
             return ""
+        # Synchronously mark messages as consumed (async thread may not finish before
+        # on_session_end fires, avoiding duplicate extraction of the same range).
+        self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
         msgs_copy = list(messages)
 
         def _extract_async():
@@ -612,6 +619,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         if self._llm_extract_enabled:
             new_msgs = messages[self._last_extracted_idx:]
             if new_msgs:
+                # Synchronously mark all messages as consumed before the async thread
+                # fires, preventing a concurrent on_pre_compress from re-processing.
+                self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
                 msgs_copy = list(new_msgs)
 
                 def _extract_async():
@@ -803,6 +813,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             model=self._extraction_model,
             system_prompt=_REFLECTION_SYSTEM_PROMPT,
         )
+
+        # Track result in circuit breaker (shared with extraction)
+        success = bool(meta_facts)
+        self._mark_extraction_result(success)
 
         if not meta_facts:
             logger.debug("ButterflyDream reflection: no insights generated")
