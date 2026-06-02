@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import threading
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional
@@ -227,6 +228,48 @@ _EXTRACT_HEAD_CHARS = 500_000
 _EXTRACT_TAIL_CHARS = 498_000
 _MAX_MSG_CHARS = 1000
 
+# Trivial message patterns — skip LLM extraction for low-information content
+_TRIVIAL_PATTERNS = re.compile(
+    r'^(?:'
+    r'ok|okay|好的|好|嗯|嗯嗯|嗯呢|是|是的|对|对的|可以|行|知道|明白了|收到|没问题'
+    r'|thanks|thank you|thx|ty|tks|谢谢|多谢|感谢'
+    r'|got it|gotcha|understood|理解|懂了|了解|明白'
+    r'|yes|yep|yeah|yup|no|nope|nop|不是|不对'
+    r'|hello|hi|hey|嗨|你好|您好|hi~|hello~'
+    r'|👍|👌|😊|😄|😁|🙏|💪|❤️'
+    r'|我也觉得|确实|不错|nice|great|good|好的吧|好吧|哈哈|呵呵|嘿嘿'
+    r'|试一下|试试|先这样|就这样|差不多了'
+    r')[ !~。！～\s]*$',
+    re.IGNORECASE,
+)
+
+# Circuit breaker defaults
+_CB_DEFAULT_MAX_FAILURES = 3
+_CB_DEFAULT_COOLDOWN = 120  # seconds
+
+# Reflection prompt — periodic meta-analysis of stored facts
+_REFLECTION_SYSTEM_PROMPT = """You are a memory analysis assistant. Analyze the stored facts about a user and generate higher-level insights (meta-facts).
+
+Given the existing facts, identify:
+1. **Patterns**: Recurring preferences, habits, or behaviors
+2. **Contradictions**: Facts that seem to conflict with each other
+3. **Gaps**: Topics where more information would be valuable
+4. **Evolution**: How preferences or decisions have changed over time
+
+Rules:
+- Be concrete and specific. Each meta-fact must be grounded in the actual facts.
+- Skip obvious observations ("the user has multiple preferences").
+- Return empty array if no meaningful insight can be drawn.
+
+Return a JSON array of meta-fact objects, each with:
+- "content": the insight statement (max 400 chars)
+- "category": one of "user_pref", "project", "tool", "general"
+- "tags": comma-separated tags
+- "importance": integer 1-10 (how valuable is this insight?)
+"""
+
+_REFLECTION_FREQUENCY = 5  # Run reflection every N extraction cycles
+
 
 def _load_plugin_config() -> dict:
     """Load butterfly-dream config from config.yaml."""
@@ -256,11 +299,16 @@ def _call_extraction_llm(
     provider: str,
     model: str,
     timeout: int = 30,
+    system_prompt: str | None = None,
 ) -> list[dict]:
     """Call the extraction LLM and return parsed fact objects with importance.
 
     Returns list of {"content", "category", "tags", "importance"}.
     Returns empty list on any error (fail-safe).
+
+    Args:
+        system_prompt: Optional override for the system prompt.
+                       Defaults to _EXTRACTION_SYSTEM_PROMPT.
     """
     base_url, api_key = _resolve_provider_credentials(provider)
     if not api_key:
@@ -277,7 +325,7 @@ def _call_extraction_llm(
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": _EXTRACTION_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt or _EXTRACTION_SYSTEM_PROMPT},
             {"role": "user", "content": f"Extract facts from these conversation turns:\n\n{messages_text}"},
         ],
         "response_format": {"type": "json_object"},
@@ -372,6 +420,20 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         # Extraction state
         self._llm_extract_enabled = self._config.get("llm_extract", False)
         self._last_extracted_idx = 0
+
+        # Trivial message filter (Supermemory / ByteRover pattern)
+        self._trivial_filter_enabled = self._config.get("trivial_filter", True)
+
+        # Circuit breaker state (Mem0 pattern)
+        cb_cfg = self._config.get("circuit_breaker", {})
+        self._cb_max_failures = int(cb_cfg.get("max_failures", _CB_DEFAULT_MAX_FAILURES))
+        self._cb_cooldown = int(cb_cfg.get("cooldown_seconds", _CB_DEFAULT_COOLDOWN))
+        self._extraction_failures = 0
+        self._cooldown_until = 0.0
+
+        # Reflection state (GenAgents pattern)
+        self._reflection_enabled = self._config.get("reflection", True)
+        self._extraction_count = 0
 
     @property
     def name(self) -> str:
@@ -560,6 +622,17 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
                 t.start()
 
+        # Reflection: periodic meta-analysis of stored facts
+        if self._reflection_enabled and self._extraction_count > 0 \
+                and self._extraction_count % _REFLECTION_FREQUENCY == 0:
+            def _reflect_async():
+                try:
+                    self._run_reflection()
+                except Exception as e:
+                    logger.debug("ButterflyDream reflection failed: %s", e)
+            rt = threading.Thread(target=_reflect_async, daemon=True, name="butterfly-reflect")
+            rt.start()
+
     def on_memory_write(self, action: str, target: str, content: str) -> None:
         """Mirror built-in memory writes as facts with default importance."""
         if action == "add" and self._store and content:
@@ -584,11 +657,19 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
         Returns list of stored facts (with fact_id).
         """
+        # Circuit breaker: skip if in cooldown
+        if not self._circuit_breaker_ok():
+            logger.debug("ButterflyDream: extraction skipped (circuit breaker cooldown)")
+            return []
+
         lines = []
         for msg in messages:
             role = msg.get("role", "")
             content = msg.get("content", "")
             if not isinstance(content, str) or len(content.strip()) < 10:
+                continue
+            # Trivial message filter: skip "ok", "thanks", etc.
+            if self._trivial_filter_enabled and self._is_trivial_content(content.strip()):
                 continue
             if role in ("user", "assistant"):
                 label = "User" if role == "user" else "Assistant"
@@ -609,6 +690,13 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             model=self._extraction_model,
         )
 
+        # Circuit breaker: track result
+        success = bool(facts)
+        self._mark_extraction_result(success)
+
+        if not facts:
+            return []
+
         stored = []
         for fact in facts:
             try:
@@ -622,7 +710,114 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             except Exception as e:
                 logger.debug("ButterflyDream store fact failed: %s", e)
 
+        # Track extraction count for reflection trigger
+        if stored:
+            self._extraction_count += 1
+
         return stored
+
+    # -- Helper methods (trivial filter, circuit breaker, reflection) -----------
+
+    @staticmethod
+    def _is_trivial_content(content: str) -> bool:
+        """Check if a message is trivial (greeting, acknowledgment, etc.).
+
+        Uses regex patterns for both English and Chinese trivial phrases.
+        Returns True for messages that don't warrant memory extraction.
+        """
+        return bool(_TRIVIAL_PATTERNS.match(content.strip()))
+
+    def _circuit_breaker_ok(self) -> bool:
+        """Check if extraction can proceed, or if circuit breaker is active.
+
+        Returns True if extraction should proceed.
+        If cooldown has expired, resets the failure counter and allows through.
+        """
+        if self._extraction_failures < self._cb_max_failures:
+            return True
+        now = time.time()
+        if now >= self._cooldown_until:
+            self._extraction_failures = 0
+            self._cooldown_until = 0.0
+            logger.info("ButterflyDream circuit breaker: cooldown expired, resetting")
+            return True
+        return False
+
+    def _mark_extraction_result(self, success: bool) -> None:
+        """Record extraction outcome for circuit breaker tracking."""
+        if success:
+            self._extraction_failures = 0
+        else:
+            self._extraction_failures += 1
+            if self._extraction_failures >= self._cb_max_failures:
+                now = time.time()
+                self._cooldown_until = now + self._cb_cooldown
+                logger.warning(
+                    "ButterflyDream circuit breaker: %d consecutive failures, "
+                    "cooling down for %ds",
+                    self._extraction_failures, self._cb_cooldown,
+                )
+
+    def _run_reflection(self) -> None:
+        """LLM meta-analysis of stored facts → generate pattern insights.
+
+        Fetches all stored facts (up to 100), sends to LLM for analysis,
+        stores returned meta-facts as regular facts with high importance.
+        Triggers every _REFLECTION_FREQUENCY extractions.
+        """
+        if not self._store:
+            return
+        try:
+            all_facts = self._store.list_facts(limit=100)
+        except Exception:
+            return
+        if not all_facts:
+            return
+
+        # Build fact summary for LLM
+        fact_lines = []
+        for f in all_facts:
+            content = f.get("content", "")
+            cat = f.get("category", "")
+            imp = f.get("importance", 5)
+            if content:
+                fact_lines.append(f"[{cat}|imp={imp}] {content[:200]}")
+        if len(fact_lines) < 3:
+            return  # Not enough facts to reflect on
+
+        fact_text = "\n".join(fact_lines)
+
+        # Call LLM for reflection
+        meta_facts = _call_extraction_llm(
+            messages_text="Analyze these stored facts for patterns and insights:\n\n" + fact_text,
+            provider=self._extraction_provider,
+            model=self._extraction_model,
+            system_prompt=_REFLECTION_SYSTEM_PROMPT,
+        )
+
+        if not meta_facts:
+            logger.debug("ButterflyDream reflection: no insights generated")
+            return
+
+        stored = 0
+        for fact in meta_facts:
+            try:
+                # Reflection insights get higher base importance
+                base_imp = fact.get("importance", 7)
+                if base_imp < 5:
+                    base_imp = 5  # Floor reflection importance
+                self._store.add_fact(
+                    content=fact["content"],
+                    category=fact.get("category", "general"),
+                    tags="reflection," + fact.get("tags", ""),
+                    importance=base_imp,
+                )
+                stored += 1
+            except Exception as e:
+                logger.debug("ButterflyDream reflection store failed: %s", e)
+
+        if stored:
+            logger.info("ButterflyDream reflection: stored %d meta-facts", stored)
 
     # -- Tool handlers ---------------------------------------------------------
 
