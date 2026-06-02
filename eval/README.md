@@ -34,20 +34,27 @@ eval/
 
 | 维度 | 场景数 | 查询数 | 来源基准 |
 |:-----|:------:|:------:|:---------|
-| 🔍 基础检索 (EN/ZH/混合) | 3 | 5 | 通用 |
-| 🧬 实体探针 | 1 | 1 | MEMOBENCH |
-| 🕰️ 时间线查询 | 1 | 1 | LoCoMo |
-| 🌀 遗忘曲线 (渐进式干扰) | 2 | 6 | LongMemEval, MEMOBENCH |
-| 🔗 联想记忆 (线索→目标) | 1 | 5 | MEMOBENCH |
-| ✏️ 记忆编辑 (信息更新) | 1 | 4 | MemoryBench, MemGPT |
+| 🔍 基础检索 (EN/ZH/混合) | 5 | 11 | 通用 |
+| 🧬 实体探针 | 4 | 5 | MEMOBENCH |
+| 🕰️ 时间线查询 | 4 | 5 | LoCoMo |
+| 🌀 遗忘曲线 (渐进式干扰) | 2 | 8 | LongMemEval, MEMOBENCH |
+| 🔗 联想记忆 (线索→目标) | 2 | 10 | MEMOBENCH |
+| ✏️ 记忆编辑/更新 | 5 | 16 | MemoryBench, MemGPT |
 | 🔄 同义改写鲁棒性 | 2 | 8 | MemoryBench |
-| 🔗 跨会话检索 (分阶段信息) | 1 | 3 | LoCoMo, LoTa-Bench |
+| 🔗 跨会话检索 (分阶段信息) | 3 | 9 | LoCoMo, LoTa-Bench |
 | 📊 大规模压力 (50 事实) | 1 | 5 | LongMemEval |
-| 📊 多事实聚合检索 | 3 | 4 | RULER Multi-Key, HELMET Aggregation |
-| 🛡️ 干扰鲁棒性 | 3 | 3 | RULER Multi-NIAH, LoCoMo 对抗 |
-| ⏰ 事实时效优先级 | 4 | 5 | RULER Variable Tracking, LongMemEval |
-| 🎯 其他 (去重/持久/重要/矛盾) | 4 | 4 | — |
-| **检索总计** | **27** | **54** | — |
+| 📊 多事实聚合检索 | 7 | 8 | RULER Multi-Key, HELMET Aggregation |
+| 🛡️ 干扰鲁棒性 | 6 | 8 | RULER Multi-NIAH, LoCoMo 对抗 |
+| ⏰ 事实时效优先级 | 7 | 9 | RULER Variable Tracking, LongMemEval |
+| 🧩 多跳推理 | 3 | 8 | LoCoMo |
+| 🕰️ 时序比较 | 2 | 5 | MEMOBENCH |
+| 🎯 对抗相似 | 4 | 8 | MemoryBench |
+| 🌐 跨语言检索 | 3 | 9 | — |
+| 🎯 矛盾检测 | 5 | 6 | LongMemEval |
+| 🗑️ 跨源去重 | 4 | 4 | — |
+| 🔒 持久标记过滤 | 3 | 3 | — |
+| ⭐ 重要性排序 | 4 | 4 | — |
+| **检索总计** | **77** | **151** | — |
 
 ### 快速运行
 
@@ -67,12 +74,12 @@ python3 eval/run_eval.py --name "500" --extra-scenarios eval/stress_test.json
 
 | 指标 | 值 | 说明 |
 |:-----|:--:|:-----|
-| 场景数 | 56 | 含 3 个新维度 (聚合/干扰/时效) |
-| 查询数 | 126 | |
-| **R@1** | **0.702** | 首条命中率 |
-| R@3 | 0.889 | 前三命中率 |
-| 精确率 | 0.421 | OR 宽召回带来的噪声 |
-| 平均延迟 | 7.0ms | 含完整三维评分 |
+| 场景数 | 77 | 含 3 个新维度 + 全维度补充 |
+| 查询数 | 151 | |
+| **R@1** | **0.670** | 首条命中率 |
+| R@3 | 0.856 | 前三命中率 |
+| 精确率 | 0.401 | OR 宽召回带来的噪声 |
+| 平均延迟 | 6.9ms | 含完整三维评分 |
 
 ## 提取评测 (真实 LLM 端到端)
 

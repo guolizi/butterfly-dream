@@ -6051,5 +6051,1306 @@
         ]
       }
     ]
+  },
+  {
+    "name": "聚合检索-用户健康档案",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户的血型是O型，RH阳性",
+        "tags": "血型,健康",
+        "category": "user_pref",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "用户对青霉素过敏，严重时会休克",
+        "tags": "过敏,健康",
+        "category": "user_pref",
+        "importance": 10
+      },
+      {
+        "action": "add_fact",
+        "content": "用户有轻度脂肪肝，需要控制饮食",
+        "tags": "慢性病,健康",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每天服用维生素D和鱼油补充剂",
+        "tags": "保健品,习惯",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户近视600度，戴隐形眼镜",
+        "tags": "视力,健康",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的妈妈有高血压病史",
+        "tags": "家族病史",
+        "category": "general",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户喜欢看医疗纪录片",
+        "tags": "兴趣",
+        "category": "user_pref",
+        "importance": 2
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户的健康状况有哪些需要注意的？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "青霉素",
+          "脂肪肝",
+          "近视"
+        ],
+        "unexpected": [
+          "妈妈",
+          "纪录片"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      },
+      {
+        "query": "用户对什么药物或食物过敏？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "青霉素"
+        ],
+        "unexpected": [
+          "维生素"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "聚合检索-旅行偏好",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户旅行偏好住精品酒店，不喜欢青旅",
+        "tags": "住宿,旅行",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户出行喜欢坐高铁，不喜欢飞机",
+        "tags": "交通,旅行",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户旅行时喜欢逛当地菜市场和小吃街",
+        "tags": "美食,旅行",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户旅行必带相机，喜欢拍建筑和街景",
+        "tags": "摄影,旅行",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户不喜欢跟团游，偏好自由行",
+        "tags": "方式,旅行",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户计划明年去冰岛看极光",
+        "tags": "计划,旅行",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户上次出差住的万豪酒店",
+        "tags": "出差",
+        "category": "general",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户的旅行习惯和偏好是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "精品酒店",
+          "高铁",
+          "菜市场",
+          "自由行"
+        ],
+        "unexpected": [
+          "冰岛",
+          "万豪"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "name": "聚合检索-项目安全措施",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "项目使用JWT做身份认证，token有效期2小时",
+        "tags": "认证,安全",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "数据库连接使用SSL加密，证书每90天轮换",
+        "tags": "加密,安全",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "生产环境数据每天凌晨3点自动备份到S3",
+        "tags": "备份,安全",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "API限流设置为每分钟100次请求",
+        "tags": "限流,安全",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "所有管理员操作都需要二次验证",
+        "tags": "验证,安全",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "项目用Jira管理安全相关任务",
+        "tags": "管理",
+        "category": "general",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目有哪些安全措施？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "JWT",
+          "SSL",
+          "备份",
+          "限流",
+          "二次验证"
+        ],
+        "unexpected": [
+          "Jira"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "name": "聚合检索-用户编程技能",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户精通Python，有5年经验",
+        "tags": "技能,Python",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户熟悉Go语言，用于写微服务",
+        "tags": "技能,Go",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户最近在学Rust，觉得所有权机制很有挑战",
+        "tags": "技能,Rust",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户会用SQL和Redis做数据存储",
+        "tags": "技能,数据库",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户熟悉Docker和Kubernetes部署",
+        "tags": "技能,运维",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户听说过Elixir但没用过",
+        "tags": "了解",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得Java太啰嗦不喜欢",
+        "tags": "评价",
+        "category": "user_pref",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户会哪些编程语言和技术？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "Python",
+          "Go",
+          "Rust",
+          "Docker",
+          "Kubernetes"
+        ],
+        "unexpected": [
+          "Elixir"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-编程语言",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户主要用Python写后端API",
+        "tags": "语言,主要",
+        "category": "user_pref",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "用户学过C++但觉得内存管理太麻烦",
+        "tags": "语言,评价",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用JavaScript写过前端页面",
+        "tags": "语言,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得Ruby语法很优雅但生态太小",
+        "tags": "语言,评价",
+        "category": "user_pref",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Java做过Android开发",
+        "tags": "语言,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户了解Kotlin是Java的替代品",
+        "tags": "语言,了解",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用TypeScript重写过一个项目",
+        "tags": "语言,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得PHP虽然过时但WordPress离不开它",
+        "tags": "语言,评价",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Shell脚本做自动化部署",
+        "tags": "语言,工具",
+        "category": "tool",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用SQL查询数据库",
+        "tags": "语言,工具",
+        "category": "tool",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户学过Haskell但没在生产用过",
+        "tags": "语言,学习",
+        "category": "general",
+        "importance": 2
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户主要用什么编程语言开发？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "Python"
+        ],
+        "unexpected": [
+          "C++",
+          "Ruby",
+          "PHP",
+          "Haskell"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "用户最擅长的后端语言是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "Python"
+        ],
+        "unexpected": [
+          "Java",
+          "JavaScript"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-用户居住地",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户目前住在深圳南山区科技园附近",
+        "tags": "住址,当前",
+        "category": "user_pref",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "用户老家在湖南长沙",
+        "tags": "老家",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户大学在武汉读的",
+        "tags": "大学",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户第一份工作在北京望京",
+        "tags": "工作,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户出差经常去上海浦东",
+        "tags": "出差",
+        "category": "general",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户计划明年搬到杭州",
+        "tags": "计划",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户上次旅游去了成都",
+        "tags": "旅游",
+        "category": "general",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在住在哪个城市哪个区？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "深圳",
+          "南山"
+        ],
+        "unexpected": [
+          "长沙",
+          "武汉",
+          "北京",
+          "上海",
+          "杭州"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-项目框架选择",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "本项目前端最终选择了Vue 3 + Vite方案",
+        "tags": "前端,选择",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "团队评估过React但觉得学习成本高",
+        "tags": "前端,评估",
+        "category": "project",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "有人提议用Angular但被否决了",
+        "tags": "前端,评估",
+        "category": "project",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户之前用Svelte写过个人项目",
+        "tags": "前端,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户了解jQuery但觉得过时了",
+        "tags": "前端,评价",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户听说过SolidJS但没试过",
+        "tags": "前端,了解",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "后端用的是FastAPI框架",
+        "tags": "后端",
+        "category": "project",
+        "importance": 6
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目前端用了什么框架？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "Vue"
+        ],
+        "unexpected": [
+          "React",
+          "Angular",
+          "Svelte"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-手机偏好",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户2019年用iPhone 11",
+        "tags": "手机,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户2021年换了小米12，觉得性价比高",
+        "tags": "手机,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户现在用华为Mate 60 Pro，支持国产",
+        "tags": "手机,当前",
+        "category": "user_pref",
+        "importance": 7
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在用什么手机？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "华为"
+        ],
+        "unexpected": [
+          "iPhone",
+          "小米"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "用户之前用过哪些手机？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "iPhone",
+          "小米",
+          "华为"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-健身计划",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户最初尝试跑步减肥，但膝盖受伤了",
+        "tags": "健身,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "后来用户改游泳，每周三次坚持了半年",
+        "tags": "健身,历史",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户现在主要做力量训练和瑜伽，配合饮食控制",
+        "tags": "健身,当前",
+        "category": "user_pref",
+        "importance": 7
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在怎么健身？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "力量训练",
+          "瑜伽"
+        ],
+        "unexpected": [
+          "跑步",
+          "膝盖受伤"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-用户职业",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户刚毕业时做前端开发，写React",
+        "tags": "职业,历史",
+        "category": "user_pref",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "两年后用户转后端，用Python和Go",
+        "tags": "职业,历史",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户现在是技术负责人，主要做架构设计和团队管理",
+        "tags": "职业,当前",
+        "category": "user_pref",
+        "importance": 9
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在的职位和职责是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "技术负责人",
+          "架构设计"
+        ],
+        "unexpected": [
+          "前端",
+          "React"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "实体探针-多属性实体",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户的猫叫小胖，是橘猫，5岁",
+        "tags": "宠物,猫",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "小胖最喜欢吃三文鱼罐头",
+        "tags": "宠物,饮食",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "小胖有轻微的皮肤过敏，需要特殊猫粮",
+        "tags": "宠物,健康",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "小胖每天早上6点会叫用户起床",
+        "tags": "宠物,习惯",
+        "category": "user_pref",
+        "importance": 4
+      }
+    ],
+    "queries": [
+      {
+        "query": "小胖",
+        "type": "probe",
+        "params": {},
+        "expected": [
+          "橘猫",
+          "三文鱼",
+          "皮肤过敏",
+          "6点"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时间线-技术栈演进",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "2022年Q1项目启动，用Flask + jQuery",
+        "tags": "技术栈,2022Q1",
+        "category": "project",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "2022年Q3前端迁移到React",
+        "tags": "技术栈,2022Q3",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "2023年Q1后端从Flask迁移到FastAPI",
+        "tags": "技术栈,2023Q1",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "2023年Q4引入Redis缓存层",
+        "tags": "技术栈,2023Q4",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "2024年Q2部署迁移到Kubernetes",
+        "tags": "技术栈,2024Q2",
+        "category": "project",
+        "importance": 7
+      }
+    ],
+    "queries": [
+      {
+        "query": "技术栈",
+        "type": "timeline",
+        "params": {},
+        "expected": [
+          "Flask",
+          "jQuery",
+          "React",
+          "FastAPI",
+          "Redis",
+          "Kubernetes"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "去重-同一事实不同表述",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户喜欢用VS Code写Python代码",
+        "tags": "编辑器",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户偏好VS Code进行Python开发",
+        "tags": "编辑器",
+        "category": "user_pref",
+        "importance": 6
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {},
+        "expected": [],
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "去重-相似但不同事实",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户用Python写后端API",
+        "tags": "语言",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Python做数据分析",
+        "tags": "语言",
+        "category": "user_pref",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {},
+        "expected": [],
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "持久标记-技术栈vs临时状态",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "项目使用FastAPI作为后端框架",
+        "tags": "技术栈",
+        "category": "project",
+        "importance": 8,
+        "is_persistent": true
+      },
+      {
+        "action": "add_fact",
+        "content": "当前正在排查一个内存泄漏bug",
+        "tags": "调试",
+        "category": "project",
+        "importance": 4,
+        "is_persistent": false
+      },
+      {
+        "action": "add_fact",
+        "content": "用户偏好用Docker做本地开发环境",
+        "tags": "工具",
+        "category": "user_pref",
+        "importance": 6,
+        "is_persistent": true
+      },
+      {
+        "action": "add_fact",
+        "content": "今天下午3点有个代码审查会议",
+        "tags": "会议",
+        "category": "general",
+        "importance": 3,
+        "is_persistent": false
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目的技术栈和开发环境",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "persistent_only": true,
+          "limit": 5
+        },
+        "expected": [
+          "FastAPI",
+          "Docker"
+        ],
+        "unexpected": [
+          "内存泄漏",
+          "代码审查"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "重要性排序-安全vs便利",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户的所有账户都开启了双因素认证",
+        "tags": "安全",
+        "category": "user_pref",
+        "importance": 9
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用1Password管理所有密码",
+        "tags": "工具",
+        "category": "tool",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的WiFi密码是默认的admin123",
+        "tags": "安全,问题",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每周清理一次浏览器缓存",
+        "tags": "习惯",
+        "category": "user_pref",
+        "importance": 2
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户的安全设置和习惯",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "双因素认证",
+          "1Password"
+        ],
+        "unexpected": [
+          "WiFi密码",
+          "浏览器缓存"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "重要性排序-核心架构vs细节",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "系统采用微服务架构，服务间通过gRPC通信",
+        "tags": "架构,核心",
+        "category": "project",
+        "importance": 10
+      },
+      {
+        "action": "add_fact",
+        "content": "订单服务的超时时间设置为30秒",
+        "tags": "配置,细节",
+        "category": "project",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "日志使用ELK栈收集和分析",
+        "tags": "工具",
+        "category": "project",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "健康检查端点路径是/health",
+        "tags": "配置,细节",
+        "category": "project",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "系统的核心架构是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "微服务",
+          "gRPC"
+        ],
+        "unexpected": [
+          "超时",
+          "健康检查"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "矛盾检测-饮食矛盾",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户说自己是素食主义者",
+        "tags": "饮食",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户昨天吃了红烧牛肉面，觉得很美味",
+        "tags": "饮食",
+        "category": "user_pref",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": [
+          "素食",
+          "牛肉"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "矛盾检测-工作地点矛盾",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户说一直在家远程办公",
+        "tags": "工作",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户提到每天通勤到公司要40分钟",
+        "tags": "工作",
+        "category": "user_pref",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": [
+          "远程",
+          "通勤"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "对抗相似-同名不同人",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户的朋友小王在腾讯做后端开发",
+        "tags": "朋友,小王",
+        "category": "general",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的同事小王在同一个组做前端",
+        "tags": "同事,小王",
+        "category": "general",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户自己的名字也叫小王",
+        "tags": "用户",
+        "category": "user_pref",
+        "importance": 7
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户自己是做什么的？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "用户自己"
+        ],
+        "unexpected": [
+          "朋友",
+          "同事"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "在腾讯工作的小王是谁？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "朋友"
+        ],
+        "unexpected": [
+          "同事",
+          "用户自己"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "对抗相似-相似项目混淆",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "项目A用FastAPI写后端，部署在AWS上",
+        "tags": "项目A",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "项目B用Flask写后端，部署在GCP上",
+        "tags": "项目B",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "项目C用Django写后端，部署在Azure上",
+        "tags": "项目C",
+        "category": "project",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目A用的什么框架部署在哪里？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "FastAPI",
+          "AWS"
+        ],
+        "unexpected": [
+          "Flask",
+          "GCP",
+          "Django",
+          "Azure"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
   }
 ]

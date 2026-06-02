@@ -1,21 +1,21 @@
 {
   "summary": {
-    "scenarios": 56,
-    "queries": 126,
+    "scenarios": 77,
+    "queries": 151,
     "avg_recall_at_k": {
-      "1": 0.7015,
-      "3": 0.8893,
-      "5": 0.1825,
-      "10": 0.0159
+      "1": 0.67,
+      "3": 0.8561,
+      "5": 0.1983,
+      "10": 0.0344
     },
-    "avg_precision": 0.4206,
-    "avg_f1": 0.503,
-    "avg_latency_ms": 7.02,
+    "avg_precision": 0.4009,
+    "avg_f1": 0.4829,
+    "avg_latency_ms": 6.93,
     "forgetting_curve": {
       "curve": [
         {
           "distractors": 0,
-          "avg_recall@1": 0.7186
+          "avg_recall@1": 0.7142
         },
         {
           "distractors": 1,
@@ -50,7 +50,7 @@
           "avg_recall@1": 1.0
         }
       ],
-      "total_points": 102
+      "total_points": 110
     },
     "paraphrase_consistency": [
       {
@@ -82,7 +82,7 @@
           },
           "precision": 0.6667,
           "f1": 0.8,
-          "latency_ms": 9.2,
+          "latency_ms": 9.3,
           "n_results": 3,
           "expected_found": 2,
           "expected_total": 2
@@ -151,7 +151,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 3.9,
+          "latency_ms": 4.0,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -252,7 +252,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 1.6,
+          "latency_ms": 1.7,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -332,7 +332,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 3.6,
+          "latency_ms": 3.7,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -346,7 +346,7 @@
           },
           "precision": 0.125,
           "f1": 0.2222,
-          "latency_ms": 8.8,
+          "latency_ms": 9.0,
           "n_results": 8,
           "expected_found": 1,
           "expected_total": 1
@@ -430,7 +430,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 31.0,
+          "latency_ms": 31.1,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -500,7 +500,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 6.0,
+          "latency_ms": 6.1,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -622,7 +622,7 @@
           },
           "precision": 0.2,
           "f1": 0.0,
-          "latency_ms": 7.2,
+          "latency_ms": 7.3,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -918,7 +918,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 34.7,
+          "latency_ms": 35.0,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -933,7 +933,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 40.4,
+          "latency_ms": 40.1,
           "n_results": 10,
           "expected_found": 2,
           "expected_total": 2
@@ -948,7 +948,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 47.0,
+          "latency_ms": 45.4,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -963,7 +963,7 @@
           },
           "precision": 0.1,
           "f1": 0.1538,
-          "latency_ms": 34.4,
+          "latency_ms": 34.6,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 3
@@ -978,7 +978,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 31.4,
+          "latency_ms": 29.2,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -1030,7 +1030,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 7.3,
+          "latency_ms": 7.2,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -1101,7 +1101,7 @@
           },
           "precision": 0.4,
           "f1": 0.5714,
-          "latency_ms": 7.4,
+          "latency_ms": 7.5,
           "n_results": 5,
           "expected_found": 2,
           "expected_total": 2
@@ -1129,7 +1129,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 8.0,
+          "latency_ms": 8.2,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -1236,7 +1236,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 0.9,
+          "latency_ms": 1.0,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -1250,7 +1250,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 2.7,
+          "latency_ms": 2.8,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -1311,7 +1311,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 4.1,
+          "latency_ms": 3.9,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -1473,7 +1473,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 3.1,
+          "latency_ms": 3.0,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -1487,7 +1487,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 2.0,
+          "latency_ms": 2.1,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -1614,7 +1614,7 @@
           },
           "precision": 1.0,
           "f1": 0.8571,
-          "latency_ms": 0.2,
+          "latency_ms": 0.3,
           "n_results": 7,
           "expected_found": 8,
           "expected_total": 8
@@ -1725,7 +1725,7 @@
           },
           "precision": 0.6667,
           "f1": 0.8,
-          "latency_ms": 4.5,
+          "latency_ms": 4.6,
           "n_results": 3,
           "expected_found": 2,
           "expected_total": 2
@@ -1765,7 +1765,7 @@
           },
           "precision": 0.0,
           "f1": 0.0,
-          "latency_ms": 0.8,
+          "latency_ms": 0.7,
           "n_results": 0,
           "expected_found": 0,
           "expected_total": 2
@@ -1813,7 +1813,7 @@
           },
           "precision": 0.25,
           "f1": 0.4,
-          "latency_ms": 4.3,
+          "latency_ms": 4.4,
           "n_results": 4,
           "expected_found": 1,
           "expected_total": 1
@@ -1869,7 +1869,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 2.6,
+          "latency_ms": 2.7,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -1925,7 +1925,7 @@
           },
           "precision": 0.25,
           "f1": 0.4,
-          "latency_ms": 6.6,
+          "latency_ms": 8.1,
           "n_results": 4,
           "expected_found": 2,
           "expected_total": 2
@@ -1939,7 +1939,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 4.6,
+          "latency_ms": 4.5,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -2060,7 +2060,7 @@
           },
           "precision": 0.25,
           "f1": 0.4,
-          "latency_ms": 4.2,
+          "latency_ms": 4.3,
           "n_results": 4,
           "expected_found": 1,
           "expected_total": 1
@@ -2176,7 +2176,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 0.7,
+          "latency_ms": 0.8,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -2232,7 +2232,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 2.7,
+          "latency_ms": 2.8,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -2297,7 +2297,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 4.5,
+          "latency_ms": 4.4,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -2339,7 +2339,7 @@
           },
           "precision": 0.0,
           "f1": 0.0,
-          "latency_ms": 3.6,
+          "latency_ms": 3.7,
           "n_results": 4,
           "expected_found": 1,
           "expected_total": 1
@@ -2395,7 +2395,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 5.2,
+          "latency_ms": 5.3,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -2478,7 +2478,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 35.5,
+          "latency_ms": 35.4,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -2493,7 +2493,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 35.7,
+          "latency_ms": 36.2,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -2507,7 +2507,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 41.6,
+          "latency_ms": 42.4,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -2559,7 +2559,7 @@
           },
           "precision": 0.1429,
           "f1": 0.2501,
-          "latency_ms": 5.9,
+          "latency_ms": 6.0,
           "n_results": 7,
           "expected_found": 1,
           "expected_total": 1
@@ -2573,7 +2573,7 @@
           },
           "precision": 0.1429,
           "f1": 0.2501,
-          "latency_ms": 8.4,
+          "latency_ms": 8.3,
           "n_results": 7,
           "expected_found": 1,
           "expected_total": 1
@@ -2587,7 +2587,7 @@
           },
           "precision": 0.1429,
           "f1": 0.2501,
-          "latency_ms": 8.3,
+          "latency_ms": 8.4,
           "n_results": 7,
           "expected_found": 1,
           "expected_total": 1
@@ -2601,7 +2601,7 @@
           },
           "precision": 0.1429,
           "f1": 0.2501,
-          "latency_ms": 7.0,
+          "latency_ms": 7.4,
           "n_results": 7,
           "expected_found": 1,
           "expected_total": 1
@@ -2615,7 +2615,7 @@
           },
           "precision": 0.1429,
           "f1": 0.2501,
-          "latency_ms": 5.7,
+          "latency_ms": 5.8,
           "n_results": 7,
           "expected_found": 1,
           "expected_total": 1
@@ -2669,7 +2669,7 @@
           },
           "precision": 0.5,
           "f1": 0.6,
-          "latency_ms": 12.9,
+          "latency_ms": 13.0,
           "n_results": 8,
           "expected_found": 4,
           "expected_total": 4
@@ -2684,7 +2684,7 @@
           },
           "precision": 0.375,
           "f1": 0.48,
-          "latency_ms": 11.6,
+          "latency_ms": 11.9,
           "n_results": 8,
           "expected_found": 3,
           "expected_total": 3
@@ -2745,7 +2745,7 @@
           },
           "precision": 0.5714,
           "f1": 0.7272,
-          "latency_ms": 11.6,
+          "latency_ms": 11.4,
           "n_results": 7,
           "expected_found": 4,
           "expected_total": 4
@@ -2766,7 +2766,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 15.5,
+          "latency_ms": 15.6,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -2787,7 +2787,7 @@
           },
           "precision": 0.1111,
           "f1": 0.2,
-          "latency_ms": 11.4,
+          "latency_ms": 11.2,
           "n_results": 9,
           "expected_found": 1,
           "expected_total": 1
@@ -2808,7 +2808,7 @@
           },
           "precision": 0.1111,
           "f1": 0.2,
-          "latency_ms": 13.1,
+          "latency_ms": 13.5,
           "n_results": 9,
           "expected_found": 2,
           "expected_total": 2
@@ -2920,7 +2920,561 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 4.1,
+          "latency_ms": 4.4,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "聚合检索-用户健康档案",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户的健康状况有哪些需要注意的？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.6667,
+            "5": 1.0,
+            "10": 1.0
+          },
+          "precision": 0.4286,
+          "f1": 0.6,
+          "latency_ms": 12.7,
+          "n_results": 7,
+          "expected_found": 3,
+          "expected_total": 3
+        },
+        {
+          "query": "用户对什么药物或食物过敏？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 11.2,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户的健康状况有哪些需要注意的？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户对什么药物或食物过敏？"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "聚合检索-旅行偏好",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户的旅行习惯和偏好是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.25,
+            "3": 0.75,
+            "5": 0.75,
+            "10": 1.0
+          },
+          "precision": 0.5714,
+          "f1": 0.6486,
+          "latency_ms": 12.8,
+          "n_results": 7,
+          "expected_found": 4,
+          "expected_total": 4
+        }
+      ]
+    },
+    {
+      "name": "聚合检索-项目安全措施",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "项目有哪些安全措施？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.2,
+            "3": 0.2,
+            "5": 0.2,
+            "10": 0.2
+          },
+          "precision": 0.5,
+          "f1": 0.2857,
+          "latency_ms": 2.6,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 5
+        }
+      ]
+    },
+    {
+      "name": "聚合检索-用户编程技能",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户会哪些编程语言和技术？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.6,
+            "5": 1.0,
+            "10": 1.0
+          },
+          "precision": 0.5714,
+          "f1": 0.7272,
+          "latency_ms": 10.0,
+          "n_results": 7,
+          "expected_found": 5,
+          "expected_total": 5
+        }
+      ]
+    },
+    {
+      "name": "干扰鲁棒-编程语言",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户主要用什么编程语言开发？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 15.7,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户最擅长的后端语言是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 22.2,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户主要用什么编程语言开发？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户最擅长的后端语言是什么？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "干扰鲁棒-用户居住地",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户现在住在哪个城市哪个区？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 12.9,
+          "n_results": 7,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "干扰鲁棒-项目框架选择",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "项目前端用了什么框架？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 10.3,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ]
+    },
+    {
+      "name": "时效优先-手机偏好",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户现在用什么手机？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.0,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户之前用过哪些手机？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.3333,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 4.0,
+          "n_results": 3,
+          "expected_found": 3,
+          "expected_total": 3
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户现在用什么手机？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.3333,
+            "query": "用户之前用过哪些手机？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.3333,
+        "decay_rate": 0.6667
+      }
+    },
+    {
+      "name": "时效优先-健身计划",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户现在怎么健身？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.8,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "时效优先-用户职业",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户现在的职位和职责是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 5.8,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "实体探针-多属性实体",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "小胖",
+          "type": "probe",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 4
+        }
+      ]
+    },
+    {
+      "name": "时间线-技术栈演进",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "技术栈",
+          "type": "timeline",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 6
+        }
+      ]
+    },
+    {
+      "name": "去重-同一事实不同表述",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "dedup_check",
+          "recall_at_k": {},
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.0,
+          "n_results": 1,
+          "expected_found": 0,
+          "expected_total": 0,
+          "dedup_ok": false
+        }
+      ]
+    },
+    {
+      "name": "去重-相似但不同事实",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "dedup_check",
+          "recall_at_k": {},
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.0,
+          "n_results": 1,
+          "expected_found": 0,
+          "expected_total": 0,
+          "dedup_ok": false
+        }
+      ]
+    },
+    {
+      "name": "持久标记-技术栈vs临时状态",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "项目的技术栈和开发环境",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 3.7,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "重要性排序-安全vs便利",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户的安全设置和习惯",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 6.4,
+          "n_results": 4,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "重要性排序-核心架构vs细节",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "系统的核心架构是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.6,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "矛盾检测-饮食矛盾",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "contradict",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "矛盾检测-工作地点矛盾",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "contradict",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "对抗相似-同名不同人",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户自己是做什么的？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 5.1,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "在腾讯工作的小王是谁？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 5.4,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户自己是做什么的？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "在腾讯工作的小王是谁？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "对抗相似-相似项目混淆",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "项目A用的什么框架部署在哪里？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 5.9,
           "n_results": 3,
           "expected_found": 2,
           "expected_total": 2
