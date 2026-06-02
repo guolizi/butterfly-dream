@@ -206,13 +206,10 @@ def _jieba_segment(text: str) -> str:
     """Pre-segment text with jieba for FTS5 indexing.
 
     Inserts spaces between Chinese words so FTS5's unicode61 tokenizer
-    can properly tokenize them. Also pads CJK bigrams so partial-word
-    searches work (e.g. searching "咖啡" finds "喝咖啡").
-
-    English/Latin text passes through unchanged.
+    can properly tokenize them. English/Latin text passes through unchanged.
 
     Example:
-        "我喜欢猫咪love cats" -> "我 喜欢 猫咪 我 喜欢 猫咪 love cats"
+        "我喜欢猫咪love cats" -> "我 喜欢 猫咪 love cats"
     """
     if not text or not isinstance(text, str):
         return text or ""
@@ -222,13 +219,7 @@ def _jieba_segment(text: str) -> str:
             parts.append(word)
             continue
         if re.search(r'[\u4e00-\u9fff]', word):
-            # Jieba word-level segmentation
-            words = list(jieba.cut(word))
-            # CJK bigrams for finer-grained search (e.g. "咖啡" finds "喝咖啡")
-            chars = list(word)
-            bigrams = [chars[i] + chars[i + 1] for i in range(len(chars) - 1)]
-            all_tokens = words + bigrams
-            parts.append(" ".join(all_tokens))
+            parts.append(" ".join(jieba.cut(word)))
         else:
             parts.append(word)
     return "".join(parts)
@@ -443,18 +434,14 @@ class MemoryStore:
         # Jaccard check below ensures precision; FTS5 just gathers candidates.
         import re as _re
         safe = _re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
-        # Jieba-segment CJK tokens to match FTS5 indexed tokens.
-        # Also add CJK bigrams so partial-word dedup queries work.
+        # Jieba-segment CJK tokens to match FTS5 indexed tokens
         segmented = []
         for w in safe.split():
             if _re.search(r'[\u4e00-\u9fff]', w):
-                words = list(jieba.cut(w))
-                chars = list(w)
-                bigrams = [chars[i] + chars[i + 1] for i in range(len(chars) - 1)]
-                segmented.extend(words + bigrams)
+                segmented.extend(jieba.cut(w))
             else:
                 segmented.append(w)
-        words = [w for w in segmented if len(w) > 1][:10]
+        words = [w for w in segmented if len(w) > 1][:5]
         if not words:
             return None
         safe = ' OR '.join(words)

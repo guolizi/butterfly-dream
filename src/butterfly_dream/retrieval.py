@@ -340,15 +340,11 @@ class ThreeDimRetriever:
         # Remove characters that could break FTS5 syntax
         # Keep # (common in C#/F#) — it's safe in FTS5; + is kept for C++/F++
         safe = re.sub(r'[^\w\s\u4e00-\u9fff\u3000-\u303f\uff00-\uffef#+]', ' ', query)
-        # Jieba-segment CJK text to match FTS5 indexing.
-        # Also add CJK bigrams so partial-word searches match (e.g. "咖啡" finds "喝咖啡").
+        # Jieba-segment CJK text to match FTS5 indexing
         tokens = []
         for word in safe.split():
             if re.search(r'[\u4e00-\u9fff]', word):
-                words = list(jieba.cut(word))
-                chars = list(word)
-                bigrams = [chars[i] + chars[i + 1] for i in range(len(chars) - 1)]
-                tokens.extend(words + bigrams)
+                tokens.extend(jieba.cut(word))
             else:
                 tokens.append(word)
         safe = ' '.join(tokens)
