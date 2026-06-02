@@ -121,6 +121,7 @@ class ThreeDimRetriever:
         recency_weight: Optional[float] = None,
         relevance_weight: Optional[float] = None,
         importance_weight: Optional[float] = None,
+        persistent_only: bool = False,
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -130,6 +131,7 @@ class ThreeDimRetriever:
             min_trust: Minimum trust score threshold.
             limit: Max results to return.
             scenario: Weight preset ("chat", "technical", "longterm", "qa", "balanced").
+            persistent_only: If True, only return facts marked as persistent.
             recency_weight: Override recency weight for this call.
             relevance_weight: Override relevance weight for this call.
             importance_weight: Override importance weight for this call.
@@ -150,7 +152,7 @@ class ThreeDimRetriever:
             weights["importance"] = importance_weight
 
         # Stage 1: Get FTS5 candidates
-        candidates = self._fts_candidates(query, category, min_trust, limit * 3)
+        candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only)
         if not candidates:
             return []
 
@@ -219,6 +221,7 @@ class ThreeDimRetriever:
         category: Optional[str] = None,
         min_trust: float = 0.3,
         limit: int = 30,
+        persistent_only: bool = False,
     ) -> list[dict]:
         """Stage 1: Fetch candidates from FTS5 full-text search.
 
@@ -231,20 +234,24 @@ class ThreeDimRetriever:
         if not safe_query:
             return []
 
+        # Base WHERE clause
+        trust_clause = "f.trust_score >= ?"
+        persistent_clause = "AND f.is_persistent = 1" if persistent_only else ""
+
         # Query facts_fts
         if category:
             rows = self.store.execute_query(
-                """SELECT f.*, rank FROM facts_fts
+                f"""SELECT f.*, rank FROM facts_fts
                    JOIN facts f ON facts_fts.rowid = f.fact_id
-                   WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ?
+                   WHERE facts_fts MATCH ? AND f.category = ? AND {trust_clause} {persistent_clause}
                    ORDER BY rank LIMIT ?""",
                 (safe_query, category, min_trust, limit),
             )
         else:
             rows = self.store.execute_query(
-                """SELECT f.*, rank FROM facts_fts
+                f"""SELECT f.*, rank FROM facts_fts
                    JOIN facts f ON facts_fts.rowid = f.fact_id
-                   WHERE facts_fts MATCH ? AND f.trust_score >= ?
+                   WHERE facts_fts MATCH ? AND {trust_clause} {persistent_clause}
                    ORDER BY rank LIMIT ?""",
                 (safe_query, min_trust, limit),
             )
@@ -287,8 +294,9 @@ class ThreeDimRetriever:
                 existing["fts_rank"] = max(existing["fts_rank"], media_fts_score)
             else:
                 # Fetch the parent fact and add it with media
+                persistent_filter = "AND is_persistent = 1" if persistent_only else ""
                 fact_rows = self.store.execute_query(
-                    "SELECT * FROM facts WHERE fact_id=? AND trust_score>=?",
+                    f"SELECT * FROM facts WHERE fact_id=? AND trust_score>=? {persistent_filter}",
                     (fid, min_trust),
                 )
                 if fact_rows:

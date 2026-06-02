@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS facts (
     trust_score     REAL DEFAULT 0.5,
     retrieval_count INTEGER DEFAULT 0,
     helpful_count   INTEGER DEFAULT 0,
+    is_persistent   INTEGER DEFAULT 0,         -- 1 = long-lived fact, survives prefetch filtering
     created_at      TEXT DEFAULT (datetime('now')),
     updated_at      TEXT DEFAULT (datetime('now')),
     hrr_vector      BLOB
@@ -225,6 +226,13 @@ class MemoryStore:
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
+        # Migrate existing databases: add is_persistent column if missing
+        try:
+            self._conn.execute("ALTER TABLE facts ADD COLUMN is_persistent INTEGER DEFAULT 0")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Ensure media subdirectories exist
         for sub in ("im", "au", "vi", "ot"):
             (Path(self._media_dir) / sub).mkdir(parents=True, exist_ok=True)
@@ -239,6 +247,7 @@ class MemoryStore:
         importance: float = 5.0,
         entities: Optional[list[str]] = None,
         merge: bool = True,
+        is_persistent: bool = False,
     ) -> dict:
         """Store a fact with three-level merging strategy.
 
@@ -269,27 +278,29 @@ class MemoryStore:
 
             # Level 1: Exact content match
             existing = self._conn.execute(
-                "SELECT fact_id, importance, trust_score, content, tags FROM facts WHERE content = ?",
+                "SELECT fact_id, importance, trust_score, content, tags, is_persistent FROM facts WHERE content = ?",
                 (content,),
             ).fetchone()
 
             if existing:
-                return self._merge_exact_match(existing, importance, tags)
+                return self._merge_exact_match(existing, importance, tags, is_persistent)
 
             # Level 2: Semantic merge (shared entities + FTS5 similarity)
             if merge and extracted:
                 candidate = self._find_merge_candidate(content, extracted, category)
                 if candidate:
-                    return self._merge_semantic(candidate, content, extracted, category, tags, importance)
+                    return self._merge_semantic(candidate, content, extracted, category, tags, importance, is_persistent)
 
             # Level 3: Insert new fact
-            return self._insert_new(content, category, tags, importance, extracted)
+            return self._insert_new(content, category, tags, importance, extracted, is_persistent)
 
-    def _merge_exact_match(self, existing: tuple, importance: float, tags: str) -> dict:
+    def _merge_exact_match(self, existing: tuple, importance: float, tags: str,
+                            is_persistent: bool = False) -> dict:
         """Merge when content is identical."""
-        fact_id, old_imp, old_trust, old_content, old_tags = existing
+        fact_id, old_imp, old_trust, old_content, old_tags, old_persistent = existing
         new_importance = max(old_imp, importance)
         new_trust = max(old_trust, self._default_trust)
+        new_persistent = max(old_persistent, 1 if is_persistent else 0)
         # Merge tags
         merged_tags = self._merge_tags(old_tags, tags)
         # Re-encode HRR to reflect updated importance/trust
@@ -297,8 +308,8 @@ class MemoryStore:
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         self._conn.execute(
             """UPDATE facts SET importance=?, trust_score=?, tags=?,
-               hrr_vector=?, updated_at=datetime('now') WHERE fact_id=?""",
-            (new_importance, new_trust, merged_tags, hrr_blob, fact_id),
+               is_persistent=?, hrr_vector=?, updated_at=datetime('now') WHERE fact_id=?""",
+            (new_importance, new_trust, merged_tags, new_persistent, hrr_blob, fact_id),
         )
         self._conn.commit()
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
@@ -310,7 +321,7 @@ class MemoryStore:
     ) -> Optional[tuple]:
         """Find best existing fact to merge with, using entity overlap + FTS5.
 
-        Returns (fact_id, content, importance, trust_score, tags) or None.
+        Returns (fact_id, content, importance, trust_score, tags, is_persistent) or None.
         """
         # Cap entities to prevent DoS via enormous query
         entities = entities[:20]
@@ -318,7 +329,7 @@ class MemoryStore:
             return None
         shared_facts = self._conn.execute(
             """SELECT f.fact_id, f.content, f.importance, f.trust_score, f.tags,
-                      COUNT(fe.entity_id) AS entity_count
+                      f.is_persistent, COUNT(fe.entity_id) AS entity_count
                FROM facts f
                JOIN fact_entities fe ON f.fact_id = fe.fact_id
                JOIN entities e ON fe.entity_id = e.entity_id
@@ -343,7 +354,7 @@ class MemoryStore:
         best_score = 0.15  # minimum similarity threshold (jaccard × trust)
 
         for row in shared_facts:
-            fid, fact_content, fact_imp, fact_trust, fact_tags = (row[0], row[1], row[2], row[3], row[4])
+            fid, fact_content, fact_imp, fact_trust, fact_tags, fact_persistent = (row[0], row[1], row[2], row[3], row[4], row[5])
             content_tokens = tokenize(fact_content)
             tag_tokens = tokenize(fact_tags or "")
             all_tokens = content_tokens | tag_tokens
@@ -353,22 +364,24 @@ class MemoryStore:
             score = jaccard * (fact_trust or 0.5)
             if score > best_score:
                 best_score = score
-                best = (fid, fact_content, fact_imp, fact_trust, fact_tags)
+                best = (fid, fact_content, fact_imp, fact_trust, fact_tags, fact_persistent)
 
         return best
 
     def _merge_semantic(
         self, candidate: tuple, new_content: str, entities: list[str],
         category: str, tags: str, importance: float,
+        is_persistent: bool = False,
     ) -> dict:
         """Merge new content into existing fact via content combining."""
-        fact_id, existing_content, old_imp, old_trust, old_tags = candidate
+        fact_id, existing_content, old_imp, old_trust, old_tags, old_persistent = candidate
 
         # Combine content intelligently
         merged_content = self._combine_fact_content(existing_content, new_content)
         merged_tags = self._merge_tags(old_tags, tags)
         new_importance = max(old_imp, importance)
         new_trust = max(old_trust, self._default_trust)
+        new_persistent = max(old_persistent, 1 if is_persistent else 0)
 
         # Re-encode HRR with merged content
         hrr_vector = self._encode_hrr(merged_content, entities)
@@ -376,10 +389,10 @@ class MemoryStore:
 
         self._conn.execute(
             """UPDATE facts SET content=?, category=?, tags=?, importance=?,
-               trust_score=?, hrr_vector=?, updated_at=datetime('now')
+               trust_score=?, is_persistent=?, hrr_vector=?, updated_at=datetime('now')
                WHERE fact_id=?""",
             (merged_content, category, merged_tags, new_importance,
-             new_trust, hrr_blob, fact_id),
+             new_trust, new_persistent, hrr_blob, fact_id),
         )
 
         # Log the merge
@@ -493,21 +506,23 @@ class MemoryStore:
     def _insert_new(
         self, content: str, category: str, tags: str,
         importance: float, entities: list[str],
+        is_persistent: bool = False,
     ) -> dict:
         """Insert a brand-new fact."""
         hrr_vector = self._encode_hrr(content, entities)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         cursor = self._conn.execute(
-            """INSERT INTO facts (content, category, tags, importance, trust_score, hrr_vector)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (content, category, tags, importance, self._default_trust, hrr_blob),
+            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, hrr_vector)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (content, category, tags, importance, self._default_trust,
+             1 if is_persistent else 0, hrr_blob),
         )
         fact_id = cursor.lastrowid
         if entities:
             self._link_entities(fact_id, entities)
         self._conn.commit()
         return {"fact_id": fact_id, "content": content, "importance": importance,
-                "merged": False}
+                "is_persistent": is_persistent, "merged": False}
 
     def get_fact(self, fact_id: int) -> Optional[dict]:
         with self._lock:
@@ -787,12 +802,19 @@ class MemoryStore:
 
     # -- List / Count ---------------------------------------------------------
 
-    def list_facts(self, limit: int = 50, offset: int = 0) -> list[dict]:
+    def list_facts(self, limit: int = 50, offset: int = 0,
+                    persistent_only: bool = False) -> list[dict]:
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM facts ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                (limit, offset),
-            ).fetchall()
+            if persistent_only:
+                rows = self._conn.execute(
+                    "SELECT * FROM facts WHERE is_persistent = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
+            else:
+                rows = self._conn.execute(
+                    "SELECT * FROM facts ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    (limit, offset),
+                ).fetchall()
             return [{key: r[key] for key in r.keys()} for r in rows]
 
     def count_facts(self) -> int:

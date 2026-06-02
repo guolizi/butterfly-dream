@@ -45,7 +45,7 @@ _DEFAULT_BASE_URLS = {
 # LLM extraction prompt (enhanced with importance scoring)
 # ---------------------------------------------------------------------------
 
-_EXTRACTION_SYSTEM_PROMPT = """You are a memory extraction assistant for an AI agent. Analyze conversation turns and extract facts worth remembering — with importance scores.
+_EXTRACTION_SYSTEM_PROMPT = """You are a memory extraction assistant for an AI agent. Analyze conversation turns and extract facts worth remembering — with importance scores and persistence judgment.
 
 Extract facts about:
 1. User preferences, habits, and personal information
@@ -67,17 +67,32 @@ Rules:
 - 3-4: Minor preferences, temporary states, easily rediscoverable info
 - 1-2: Trivial details, likely to change, not worth remembering long-term
 
+**Persistence judgment (is_persistent):**
+Set is_persistent=true for facts that are likely useful across many future sessions:
+- User identity, role, name, affiliations
+- Core project architecture decisions, technology stack
+- Security configurations, SSH keys, server addresses
+- Long-term preferences (editor choice, workflow habits)
+- Tool configurations and conventions
+
+Set is_persistent=false for facts that are:
+- Session-specific context ("we're currently debugging X")
+- Temporary states ("the build is failing")
+- Easily rediscoverable info ("the weather today")
+- One-off decisions that might change next session
+
 Return a JSON array of objects, each with:
 - "content": the fact statement (plain text, max 400 chars)
 - "category": one of "user_pref", "project", "tool", "general"
 - "tags": optional comma-separated tags
-- "importance": integer 1-10 (how important is this fact to remember?)
+- "importance": integer 1-10
+- "is_persistent": boolean (true if worth keeping across sessions)
 
 Example:
 [
-  {"content": "User prefers VS Code for Python development with black formatter", "category": "user_pref", "tags": "editor,python", "importance": 6},
-  {"content": "Project uses FastAPI with SQLAlchemy async session pattern", "category": "project", "tags": "backend,stack", "importance": 8},
-  {"content": "User mentioned they like matcha lattes", "category": "general", "tags": "preference", "importance": 3}
+  {"content": "User prefers VS Code for Python development with black formatter", "category": "user_pref", "tags": "editor,python", "importance": 6, "is_persistent": true},
+  {"content": "Project uses FastAPI with SQLAlchemy async session pattern", "category": "project", "tags": "backend,stack", "importance": 8, "is_persistent": true},
+  {"content": "Currently debugging issue with database connection pooling", "category": "project", "tags": "debugging", "importance": 4, "is_persistent": false}
 ]"""
 
 
@@ -128,6 +143,10 @@ FACT_STORE_SCHEMA = {
                 "type": "string",
                 "enum": ["chat", "technical", "longterm", "qa", "balanced"],
                 "description": "Retrieval weight scenario (default: 'balanced').",
+            },
+            "persistent_only": {
+                "type": "boolean",
+                "description": "If true, only return facts marked as persistent (long-lived).",
             },
         },
         "required": ["action"],
@@ -383,11 +402,13 @@ def _call_extraction_llm(
         tags = str(item.get("tags", "")).strip()
         importance = int(item.get("importance", 5))
         importance = max(1, min(10, importance))
+        is_persistent = bool(item.get("is_persistent", False))
         facts.append({
             "content": content,
             "category": category,
             "tags": tags,
             "importance": importance,
+            "is_persistent": is_persistent,
         })
 
     return facts
@@ -653,7 +674,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 category = "user_pref" if target == "user" else "general"
                 # Importance: user profile writes get higher default (7), general gets 5
                 importance = 7 if target == "user" else 5
-                self._store.add_fact(content, category=category, importance=importance)
+                # User profile writes (USER.md) are cross-session by nature
+                is_persistent = target == "user"
+                self._store.add_fact(content, category=category, importance=importance,
+                                     is_persistent=is_persistent)
             except Exception as e:
                 logger.debug("ButterflyDream memory_write mirror failed: %s", e)
 
@@ -718,6 +742,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     category=fact.get("category", "general"),
                     tags=fact.get("tags", ""),
                     importance=fact.get("importance", 5),
+                    is_persistent=fact.get("is_persistent", False),
                 )
                 stored.append(result)
             except Exception as e:
@@ -836,6 +861,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     category=fact.get("category", "general"),
                     tags="reflection," + fact.get("tags", ""),
                     importance=base_imp,
+                    is_persistent=True,
                 )
                 stored += 1
             except Exception as e:
@@ -896,7 +922,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         min_trust = float(args.get("min_trust", self._min_trust))
         limit = int(args.get("limit", 10))
         scenario = args.get("scenario", "balanced")
-        results = self._retriever.search(query, min_trust=min_trust, limit=limit, scenario=scenario)
+        persistent_only = bool(args.get("persistent_only", False))
+        results = self._retriever.search(
+            query, min_trust=min_trust, limit=limit, scenario=scenario,
+            persistent_only=persistent_only,
+        )
         return json.dumps(results, default=str)
 
     def _handle_probe(self, args: dict) -> str:
@@ -1027,7 +1057,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
     def _handle_list(self, args: dict) -> str:
         limit = int(args.get("limit", 50))
         offset = int(args.get("offset", 0))
-        facts = self._store.list_facts(limit=limit, offset=offset)
+        persistent_only = bool(args.get("persistent_only", False))
+        facts = self._store.list_facts(limit=limit, offset=offset, persistent_only=persistent_only)
         return json.dumps(facts, default=str)
 
     def _handle_fact_feedback(self, args: dict) -> str:
