@@ -309,7 +309,8 @@ class ThreeDimRetriever:
         """Remove FTS5 special characters and collapse whitespace."""
         import re
         # Remove characters that could break FTS5 syntax
-        safe = re.sub(r'[^\w\s\u4e00-\u9fff\u3000-\u303f\uff00-\uffef-]', ' ', query)
+        # Keep # (common in C#/F#) — it's safe in FTS5; + is kept for C++/F++
+        safe = re.sub(r'[^\w\s\u4e00-\u9fff\u3000-\u303f\uff00-\uffef#+]', ' ', query)
         # Collapse whitespace
         safe = ' '.join(safe.split())
         if len(safe) < 2:
@@ -333,7 +334,7 @@ def tokenize(text: str) -> set[str]:
     """Tokenize text into a set of normalized tokens."""
     import re
     tokens = set()
-    for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-]{1,}', text):
+    for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-+#]{1,}', text):
         tokens.add(token.lower())
     cjk_chars = re.findall(r'[\u4e00-\u9fff]', text)
     for i in range(len(cjk_chars) - 1):

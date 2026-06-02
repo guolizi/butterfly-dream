@@ -218,6 +218,10 @@ class MemoryStore:
         self._conn.row_factory = sqlite3.Row
         # Enable foreign keys so ON DELETE CASCADE works
         self._conn.execute("PRAGMA foreign_keys = ON")
+        # WAL mode allows concurrent reads during async writes (extraction threads
+        # may write while prefetch reads). busy_timeout prevents SQLITE_BUSY errors.
+        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
