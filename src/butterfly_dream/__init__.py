@@ -677,7 +677,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 # User profile writes (USER.md) are cross-session by nature
                 is_persistent = target == "user"
                 self._store.add_fact(content, category=category, importance=importance,
-                                     is_persistent=is_persistent)
+                                     is_persistent=is_persistent, dedup_threshold=0.7)
             except Exception as e:
                 logger.debug("ButterflyDream memory_write mirror failed: %s", e)
 
@@ -743,6 +743,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     tags=fact.get("tags", ""),
                     importance=fact.get("importance", 5),
                     is_persistent=fact.get("is_persistent", False),
+                    dedup_threshold=0.7,
                 )
                 stored.append(result)
             except Exception as e:
@@ -862,6 +863,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     tags="reflection," + fact.get("tags", ""),
                     importance=base_imp,
                     is_persistent=True,
+                    dedup_threshold=0.7,
                 )
                 stored += 1
             except Exception as e:

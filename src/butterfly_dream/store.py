@@ -248,12 +248,20 @@ class MemoryStore:
         entities: Optional[list[str]] = None,
         merge: bool = True,
         is_persistent: bool = False,
+        dedup_threshold: float = 0.0,
     ) -> dict:
         """Store a fact with three-level merging strategy.
 
         1. Exact content match → merge (keep higher importance/trust)
-        2. Shared entities + FTS5 similarity >= threshold → merge content
-        3. No match → insert as new fact
+        2. FTS5 dedup (Jaccard >= threshold) → skip (near-duplicate rephrase)
+        3. Shared entities + FTS5 similarity >= threshold → merge content
+        4. No match → insert as new fact
+
+        Args:
+            dedup_threshold: If > 0, skip insert when Jaccard similarity with
+                             an existing fact >= this threshold (0.7 recommended).
+                             Used by auto-extraction sources to avoid cross-source
+                             duplicates (LLM vs on_memory_write).
 
         When merging, content is intelligently combined, importance is max'd,
         tags are union'd, and a merge_log entry is created.
@@ -285,6 +293,14 @@ class MemoryStore:
             if existing:
                 return self._merge_exact_match(existing, importance, tags, is_persistent)
 
+            # Level 1.5: Fast dedup (Jaccard ≥ threshold) — skip near-duplicate rephrases
+            if dedup_threshold > 0:
+                dup = self._find_duplicate(content, dedup_threshold)
+                if dup:
+                    logger.debug("Dedup: skipped insert (Jaccard >= %.2f) — existing fact #%d",
+                                 dedup_threshold, dup["fact_id"])
+                    return dup
+
             # Level 2: Semantic merge (shared entities + FTS5 similarity)
             if merge and extracted:
                 candidate = self._find_merge_candidate(content, extracted, category)
@@ -315,6 +331,47 @@ class MemoryStore:
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
         return {"fact_id": fact_id, "content": old_content, "importance": new_importance,
                 "merged": True, "merge_type": "exact"}
+
+    def _find_duplicate(self, content: str, threshold: float = 0.7) -> Optional[dict]:
+        """Check if a near-duplicate fact already exists via FTS5 + Jaccard.
+
+        Searches FTS5 for the new content, computes Jaccard similarity against
+        top results, and returns the first existing fact with similarity >= threshold.
+
+        Returns dict with fact_id/content/importance/merged or None.
+        """
+        query_tokens = tokenize(content)
+        if len(query_tokens) < 3:
+            return None  # Too short for meaningful dedup
+
+        # Sanitize for FTS5
+        import re as _re
+        safe = _re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
+        safe = ' '.join(safe.split())
+        if len(safe) < 2:
+            return None
+
+        rows = self._conn.execute(
+            """SELECT f.fact_id, f.content, f.importance, f.trust_score
+               FROM facts_fts JOIN facts f ON facts_fts.rowid = f.fact_id
+               WHERE facts_fts MATCH ?
+               ORDER BY rank
+               LIMIT 5""",
+            (safe,),
+        ).fetchall()
+
+        for row in rows:
+            existing_tokens = tokenize(row["content"])
+            sim = jaccard_similarity(query_tokens, existing_tokens)
+            if sim >= threshold:
+                return {
+                    "fact_id": row["fact_id"],
+                    "content": row["content"],
+                    "importance": row["importance"],
+                    "merged": True,
+                    "merge_type": "dedup",
+                }
+        return None
 
     def _find_merge_candidate(
         self, content: str, entities: list[str], category: str,
