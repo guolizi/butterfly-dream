@@ -5273,5 +5273,783 @@
         ]
       }
     ]
+  },
+  {
+    "name": "聚合检索-用户工作环境",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户使用两台27寸4K显示器，主屏在左",
+        "tags": "显示器,硬件",
+        "category": "tool",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的键盘是HHKB Professional Classic，静电容轴",
+        "tags": "键盘,硬件",
+        "category": "tool",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户偏好站着办公，用的是乐歌升降桌",
+        "tags": "办公桌,人体工学",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每天上午9点到下午6点在书房工作",
+        "tags": "工作时间,习惯",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户开会时用AirPods Max耳机",
+        "tags": "耳机,会议",
+        "category": "tool",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的椅子是Herman Miller Aeron",
+        "tags": "椅子,人体工学",
+        "category": "tool",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的手机是iPhone 16 Pro",
+        "tags": "手机",
+        "category": "tool",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户喜欢用Notion做笔记",
+        "tags": "笔记,工具",
+        "category": "tool",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户的办公环境是什么样的？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "显示器",
+          "键盘",
+          "升降桌",
+          "椅子"
+        ],
+        "unexpected": [
+          "手机",
+          "Notion"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      },
+      {
+        "query": "用户用了什么硬件设备？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "显示器",
+          "键盘",
+          "AirPods"
+        ],
+        "unexpected": [
+          "Notion"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "聚合检索-项目技术栈",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "后端使用Python FastAPI框架，支持异步请求",
+        "tags": "后端,框架",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "前端使用React + TypeScript，搭配Next.js做SSR",
+        "tags": "前端,框架",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "数据库用PostgreSQL主存储，Redis做缓存",
+        "tags": "数据库",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "部署在AWS ECS上，用Docker容器化",
+        "tags": "部署,云",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "CI/CD用GitHub Actions，自动测试和部署",
+        "tags": "CI/CD",
+        "category": "project",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "监控用Prometheus + Grafana看板",
+        "tags": "监控",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "团队用Jira做项目管理",
+        "tags": "管理",
+        "category": "general",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "代码审查需要两个approval",
+        "tags": "流程",
+        "category": "general",
+        "importance": 5
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目的完整技术栈是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "FastAPI",
+          "React",
+          "PostgreSQL",
+          "Docker",
+          "GitHub Actions"
+        ],
+        "unexpected": [
+          "Jira",
+          "approval"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "name": "聚合检索-用户饮食习惯",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户是素食主义者，不吃任何肉类",
+        "tags": "饮食,素食",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户有乳糖不耐受，喝牛奶会拉肚子",
+        "tags": "饮食,健康",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每天早上喝燕麦奶拿铁",
+        "tags": "饮品,习惯",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户最喜欢吃泰国菜，尤其是绿咖喱",
+        "tags": "饮食,偏好",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户对花生过敏，需要严格避免",
+        "tags": "过敏,健康",
+        "category": "user_pref",
+        "importance": 9
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每周游泳三次",
+        "tags": "运动",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户住在东京",
+        "tags": "地点",
+        "category": "user_pref",
+        "importance": 6
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户有什么饮食限制和偏好？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 10
+        },
+        "expected": [
+          "素食",
+          "乳糖不耐受",
+          "花生过敏",
+          "泰国菜"
+        ],
+        "unexpected": [
+          "游泳",
+          "东京"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-编辑器偏好",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户上周从VS Code切换到了Cursor，因为AI补全更好",
+        "tags": "编辑器,切换",
+        "category": "user_pref",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "用户之前用过Sublime Text写前端",
+        "tags": "编辑器,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "同事推荐了WebStorm但用户没试过",
+        "tags": "编辑器,推荐",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得Vim的学习曲线太陡",
+        "tags": "编辑器,评价",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户在公司电脑上预装了Visual Studio Enterprise",
+        "tags": "IDE,公司",
+        "category": "tool",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户知道JetBrains系列但觉得太贵",
+        "tags": "IDE,评价",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户试用过Atom但觉得启动太慢",
+        "tags": "编辑器,评价",
+        "category": "user_pref",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得Emacs的快捷键太复杂",
+        "tags": "编辑器,评价",
+        "category": "user_pref",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户听说过Nova但只限macOS",
+        "tags": "编辑器,了解",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "团队规定代码审查必须用GitHub",
+        "tags": "工具,流程",
+        "category": "project",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Notion写文档，用Slack沟通",
+        "tags": "工具",
+        "category": "tool",
+        "importance": 4
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在用什么代码编辑器？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "Cursor"
+        ],
+        "unexpected": [
+          "Sublime",
+          "Vim",
+          "WebStorm",
+          "Atom",
+          "Emacs"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-宠物信息",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户的橘猫叫小胖，今年5岁了",
+        "tags": "宠物,猫",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的同事养了一只布偶猫叫奶茶",
+        "tags": "宠物,猫",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户的朋友养了三只猫都很胖",
+        "tags": "宠物,猫",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户小时候家里养过一只黑猫叫煤球",
+        "tags": "宠物,猫,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户邻居家的猫经常来用户家串门",
+        "tags": "宠物,猫",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户在网上关注了很多橘猫博主",
+        "tags": "兴趣,猫",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户打算明年再养一只英短",
+        "tags": "宠物,计划",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户有一条金毛犬叫旺财",
+        "tags": "宠物,狗",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户每天早上遛狗30分钟",
+        "tags": "宠物,习惯",
+        "category": "user_pref",
+        "importance": 4
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户的猫叫什么名字？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "小胖"
+        ],
+        "unexpected": [
+          "奶茶",
+          "煤球"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "干扰鲁棒-项目数据库",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "本项目用MongoDB存储用户行为日志，用PostgreSQL存储交易数据",
+        "tags": "数据库,项目",
+        "category": "project",
+        "importance": 8
+      },
+      {
+        "action": "add_fact",
+        "content": "用户之前在另一个项目用过MySQL做主数据库",
+        "tags": "数据库,历史",
+        "category": "project",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户觉得SQLite适合做本地测试",
+        "tags": "数据库,评价",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "团队评估过Cassandra但最终没采用",
+        "tags": "数据库,评估",
+        "category": "project",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户了解ClickHouse适合做OLAP分析",
+        "tags": "数据库,了解",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "公司的数据仓库用的是Snowflake",
+        "tags": "数据库,公司",
+        "category": "general",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户用Redis做缓存和session存储",
+        "tags": "缓存,Redis",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户学过Dgraph图数据库但没在生产用过",
+        "tags": "数据库,学习",
+        "category": "general",
+        "importance": 2
+      },
+      {
+        "action": "add_fact",
+        "content": "用户推荐过Supabase给前端同事",
+        "tags": "数据库,推荐",
+        "category": "general",
+        "importance": 2
+      }
+    ],
+    "queries": [
+      {
+        "query": "这个项目用了什么数据库？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "MongoDB",
+          "PostgreSQL"
+        ],
+        "unexpected": [
+          "MySQL",
+          "SQLite",
+          "Cassandra",
+          "ClickHouse",
+          "Snowflake",
+          "Dgraph"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-编辑器变迁",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户最初用Sublime Text写代码",
+        "tags": "编辑器,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "用户后来切换到VS Code，用了两年",
+        "tags": "编辑器,历史",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户最近开始用Cursor，因为AI补全功能很强",
+        "tags": "编辑器,当前",
+        "category": "user_pref",
+        "importance": 8
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户用什么编辑器？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "Cursor"
+        ],
+        "unexpected": [
+          "Sublime"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-工作变更",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户2020年在腾讯做后端开发",
+        "tags": "工作,历史",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "用户2022年跳槽到字节跳动做推荐系统",
+        "tags": "工作,历史",
+        "category": "user_pref",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "用户2024年加入一家AI创业公司做CTO",
+        "tags": "工作,当前",
+        "category": "user_pref",
+        "importance": 9
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在做什么工作？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "CTO",
+          "AI创业公司"
+        ],
+        "unexpected": [
+          "腾讯",
+          "字节跳动"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "用户的职业发展路径是什么？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 5
+        },
+        "expected": [
+          "腾讯",
+          "字节跳动",
+          "CTO"
+        ],
+        "unexpected": [],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-项目架构演变",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "项目最初用单体架构，Flask + SQLite",
+        "tags": "架构,历史",
+        "category": "project",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "第二阶段拆分为微服务，用FastAPI + PostgreSQL",
+        "tags": "架构,历史",
+        "category": "project",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "当前架构是事件驱动微服务，用Kafka做消息队列，部署在Kubernetes上",
+        "tags": "架构,当前",
+        "category": "project",
+        "importance": 9
+      }
+    ],
+    "queries": [
+      {
+        "query": "项目现在用什么架构？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "事件驱动",
+          "Kafka",
+          "Kubernetes"
+        ],
+        "unexpected": [
+          "Flask",
+          "SQLite"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "时效优先-用户住址变迁",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "用户大学时住在杭州西湖区",
+        "tags": "住址,历史",
+        "category": "user_pref",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "毕业后用户搬到了北京朝阳区工作",
+        "tags": "住址,历史",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "去年用户搬到了深圳南山区，靠近公司",
+        "tags": "住址,当前",
+        "category": "user_pref",
+        "importance": 7
+      }
+    ],
+    "queries": [
+      {
+        "query": "用户现在住在哪里？",
+        "type": "search",
+        "params": {
+          "scenario": "chat",
+          "limit": 3
+        },
+        "expected": [
+          "深圳",
+          "南山"
+        ],
+        "unexpected": [
+          "杭州",
+          "北京"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
   }
 ]
