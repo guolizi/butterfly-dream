@@ -55,6 +55,7 @@ Extract facts about:
 5. Any other information that would be useful to remember across sessions
 
 Rules:
+- IMPORTANT: Always output extracted facts in Chinese (中文), even if the conversation contains English words. The output language must be Chinese regardless of language mix.
 - Only extract concrete, specific facts. Skip small talk and greetings.
 - Prefer concise, self-contained statements.
 - If nothing worth extracting, return an empty array.
@@ -90,9 +91,9 @@ Return a JSON array of objects, each with:
 
 Example:
 [
-  {"content": "User prefers VS Code for Python development with black formatter", "category": "user_pref", "tags": "editor,python", "importance": 6, "is_persistent": true},
-  {"content": "Project uses FastAPI with SQLAlchemy async session pattern", "category": "project", "tags": "backend,stack", "importance": 8, "is_persistent": true},
-  {"content": "Currently debugging issue with database connection pooling", "category": "project", "tags": "debugging", "importance": 4, "is_persistent": false}
+  {"content": "用户偏好使用VS Code开发Python，使用black格式化", "category": "user_pref", "tags": "editor,python", "importance": 6, "is_persistent": true},
+  {"content": "项目使用FastAPI框架，搭配SQLAlchemy异步模式", "category": "project", "tags": "backend,stack", "importance": 8, "is_persistent": true},
+  {"content": "当前正在排查数据库连接池的问题", "category": "project", "tags": "bug,debugging", "importance": 4, "is_persistent": false}
 ]"""
 
 

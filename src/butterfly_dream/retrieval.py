@@ -356,8 +356,15 @@ class ThreeDimRetriever:
         # With AND, any query word not in the indexed content kills the entire query,
         # making natural language queries (含"什么""哪里""Which""What") always return 0.
         tokens_clean = safe.split()
+        # Use '*' prefix matching to bridge jieba segmentation gaps.
+        # jieba may segment the same text differently in queries vs indexed content
+        # (e.g. "橘猫" is one token in index but "橘" + "猫叫" in query "橘猫叫什么名字").
+        # Prefix matching ensures partial jieba tokens still produce candidates.
         if len(tokens_clean) > 1:
-            return ' OR '.join(tokens_clean)
+            return ' OR '.join(t + '*' for t in tokens_clean)
+        # Single token: use prefix match only if CJK (jeba may over-split)
+        if re.search(r'[\u4e00-\u9fff]', safe):
+            return safe + '*'
         return safe
 
     @staticmethod

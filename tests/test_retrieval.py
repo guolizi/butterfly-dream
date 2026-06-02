@@ -226,10 +226,12 @@ class TestSanitizeFTSQuery:
     def test_special_chars_stripped(self):
         from butterfly_dream.retrieval import ThreeDimRetriever
         result = ThreeDimRetriever._sanitize_fts_query('hello "*world" OR test')
-        # Special FTS5 chars (*, ", OR) should be stripped
+        # Original FTS5 special chars (*, ") should be stripped from input
         assert '"' not in result
-        assert "*" not in result
+        # Our own OR separator is added; user's "OR" becomes a regular token
         assert len(result) > 0
+        # Result uses prefix matching (each token ends with *)
+        assert result.endswith("*") or "*" in result
 
     def test_cjk_preserved(self):
         from butterfly_dream.retrieval import ThreeDimRetriever
