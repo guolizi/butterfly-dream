@@ -614,5 +614,194 @@
         "recall_at_k": [1, 3, 5]
       }
     ]
+  },
+  {
+    "name": "多跳推理-组合事实推导",
+    "setup": [
+      {"action": "add_fact", "content": "用户最喜欢的编程语言是Rust", "importance": 7, "tags": "语言", "category": "user_pref", "entities": ["Rust"]},
+      {"action": "add_fact", "content": "Rust语言以其内存安全性著称", "importance": 6, "tags": "技术", "category": "general", "entities": ["Rust"]},
+      {"action": "add_fact", "content": "用户的主力编辑器是Neovim", "importance": 7, "tags": "工具", "category": "tool", "entities": ["Neovim"]},
+      {"action": "add_fact", "content": "Neovim的配置语言是Lua", "importance": 5, "tags": "技术", "category": "general", "entities": ["Neovim", "Lua"]},
+      {"action": "add_fact", "content": "用户每天用Neovim写Rust项目", "importance": 8, "tags": "习惯", "category": "user_pref", "entities": ["Neovim", "Rust"]}
+    ],
+    "queries": [
+      {
+        "query": "Rust的内存安全是怎么回事？",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["Rust语言以其内存安全性著称"],
+        "unexpected": ["编辑器是Neovim", "编程语言是Rust"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用什么配置Neovim？",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["Neovim的配置语言是Lua"],
+        "unexpected": ["编程语言是Rust", "每天用Neovim"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用户开发Rust项目用的什么软件？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["用Neovim写Rust项目"],
+        "unexpected": ["Rust语言以其内存安全性著称"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "时序比较-事件先后顺序",
+    "setup": [
+      {"action": "add_fact", "content": "用户1月15日开始了新项目", "importance": 6, "tags": "项目", "category": "project"},
+      {"action": "add_fact", "content": "用户1月20日完成了项目原型", "importance": 7, "tags": "项目", "category": "project"},
+      {"action": "add_fact", "content": "用户2月1日发布了第一版", "importance": 8, "tags": "发布", "category": "project"},
+      {"action": "add_fact", "content": "用户3月收到了用户反馈", "importance": 5, "tags": "反馈", "category": "project"},
+      {"action": "add_fact", "content": "用户4月发布了第二版", "importance": 7, "tags": "发布", "category": "project"}
+    ],
+    "queries": [
+      {
+        "query": "1月份做了什么项目工作？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["1月15日开始了新项目", "1月20日完成了项目原型"],
+        "unexpected": ["2月1日发布了第一版", "4月发布了第二版"],
+        "recall_at_k": [1, 3, 5]
+      },
+      {
+        "query": "第一版是什么时候发布的？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["2月1日发布了第一版"],
+        "unexpected": ["4月发布了第二版", "1月20日完成了项目原型"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用户什么时候收到了用户反馈？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["3月收到了用户反馈"],
+        "unexpected": ["1月15日开始了新项目", "发布了第二版"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "对抗相似-高度相似事实去重",
+    "setup": [
+      {"action": "add_fact", "content": "用户喜欢用Python写后端服务", "importance": 6, "tags": "编程", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户现在用Rust写后端服务", "importance": 7, "tags": "编程,变化", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户不喜欢Java因为太啰嗦", "importance": 5, "tags": "编程,评价", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户之前不喜欢Rust觉得太难", "importance": 6, "tags": "编程,评价,变化", "category": "user_pref"},
+      {"action": "add_fact", "content": "用户对Python和Rust的生态都很满意", "importance": 5, "tags": "编程,评价", "category": "user_pref"}
+    ],
+    "queries": [
+      {
+        "query": "用户现在用什么写后端？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["用Rust写后端服务"],
+        "unexpected": ["用Python写后端服务", "不喜欢Java"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用户对Rust的态度是什么？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["之前不喜欢Rust觉得太难", "用Rust写后端服务"],
+        "unexpected": ["对Python和Rust的生态都很满意"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "跨语言检索-英文查中文",
+    "setup": [
+      {"action": "add_fact", "content": "用户喜欢在终端里用tmux和zsh", "importance": 5, "tags": "terminal", "category": "tool"},
+      {"action": "add_fact", "content": "日本的首都是东京", "importance": 6, "tags": "地理,知识", "category": "general"},
+      {"action": "add_fact", "content": "Python was created by Guido van Rossum", "importance": 6, "tags": "programming,history", "category": "general"},
+      {"action": "add_fact", "content": "用户每天喝三杯咖啡", "importance": 4, "tags": "习惯", "category": "user_pref"},
+      {"action": "add_fact", "content": "Tokyo is the capital of Japan", "importance": 6, "tags": "geography", "category": "general"}
+    ],
+    "queries": [
+      {
+        "query": "capital of Japan",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["Tokyo is the capital of Japan", "日本的首都是东京"],
+        "unexpected": ["tmux", "三杯咖啡"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "Who created Python?",
+        "type": "search",
+        "params": {"scenario": "technical"},
+        "expected": ["Python was created by Guido"],
+        "unexpected": ["日本的首都是东京"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用户用什么terminal工具？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["tmux"],
+        "unexpected": ["Tokyo", "三杯咖啡"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "日本的capital是什么？",
+        "type": "search",
+        "params": {"scenario": "qa"},
+        "expected": ["日本的首都是东京", "Tokyo is the capital"],
+        "unexpected": ["tmux", "Python"],
+        "recall_at_k": [1, 3]
+      }
+    ]
+  },
+  {
+    "name": "更新精度-修改一条不影响其他",
+    "setup": [
+      {"action": "add_fact", "content": "用户最喜欢的水果是苹果", "importance": 7, "tags": "偏好", "category": "user_pref", "entities": ["水果"]},
+      {"action": "add_fact", "content": "用户最喜欢的饮料是绿茶", "importance": 7, "tags": "偏好", "category": "user_pref", "entities": ["饮料"]},
+      {"action": "add_fact", "content": "助手最喜欢的水果是香蕉", "importance": 5, "tags": "偏好", "category": "general", "entities": ["水果"]}
+    ],
+    "queries": [
+      {
+        "query": "用户喜欢吃什么水果？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["苹果"],
+        "unexpected": ["绿茶", "香蕉"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "用户现在喜欢吃什么水果？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["橙子"],
+        "unexpected": ["苹果", "香蕉"],
+        "recall_at_k": [1, 3],
+        "extra_setup": [
+          {"action": "add_fact", "content": "用户现在最喜欢的水果变成了橙子", "importance": 8, "tags": "偏好,更新", "category": "user_pref", "entities": ["水果"]}
+        ]
+      },
+      {
+        "query": "最喜欢的饮料",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["绿茶"],
+        "unexpected": ["橙子", "香蕉"],
+        "recall_at_k": [1, 3]
+      },
+      {
+        "query": "助手喜欢吃什么水果？",
+        "type": "search",
+        "params": {"scenario": "chat"},
+        "expected": ["香蕉"],
+        "unexpected": ["橙子", "苹果"],
+        "recall_at_k": [1, 3]
+      }
+    ]
   }
 ]
