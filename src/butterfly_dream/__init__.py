@@ -113,6 +113,8 @@ FACT_STORE_SCHEMA = {
         "• related — What connects to an entity? Structural adjacency.\\n"
         "• reason — Compositional: facts connected to MULTIPLE entities simultaneously.\\n"
         "• contradict — Memory hygiene: find facts making conflicting claims.\\n"
+        "• timeline — Entity facts sorted chronologically (oldest first).\\n"
+        "  Trace how preferences/decisions evolved over time.\\n"
         "• update/remove/list — CRUD operations.\\n\\n"
         "IMPORTANT: Before answering questions about the user, ALWAYS probe or reason first."
     ),
@@ -121,11 +123,11 @@ FACT_STORE_SCHEMA = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["add", "search", "probe", "related", "reason", "contradict", "update", "remove", "list"],
+                "enum": ["add", "search", "probe", "related", "reason", "contradict", "timeline", "update", "remove", "list"],
             },
             "content": {"type": "string", "description": "Fact content (required for 'add')."},
             "query": {"type": "string", "description": "Search query (required for 'search')."},
-            "entity": {"type": "string", "description": "Entity name for 'probe'/'related'."},
+            "entity": {"type": "string", "description": "Entity name for 'probe'/'related'/'timeline'."},
             "entities": {
                 "type": "array", "items": {"type": "string"},
                 "description": "Entity names for 'reason'.",
@@ -139,6 +141,10 @@ FACT_STORE_SCHEMA = {
             "trust_delta": {"type": "number", "description": "Trust adjustment for 'update'."},
             "min_trust": {"type": "number", "description": "Minimum trust filter (default: 0.3)."},
             "limit": {"type": "integer", "description": "Max results (default: 10)."},
+            "min_importance": {
+                "type": "number",
+                "description": "Minimum importance filter for 'timeline' (default: 0 = no filter).",
+            },
             "scenario": {
                 "type": "string",
                 "enum": ["chat", "technical", "longterm", "qa", "balanced"],
@@ -908,6 +914,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 return self._handle_reason(args)
             elif action == "contradict":
                 return self._handle_contradict(args)
+            elif action == "timeline":
+                return self._handle_timeline(args)
             elif action == "update":
                 return self._handle_update(args)
             elif action == "remove":
@@ -1080,6 +1088,17 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         offset = int(args.get("offset", 0))
         persistent_only = bool(args.get("persistent_only", False))
         facts = self._store.list_facts(limit=limit, offset=offset, persistent_only=persistent_only)
+        return json.dumps(facts, default=str)
+
+    def _handle_timeline(self, args: dict) -> str:
+        """Return facts linked to an entity sorted chronologically (oldest first)."""
+        entity = args.get("entity", "").strip()
+        if not entity:
+            return json.dumps({"error": "entity is required for timeline"})
+        limit = int(args.get("limit", 20))
+        min_importance = float(args.get("min_importance", 0))
+        facts = self._store.get_entity_timeline(entity, limit=limit,
+                                                min_importance=min_importance)
         return json.dumps(facts, default=str)
 
     def _handle_fact_feedback(self, args: dict) -> str:

@@ -960,6 +960,33 @@ class MemoryStore:
             ).fetchall()
             return [{key: r[key] for key in r.keys()} for r in rows]
 
+    def get_entity_timeline(self, entity_name: str, limit: int = 20,
+                            min_importance: float = 0.0) -> list[dict]:
+        """Get all facts linked to an entity, sorted chronologically (oldest first).
+
+        Unlike get_entity_facts (sorted by importance), this returns facts in
+        temporal order so the agent can trace how preferences, decisions, or
+        project architecture evolved over time.
+
+        Args:
+            entity_name: Entity to query.
+            limit: Max results.
+            min_importance: Minimum importance filter (0 = no filter).
+        """
+        with self._lock:
+            safe_entity = entity_name.replace("%", "\\%").replace("_", "\\_")
+            rows = self._conn.execute(
+                """SELECT f.* FROM facts f
+                   JOIN fact_entities fe ON f.fact_id = fe.fact_id
+                   JOIN entities e ON fe.entity_id = e.entity_id
+                   WHERE (e.name = ? OR e.aliases LIKE ? ESCAPE '\\')
+                   AND f.importance >= ?
+                   ORDER BY f.created_at ASC
+                   LIMIT ?""",
+                (entity_name, f"%{safe_entity}%", min_importance, limit),
+            ).fetchall()
+            return [{key: r[key] for key in r.keys()} for r in rows]
+
     def get_related_entities(self, entity_name: str, depth: int = 2) -> list[dict]:
         """BFS traversal for related entities up to `depth` hops."""
         with self._lock:
