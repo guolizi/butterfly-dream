@@ -286,3 +286,101 @@ class TestExtractionFlow:
         # Reflection should not call LLM
         provider._run_reflection()
         assert called is False, "Reflection should not call LLM when circuit breaker is active"
+
+
+# ==============================================================================
+# LLM response parsing
+# ==============================================================================
+
+class TestLLMResponseParsing:
+    """_call_extraction_llm correctly parses various LLM response formats."""
+
+    @pytest.mark.parametrize("mock_response,expected_count,desc", [
+        ({"facts": [{"content": "用户有一个有效事实用于测试", "category": "user_pref", "tags": "语言", "importance": 7}]}, 1, "标准 facts 键名"),
+        ({"memories": [{"content": "用户住在北京朝阳区CBD", "category": "user_pref", "tags": "地址", "importance": 6}]}, 1, "memories 键名兼容"),
+        ({"results": [{"content": "用户今天中午吃了火锅", "category": "general", "tags": "饮食", "importance": 3}]}, 1, "results 键名兼容"),
+        ({"insights": [{"content": "用户最近开始每周去健身房", "category": "user_pref", "tags": "健康", "importance": 6}]}, 1, "insights 键名兼容"),
+        ({"patterns": [{"content": "用户形成了一个固定工作模式", "category": "user_pref", "tags": "习惯", "importance": 5}]}, 1, "patterns 键名兼容"),
+        ({"extractions": [{"content": "用户今天完成了项目里程碑", "category": "project", "tags": "项目", "importance": 7}]}, 1, "extractions 键名兼容"),
+        ({"unknown_key": [{"content": "不应被解析的内容", "category": "general", "tags": "", "importance": 5}]}, 0, "未知键名应忽略"),
+        ([{"content": "直接返回列表格式兼容测试", "category": "general", "tags": "", "importance": 5}], 1, "直接返回列表兼容"),
+        ({"facts": [{"content": "ABC", "category": "general", "tags": "", "importance": 5}]}, 0, "过短内容应过滤 <10字符"),
+        ({"facts": [{"content": "用户有一个无效分类测试", "category": "invalid", "tags": "", "importance": 5}]}, 1, "无效分类降级为general"),
+        ({"facts": [{"content": "用户重要性上限裁剪测试内容", "category": "general", "tags": "", "importance": 15}]}, 1, "重要性上限裁剪为10"),
+        ({"facts": [{"content": "用户重要性下限裁剪测试内容", "category": "general", "tags": "", "importance": 0}]}, 1, "重要性下限裁剪为1"),
+        ({"facts": "not a list"}, 0, "facts 非列表安全返回"),
+        ({}, 0, "空字典安全返回"),
+    ])
+    def test_parse_formats(self, mock_response, expected_count, desc, monkeypatch):
+        from unittest.mock import patch, MagicMock
+        import urllib.request
+
+        inner = json.dumps(mock_response)
+        response_body = json.dumps({"choices": [{"message": {"content": inner}}]})
+
+        def mock_urlopen(*args, **kwargs):
+            m = MagicMock()
+            m.read.return_value = response_body.encode("utf-8")
+            cm = MagicMock()
+            cm.__enter__.return_value = m
+            return cm
+
+        with patch("urllib.request.urlopen", mock_urlopen):
+            with patch("butterfly_dream.__init__._resolve_provider_credentials",
+                       return_value=("https://test.api", "test-key")):
+                facts = _call_extraction_llm("test", "test", "test", timeout=5)
+                assert len(facts) == expected_count, f"{desc}: expected {expected_count}, got {len(facts)}"
+
+    def test_parse_persistent_flag(self):
+        """is_persistent flag is correctly parsed from various formats."""
+        from unittest.mock import patch, MagicMock
+
+        mock_data = {"facts": [
+            {"content": "用户持久标记测试内容A通过", "category": "general", "tags": "", "importance": 5, "is_persistent": True},
+            {"content": "用户非持久标记测试内容B通过", "category": "general", "tags": "", "importance": 5, "is_persistent": False},
+            {"content": "用户字符串true标记测试通过", "category": "general", "tags": "", "importance": 5, "is_persistent": "true"},
+            {"content": "用户字符串false标记测试通过", "category": "general", "tags": "", "importance": 5, "is_persistent": "false"},
+        ]}
+        inner = json.dumps(mock_data)
+        body = json.dumps({"choices": [{"message": {"content": inner}}]})
+
+        def mock_urlopen(*args, **kwargs):
+            m = MagicMock()
+            m.read.return_value = body.encode("utf-8")
+            cm = MagicMock()
+            cm.__enter__.return_value = m
+            return cm
+
+        with patch("urllib.request.urlopen", mock_urlopen):
+            with patch("butterfly_dream.__init__._resolve_provider_credentials",
+                       return_value=("https://test.api", "test-key")):
+                facts = _call_extraction_llm("test", "test", "test", timeout=5)
+                assert len(facts) == 4
+                assert facts[0]["is_persistent"] is True
+                assert facts[1]["is_persistent"] is False
+                assert facts[2]["is_persistent"] is True
+                assert facts[3]["is_persistent"] is False
+
+
+# ==============================================================================
+# Tokenize / entity extraction
+# ==============================================================================
+
+class TestTokenize:
+    """tokenize() extracts entities from mixed Chinese/English text."""
+
+    @pytest.mark.parametrize("text,expected_subset", [
+        ("用户喜欢VS Code和Neovim", {"vs", "code", "neovim"}),
+        ("用户在阿里巴巴和腾讯工作过", {"阿里巴巴", "腾讯"}),
+        ("用户最喜欢的编程语言是Python和Rust", {"python", "rust"}),
+        ("用户住在北京，工作在深圳", {"北京", "深圳"}),
+        ("用户喜欢在macOS上开发", {"macos"}),
+        ("C++和C#都是好语言", {"c++", "c#"}),
+        ("普通句子没有特殊实体", set()),
+        ("", set()),
+    ])
+    def test_entity_extraction(self, text, expected_subset):
+        from butterfly_dream.retrieval import tokenize
+        tokens = tokenize(text)
+        for entity in expected_subset:
+            assert entity in tokens, f"'{entity}' should be in tokens: {tokens}"
