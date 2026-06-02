@@ -19,6 +19,8 @@ import logging
 import math
 import struct
 
+import jieba
+
 try:
     import numpy as np
     _HAS_NUMPY = True
@@ -96,19 +98,38 @@ def similarity(a: "np.ndarray", b: "np.ndarray") -> float:
 
 def encode_text(text: str, dim: int = 1024) -> "np.ndarray":
     """Bag-of-words encoding: bundle atom vectors for each token.
-    Tokenizes by lowercasing, splitting on whitespace, stripping punctuation.
+
+    Tokenizes by lowercasing, splitting on whitespace (for English),
+    and using jieba for CJK word segmentation. CJK text without spaces
+    would otherwise become a single HRR token, losing semantic signal.
     Empty text returns encode_atom("__hrr_empty__", dim).
     """
     _require_numpy()
-    tokens = [
-        token.strip(".,!?;:\"'()[]{}")
-        for token in text.lower().split()
-    ]
+    tokens = _tokenize_hrr(text)
     tokens = [t for t in tokens if t]
     if not tokens:
         return encode_atom("__hrr_empty__", dim)
     atom_vectors = [encode_atom(token, dim) for token in tokens]
     return bundle(*atom_vectors)
+
+
+def _tokenize_hrr(text: str) -> list[str]:
+    """Split text into tokens for HRR encoding.
+
+    Uses jieba for CJK segments and regex for English/Latin words.
+    This mirrors retrieval.tokenize() but returns a list (order not important
+    for HRR bundling, but preserving individual occurrences matters).
+    """
+    import re
+    tokens = []
+    # English/Latin words (e.g. "VS", "Code", "Python", "C++")
+    for token in re.findall(r'[a-zA-Z][a-zA-Z0-9_\-+#]{1,}', text):
+        tokens.append(token.lower())
+    # CJK segments — jieba word segmentation
+    cjk_parts = re.findall(r'[\u4e00-\u9fff]+', text)
+    for part in cjk_parts:
+        tokens.extend(jieba.cut(part))
+    return tokens
 
 
 def encode_fact(content: str, entities: list[str], dim: int = 1024) -> "np.ndarray":

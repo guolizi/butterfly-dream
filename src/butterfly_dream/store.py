@@ -1213,7 +1213,7 @@ class MemoryStore:
         """Rough heuristic: check for negation markers between similar statements.
 
         Handles both English (whitespace-delimited) and CJK (no word boundaries)
-        by using tokenize() for the common-token check (handles CJK bigrams)
+        by using tokenize() for the common-token check (uses jieba word-level)
         and checking English negation at token level, CJK at substring level.
         """
         from .retrieval import tokenize
@@ -1222,7 +1222,7 @@ class MemoryStore:
         eng_neg = {"not", "don't", "doesn't", "didn't", "won't", "can't",
                    "isn't", "aren't", "wasn't", "weren't", "never", "no"}
         cjk_neg = {"不喜欢", "不要", "不是", "没有", "不行"}
-        # Use tokenize() for the common-token check — handles CJK bigrams
+        # Use tokenize() for the common-token check — uses jieba word-level
         a_tok = tokenize(a)
         b_tok = tokenize(b)
         common = a_tok & b_tok
