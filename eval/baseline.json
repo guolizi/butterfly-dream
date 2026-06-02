@@ -1,24 +1,28 @@
 {
   "summary": {
-    "scenarios": 18,
-    "queries": 43,
+    "scenarios": 46,
+    "queries": 114,
     "avg_recall_at_k": {
-      "1": 0.7636,
-      "3": 0.907,
-      "5": 0.1628
+      "1": 0.6906,
+      "3": 0.9047,
+      "5": 0.1425
     },
-    "avg_precision": 0.455,
-    "avg_f1": 0.5392,
-    "avg_latency_ms": 8.81,
+    "avg_precision": 0.4336,
+    "avg_f1": 0.5142,
+    "avg_latency_ms": 6.77,
     "forgetting_curve": {
       "curve": [
         {
           "distractors": 0,
-          "avg_recall@1": 0.8519
+          "avg_recall@1": 0.7119
         },
         {
           "distractors": 1,
-          "avg_recall@1": 0.0
+          "avg_recall@1": 0.75
+        },
+        {
+          "distractors": 2,
+          "avg_recall@1": 1.0
         },
         {
           "distractors": 3,
@@ -29,11 +33,23 @@
           "avg_recall@1": 1.0
         },
         {
+          "distractors": 10,
+          "avg_recall@1": 1.0
+        },
+        {
           "distractors": 15,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 50,
+          "avg_recall@1": 1.0
+        },
+        {
+          "distractors": 100,
           "avg_recall@1": 1.0
         }
       ],
-      "total_points": 34
+      "total_points": 98
     },
     "paraphrase_consistency": [
       {
@@ -315,7 +331,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 3.6,
+          "latency_ms": 3.5,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -329,7 +345,7 @@
           },
           "precision": 0.125,
           "f1": 0.2222,
-          "latency_ms": 8.8,
+          "latency_ms": 8.7,
           "n_results": 8,
           "expected_found": 1,
           "expected_total": 1
@@ -343,7 +359,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 24.6,
+          "latency_ms": 24.4,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -413,7 +429,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 30.9,
+          "latency_ms": 31.1,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -455,7 +471,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 6.2,
+          "latency_ms": 6.5,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -469,7 +485,7 @@
           },
           "precision": 0.2,
           "f1": 0.3333,
-          "latency_ms": 6.1,
+          "latency_ms": 6.2,
           "n_results": 5,
           "expected_found": 1,
           "expected_total": 1
@@ -563,7 +579,7 @@
           },
           "precision": 0.3333,
           "f1": 0.5,
-          "latency_ms": 3.9,
+          "latency_ms": 4.0,
           "n_results": 3,
           "expected_found": 1,
           "expected_total": 1
@@ -666,7 +682,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 3.0,
+          "latency_ms": 3.1,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -680,7 +696,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 3.4,
+          "latency_ms": 3.5,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -694,7 +710,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 1.6,
+          "latency_ms": 2.7,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -769,7 +785,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 1.1,
+          "latency_ms": 1.0,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -830,7 +846,7 @@
           },
           "precision": 0.5,
           "f1": 0.6667,
-          "latency_ms": 3.5,
+          "latency_ms": 3.6,
           "n_results": 2,
           "expected_found": 1,
           "expected_total": 1
@@ -901,7 +917,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 34.8,
+          "latency_ms": 34.7,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -931,7 +947,7 @@
           },
           "precision": 0.1,
           "f1": 0.1818,
-          "latency_ms": 46.0,
+          "latency_ms": 45.6,
           "n_results": 10,
           "expected_found": 1,
           "expected_total": 1
@@ -993,6 +1009,1643 @@
             "distractors": 0,
             "recall@1": 1.0,
             "query": "用户用什么数据库？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "多跳推理-组合事实推导",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "Rust的内存安全是怎么回事？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 7.2,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用什么配置Neovim？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.2,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户开发Rust项目用的什么软件？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 9.0,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "Rust的内存安全是怎么回事？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用什么配置Neovim？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户开发Rust项目用的什么软件？"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "时序比较-事件先后顺序",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "1月份做了什么项目工作？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.4,
+          "f1": 0.5714,
+          "latency_ms": 7.4,
+          "n_results": 5,
+          "expected_found": 2,
+          "expected_total": 2
+        },
+        {
+          "query": "第一版是什么时候发布的？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 3.0,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户什么时候收到了用户反馈？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 8.1,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "1月份做了什么项目工作？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "第一版是什么时候发布的？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户什么时候收到了用户反馈？"
+          }
+        ],
+        "initial_recall@1": 0.5,
+        "final_recall@1": 1.0,
+        "decay_rate": -1.0
+      }
+    },
+    {
+      "name": "对抗相似-高度相似事实去重",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户现在用什么写后端？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 7.4,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户对Rust的态度是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.4,
+          "f1": 0.5714,
+          "latency_ms": 8.1,
+          "n_results": 5,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户现在用什么写后端？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户对Rust的态度是什么？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "跨语言检索-英文查中文",
+      "n_queries": 4,
+      "queries": [
+        {
+          "query": "capital of Japan",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 0.5
+          },
+          "precision": 1.0,
+          "f1": 0.6667,
+          "latency_ms": 1.1,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 2
+        },
+        {
+          "query": "Who created Python?",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.9,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户用什么terminal工具？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.6,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "日本的capital是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 2.6,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "capital of Japan"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Who created Python?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户用什么terminal工具？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "日本的capital是什么？"
+          }
+        ],
+        "initial_recall@1": 0.5,
+        "final_recall@1": 0.5,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "更新精度-修改一条不影响其他",
+      "n_queries": 4,
+      "queries": [
+        {
+          "query": "用户喜欢吃什么水果？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.0,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户现在喜欢吃什么水果？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 4.4,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "最喜欢的饮料",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.2,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "助手喜欢吃什么水果？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.7,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户喜欢吃什么水果？"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "用户现在喜欢吃什么水果？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "最喜欢的饮料"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "助手喜欢吃什么水果？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "实体探针-多实体重叠 #1",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "VS Code",
+          "type": "probe",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.2,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "编辑器",
+          "type": "probe",
+          "recall_at_k": {
+            "1": 0.3333,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.1,
+          "n_results": 3,
+          "expected_found": 3,
+          "expected_total": 3
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "VS Code"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.3333,
+            "query": "编辑器"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.3333,
+        "decay_rate": 0.6667
+      }
+    },
+    {
+      "name": "实体探针-单实体大量事实 #2",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "实体X",
+          "type": "probe",
+          "recall_at_k": {
+            "1": 0.1,
+            "3": 0.3,
+            "5": 0.5
+          },
+          "precision": 1.0,
+          "f1": 0.6667,
+          "latency_ms": 0.3,
+          "n_results": 9,
+          "expected_found": 9,
+          "expected_total": 10
+        }
+      ]
+    },
+    {
+      "name": "基础检索-英文同义词变体 #4",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "What does Alice do on weekends?",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.9,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "Where does Alice work?",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.1,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "What kind of books does Charlie like?",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.7,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "What does Alice do on weekends?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Where does Alice work?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "What kind of books does Charlie like?"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "基础检索-中文长句+干扰 #5",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "用户上次爬山去了哪里？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.1667,
+          "f1": 0.2858,
+          "latency_ms": 8.8,
+          "n_results": 6,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户在哪家公司做什么工作？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1667,
+          "f1": 0.2858,
+          "latency_ms": 9.7,
+          "n_results": 6,
+          "expected_found": 2,
+          "expected_total": 2
+        },
+        {
+          "query": "用户养了什么宠物？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1667,
+          "f1": 0.2858,
+          "latency_ms": 7.6,
+          "n_results": 6,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户上次爬山去了哪里？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户在哪家公司做什么工作？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户养了什么宠物？"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "时间线查询-长期职业发展 #3",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "时间线_A",
+          "type": "timeline",
+          "recall_at_k": {
+            "1": 0.125,
+            "3": 0.5,
+            "5": 0.75
+          },
+          "precision": 1.0,
+          "f1": 0.8571,
+          "latency_ms": 0.2,
+          "n_results": 7,
+          "expected_found": 8,
+          "expected_total": 8
+        }
+      ]
+    },
+    {
+      "name": "时间线查询-双实体交叉 #4",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "项目A",
+          "type": "timeline",
+          "recall_at_k": {
+            "1": 0.6667,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.2,
+          "n_results": 2,
+          "expected_found": 3,
+          "expected_total": 3
+        },
+        {
+          "query": "项目B",
+          "type": "timeline",
+          "recall_at_k": {
+            "1": 0.3333,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.1,
+          "n_results": 3,
+          "expected_found": 3,
+          "expected_total": 3
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.6667,
+            "query": "项目A"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.3333,
+            "query": "项目B"
+          }
+        ],
+        "initial_recall@1": 0.6667,
+        "final_recall@1": 0.3333,
+        "decay_rate": 0.5001
+      }
+    },
+    {
+      "name": "跨源去重-三重相似 #2",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "dedup_check",
+          "recall_at_k": {},
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.0,
+          "n_results": 1,
+          "expected_found": 0,
+          "expected_total": 1,
+          "dedup_ok": true
+        }
+      ]
+    },
+    {
+      "name": "持久标记-分类组合过滤 #2",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户的永久信息",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 2.3,
+          "n_results": 2,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "重要性排序-中文梯度测试 #2",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "用户对食物有什么偏好？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 0.6667,
+          "f1": 0.8,
+          "latency_ms": 4.5,
+          "n_results": 3,
+          "expected_found": 2,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "矛盾检测-三方态度变化 #2",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "contradict",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.4,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "矛盾检测-带中立干扰 #3",
+      "n_queries": 1,
+      "queries": [
+        {
+          "query": "",
+          "type": "contradict",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.7,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 2
+        }
+      ]
+    },
+    {
+      "name": "跨会话检索-三阶段级联 #2",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "博客用什么技术栈？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.8,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "博客数据库用什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.1,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "博客部署在哪？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.25,
+          "f1": 0.4,
+          "latency_ms": 4.2,
+          "n_results": 4,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "博客用什么技术栈？"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "博客数据库用什么？"
+          },
+          {
+            "distractors": 2,
+            "recall@1": 1.0,
+            "query": "博客部署在哪？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "跨会话检索-偏好反转 #3",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "用户喜欢什么颜色？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.3,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户现在喜欢什么颜色？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.6,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户后来又喜欢什么颜色？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.3,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户喜欢什么颜色？"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "用户现在喜欢什么颜色？"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "用户后来又喜欢什么颜色？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "多跳推理-三跳链 #2",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "用户公司的总部在哪个省？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 1.0
+          },
+          "precision": 0.25,
+          "f1": 0.4,
+          "latency_ms": 6.6,
+          "n_results": 4,
+          "expected_found": 2,
+          "expected_total": 2
+        },
+        {
+          "query": "用户现在住在哪个城市？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.4,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户公司的竞争对手在哪里？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 5.6,
+          "n_results": 4,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "用户公司的总部在哪个省？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户现在住在哪个城市？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户公司的竞争对手在哪里？"
+          }
+        ],
+        "initial_recall@1": 0.5,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "多跳推理-带干扰链 #3",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "小明和小红在同一个城市工作吗？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 5.2,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "腾讯在哪个城市？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.2,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "小明和小红在同一个城市工作吗？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "腾讯在哪个城市？"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "时序比较-季度范围查询 #2",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "项目上半年做了什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.5
+          },
+          "precision": 0.5,
+          "f1": 0.5,
+          "latency_ms": 5.2,
+          "n_results": 4,
+          "expected_found": 2,
+          "expected_total": 2
+        },
+        {
+          "query": "项目什么时候上线？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.25,
+          "f1": 0.4,
+          "latency_ms": 4.1,
+          "n_results": 4,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "项目上半年做了什么？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "项目什么时候上线？"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "对抗相似-N对一 #2",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "用户读哪些语言的文档？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.3333,
+            "3": 0.3333
+          },
+          "precision": 0.6,
+          "f1": 0.4285,
+          "latency_ms": 7.2,
+          "n_results": 5,
+          "expected_found": 3,
+          "expected_total": 3
+        },
+        {
+          "query": "用户不读什么文档？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 6.1,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.3333,
+            "query": "用户读哪些语言的文档？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户不读什么文档？"
+          }
+        ],
+        "initial_recall@1": 0.3333,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "跨语言检索-中日英混合 #2",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "富士山的高度",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 0.5
+          },
+          "precision": 0.5,
+          "f1": 0.5,
+          "latency_ms": 2.0,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 2
+        },
+        {
+          "query": "How tall is Mount Fuji?",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.5,
+            "3": 0.5
+          },
+          "precision": 0.5,
+          "f1": 0.5,
+          "latency_ms": 2.4,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 2
+        },
+        {
+          "query": "Tokyo population",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 0.7,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "富士山的高度"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.5,
+            "query": "How tall is Mount Fuji?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Tokyo population"
+          }
+        ],
+        "initial_recall@1": 0.5,
+        "final_recall@1": 1.0,
+        "decay_rate": -1.0
+      }
+    },
+    {
+      "name": "跨语言检索-代码+自然语言 #3",
+      "n_queries": 2,
+      "queries": [
+        {
+          "query": "Python script for web scraping",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 1.0,
+          "f1": 1.0,
+          "latency_ms": 1.5,
+          "n_results": 1,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户熟悉什么API设计？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.6,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "Python script for web scraping"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户熟悉什么API设计？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "更新精度-级联三次更新 #2",
+      "n_queries": 3,
+      "queries": [
+        {
+          "query": "用户用什么手机？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.3,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户换了什么新手机？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 3.8,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的电脑换了吗？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.3333,
+          "f1": 0.5,
+          "latency_ms": 4.4,
+          "n_results": 3,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户用什么手机？"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "用户换了什么新手机？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户的电脑换了吗？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 0.0,
+        "decay_rate": 1.0
+      }
+    },
+    {
+      "name": "更新精度-批量验证隔离 #3",
+      "n_queries": 5,
+      "queries": [
+        {
+          "query": "用户的住址",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 1.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 3.6,
+          "n_results": 4,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的住址变了",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 6.2,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的公司地址",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 4.3,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的出生日期",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 4.2,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的紧急联系",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.2,
+          "f1": 0.3333,
+          "latency_ms": 5.1,
+          "n_results": 5,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "用户的住址"
+          },
+          {
+            "distractors": 1,
+            "recall@1": 1.0,
+            "query": "用户的住址变了"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的公司地址"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的出生日期"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的紧急联系"
+          }
+        ],
+        "initial_recall@1": 0.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "遗忘曲线-100干扰深层衰减 #3",
+      "n_queries": 5,
+      "queries": [
+        {
+          "query": "用户的职业是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.5,
+          "f1": 0.6667,
+          "latency_ms": 2.7,
+          "n_results": 2,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的职业是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 14.4,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的职业是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 35.5,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的职业是什么？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0,
+            "5": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 35.7,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户擅长什么深度学习框架？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1,
+          "f1": 0.1818,
+          "latency_ms": 41.2,
+          "n_results": 10,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的职业是什么？"
+          },
+          {
+            "distractors": 10,
+            "recall@1": 1.0,
+            "query": "用户的职业是什么？"
+          },
+          {
+            "distractors": 50,
+            "recall@1": 1.0,
+            "query": "用户的职业是什么？"
+          },
+          {
+            "distractors": 100,
+            "recall@1": 1.0,
+            "query": "用户的职业是什么？"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户擅长什么深度学习框架？"
+          }
+        ],
+        "initial_recall@1": 1.0,
+        "final_recall@1": 1.0,
+        "decay_rate": 0.0
+      }
+    },
+    {
+      "name": "联想记忆-带干扰的线索匹配 #2",
+      "n_queries": 5,
+      "queries": [
+        {
+          "query": "用户的座右铭",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 5.9,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户最喜欢的作家",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 8.2,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户最喜欢的导演",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 8.3,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户喜欢的歌手",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 7.0,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        },
+        {
+          "query": "用户的偶像",
+          "type": "search",
+          "recall_at_k": {
+            "1": 1.0,
+            "3": 1.0
+          },
+          "precision": 0.1429,
+          "f1": 0.2501,
+          "latency_ms": 5.7,
+          "n_results": 7,
+          "expected_found": 1,
+          "expected_total": 1
+        }
+      ],
+      "forgetting_curve": {
+        "points": [
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的座右铭"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户最喜欢的作家"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户最喜欢的导演"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户喜欢的歌手"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 1.0,
+            "query": "用户的偶像"
           }
         ],
         "initial_recall@1": 1.0,
