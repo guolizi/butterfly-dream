@@ -3,7 +3,7 @@
 > *"昔者庄周梦为蝴蝶，栩栩然蝴蝶也。"*
 > 记忆如蝶，翩跹于时间、意义与关联的多维空间。
 
-**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的高级记忆插件，在 Holographic 架构上构建了**LLM 自动提取（带重要性/分类/标签）+ 三维检索（Relevance × Recency × Importance）+ 实体图谱 + 多媒体存储 + 事实合并 + 反思 + 熔断保护**的完整记忆系统。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
+**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，**仅借用了 Holographic 的 HRR 向量引擎和 SQLite 存储层**，其余（LLM 提取、重要性评分、三维检索、实体关系图、事实合并、多媒体存储、反射/熔断/过滤等）均为全新设计。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
 
 ## ✨ 特性
 
@@ -288,12 +288,12 @@ butterfly-dream/
 ├── .gitignore
 ├── src/
 │   └── butterfly_dream/
-│       ├── __init__.py        # MemoryProvider 入口 + 工具 handler(fact_store, media_attach, etc.)
-│       ├── store.py           # SQLite 存储层 + 媒体附件表
-│       ├── retrieval.py       # 三维检索器（含媒体 FTS5 并行搜索）
-│       ├── holographic.py     # HRR 向量引擎
-│       ├── media_utils.py     # 缩略图生成 + 文件 GC
-│       ├── media_compressor.py# 图片/视频/音频自动压缩
+│       ├── __init__.py        # [全新] MemoryProvider 入口 + 全部业务逻辑
+│       ├── store.py           # [复用+扩展] SQLite 存储层（新增：媒体附件表、合并日志、重要性字段）
+│       ├── retrieval.py       # [全新] 三维检索器（Relevance × Recency × Importance）
+│       ├── holographic.py     # [复用] HRR 向量引擎（来自 Holographic）
+│       ├── media_utils.py     # [全新] 缩略图生成 + 文件 GC
+│       ├── media_compressor.py# [全新] 图片/视频/音频自动压缩
 │       └── plugin.yaml        # 插件元数据
 └── tests/
     └── ...
@@ -301,12 +301,14 @@ butterfly-dream/
 
 ## 🔄 与 Holographic 对比
 
+> Butterfly Dream **仅借用了 Holographic 的 HRR 向量引擎**（`holographic.py`）和 **SQLite 数据库实现**（`store.py` 基础表结构），其余所有功能均为全新设计。
+
 基于上游 Hermes `main` 分支 `plugins/memory/holographic/__init__.py`（408 行）逐项核查：
 
 | 功能 | Holographic (upstream main) | Butterfly Dream |
 |:----|:--------------------------|:---------------|
-| 存储引擎 | SQLite + HRR | SQLite + HRR |
-| 实体解析 + HRR 推理 | ✅ 实体解析 + HRR 代数推理 | ✅ **增强：实体关系图 + SQL 交叉检索** |
+| HRR 向量引擎 | ✅ `holographic.py` | ✅ **复用 + 增强** |
+| SQLite 存储 | ✅ `store.py`（基础 CRUD） | ✅ **复用 + 扩展**（媒体表、合并日志、场景权重） |
 | trust 信任度 + 反馈 | ✅ `fact_feedback` + `trust_score` | ✅ 同上 |
 | **LLM 自动提取** | ❌ **纯 regex**（`I prefer...`、`we decided...` 等模式匹配） | ✅ **LLM 异步提取 + 重要性/分类/标签** |
 | 提取时机 | ❌ 仅 `on_session_end` + **regex** | ✅ 压缩前 + 会话结束 + 记忆写入镜像，**全 LLM** |
