@@ -303,9 +303,7 @@ butterfly-dream/
 
 > Butterfly Dream **借用了 Holographic 的 HRR 向量引擎**（`holographic.py`）和 **SQLite 数据库实现**（`store.py` 基础表结构），在此基础上全新开发了以下功能。
 
-基于上游 Hermes `main` 分支 `plugins/memory/holographic/__init__.py`（408 行）逐项核查：
-
-| 功能 | Holographic (upstream main) | Butterfly Dream |
+| 功能 | Holographic | Butterfly Dream |
 |:----|:--------------------------|:---------------|
 | HRR 向量引擎 | ✅ `holographic.py` | ✅ **复用 + 增强** |
 | SQLite 存储 | ✅ `store.py`（基础 CRUD） | ✅ **复用 + 扩展**（媒体表、合并日志、场景权重） |
