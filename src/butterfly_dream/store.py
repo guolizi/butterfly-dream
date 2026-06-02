@@ -1094,20 +1094,33 @@ class MemoryStore:
 
     @staticmethod
     def _is_contradictory(a: str, b: str) -> bool:
-        """Rough heuristic: check for negation markers between similar statements."""
+        """Rough heuristic: check for negation markers between similar statements.
+
+        Handles both English (whitespace-delimited) and CJK (no word boundaries)
+        by using tokenize() for the common-token check (handles CJK bigrams)
+        and checking English negation at token level, CJK at substring level.
+        """
+        from .retrieval import tokenize
         a_lower = a.lower()
         b_lower = b.lower()
-        negation_words = {"not", "don't", "doesn't", "didn't", "won't", "can't",
-                          "isn't", "aren't", "wasn't", "weren't", "never", "no",
-                          "不喜欢", "不要", "不是", "没有", "不行"}
-        a_tokens = set(a_lower.split())
-        b_tokens = set(b_lower.split())
-        common = a_tokens & b_tokens
+        eng_neg = {"not", "don't", "doesn't", "didn't", "won't", "can't",
+                   "isn't", "aren't", "wasn't", "weren't", "never", "no"}
+        cjk_neg = {"不喜欢", "不要", "不是", "没有", "不行"}
+        # Use tokenize() for the common-token check — handles CJK bigrams
+        a_tok = tokenize(a)
+        b_tok = tokenize(b)
+        common = a_tok & b_tok
         if len(common) < 3:
             return False
-        has_negation_a = any(n in a_tokens for n in negation_words)
-        has_negation_b = any(n in b_tokens for n in negation_words)
-        return has_negation_a != has_negation_b
+        # English negation: token-level (word boundaries via split)
+        a_tokens = set(a_lower.split())
+        b_tokens = set(b_lower.split())
+        has_eng_a = any(n in a_tokens for n in eng_neg)
+        has_eng_b = any(n in b_tokens for n in eng_neg)
+        # CJK negation: substring-level (no whitespace word boundaries)
+        has_cjk_a = any(n in a_lower for n in cjk_neg)
+        has_cjk_b = any(n in b_lower for n in cjk_neg)
+        return (has_eng_a or has_cjk_a) != (has_eng_b or has_cjk_b)
 
     # -- HRR encoding ----------------------------------------------------------
 

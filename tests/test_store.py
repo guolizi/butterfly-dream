@@ -644,3 +644,72 @@ class TestEntitySummary:
 
         summary = memstore.get_entity_summary("ProjectX")
         assert "User" in summary["related_entities"]
+
+
+class TestChineseContent:
+    """Chinese-language test cases for all major features (S7)."""
+
+    def test_add_chinese_fact(self, memstore):
+        """Basic add/get works with Chinese content."""
+        r = memstore.add_fact("用户喜欢用VS Code写Python", category="user_pref",
+                              tags="编辑器,python", importance=7)
+        fid = r["fact_id"]
+        fact = memstore.get_fact(fid)
+        assert fact["content"] == "用户喜欢用VS Code写Python"
+        assert fact["category"] == "user_pref"
+        assert fact["importance"] == 7
+
+    def test_chinese_contradiction_detected(self, memstore):
+        """Chinese negation '不喜欢' triggers contradiction detection."""
+        r1 = memstore.add_fact("用户喜欢喝咖啡", importance=7)
+        memstore._link_entities(r1["fact_id"], ["用户"])
+        r2 = memstore.add_fact("用户不喜欢喝咖啡", importance=8)
+        memstore._link_entities(r2["fact_id"], ["用户"])
+
+        # Direct contradiction check
+        assert memstore._is_contradictory("用户喜欢喝咖啡", "用户不喜欢喝咖啡")
+
+        # Entity summary should also find it
+        summary = memstore.get_entity_summary("用户")
+        assert len(summary["conflicts"]) >= 1
+
+    def test_chinese_non_contradiction(self, memstore):
+        """Similar Chinese facts without negation are not contradictions."""
+        assert not memstore._is_contradictory(
+            "用户喜欢用VS Code", "用户爱用VS Code")
+
+    def test_chinese_dedup_semantic(self, memstore):
+        """Similar Chinese facts are deduped with threshold 0.7."""
+        # NOTE: FTS5 unicode61 requires spaces between CJK and Latin tokens
+        r1 = memstore.add_fact("用户 喜欢 用 VS Code 来写 Python 程序",
+                                dedup_threshold=0.7)
+        r2 = memstore.add_fact("用户 喜欢 用 VS Code 来写 Python 程",
+                                dedup_threshold=0.7)
+        assert r2.get("merge_type") == "dedup"
+        assert memstore.count_facts() == 1
+
+    def test_chinese_entity_timeline(self, memstore):
+        """Timeline works with Chinese entity names and content."""
+        import time
+        r1 = memstore.add_fact("用户决定用FastAPI做后端", category="project")
+        memstore._link_entities(r1["fact_id"], ["项目X"])
+        time.sleep(0.05)
+        r2 = memstore.add_fact("用户把FastAPI改成Django", category="project")
+        memstore._link_entities(r2["fact_id"], ["项目X"])
+
+        timeline = memstore.get_entity_timeline("项目X")
+        assert len(timeline) == 2
+        assert timeline[0]["fact_id"] == r1["fact_id"]
+        assert "Django" in timeline[1]["content"]
+
+    def test_chinese_entity_summary(self, memstore):
+        """Summary card works with Chinese entities."""
+        r1 = memstore.add_fact("用户喜欢喝咖啡", category="user_pref", importance=6)
+        memstore._link_entities(r1["fact_id"], ["用户"])
+        r2 = memstore.add_fact("用户现在更喜欢喝茶", category="user_pref", importance=7)
+        memstore._link_entities(r2["fact_id"], ["用户"])
+
+        summary = memstore.get_entity_summary("用户")
+        assert summary["facts_count"] == 2
+        # Latest per category should be the second fact
+        assert "茶" in summary["current_state"]["user_pref"]["content"]

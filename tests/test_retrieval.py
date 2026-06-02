@@ -179,6 +179,21 @@ class TestSearch:
         for r in persistent:
             assert r["is_persistent"] == 1
 
+    def test_search_chinese(self, store_and_retriever):
+        """FTS5 search works with Chinese query terms (with spaces)."""
+        ms, ret = store_and_retriever
+        # FTS5 unicode61 requires spaces between CJK and Latin for indexing
+        ms.add_fact("用户 喜欢 用 VS Code 写 Python", importance=7, is_persistent=True)
+        ms.add_fact("用户 不喜欢 用 VS Code 写 Python", importance=6)
+
+        # Search by English token (separated by space from CJK)
+        results = ret.search("Python", limit=10)
+        assert len(results) >= 2
+
+        # Search by CJK bigram (works when CJK tokens are whitespace-separated)
+        results_cjk = ret.search("用户", limit=10)
+        assert len(results_cjk) >= 2
+
 
 class TestScenarios:
     def test_custom_scenario_weight(self, store_and_retriever):

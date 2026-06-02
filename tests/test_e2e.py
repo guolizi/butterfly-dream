@@ -500,3 +500,39 @@ class TestEdgeCases:
         raw = provider.handle_tool_call("fact_store", {"action": "summarize"})
         result = json.loads(raw)
         assert "error" in result
+
+    def test_chinese_timeline_handler(self, provider):
+        """Timeline with Chinese entity names and content."""
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "add", "content": "用户决定用FastAPI", "category": "project",
+        })
+        r = json.loads(raw)
+        provider._store._link_entities(r["fact_id"], ["项目X"])
+
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "add", "content": "用户把FastAPI改成Django", "category": "project",
+        })
+        r = json.loads(raw)
+        provider._store._link_entities(r["fact_id"], ["项目X"])
+
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "timeline", "entity": "项目X",
+        })
+        result = json.loads(raw)
+        assert len(result) == 2
+        assert "FastAPI" in result[0]["content"]
+
+    def test_chinese_summarize_handler(self, provider):
+        """Summarize with Chinese entity."""
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "add", "content": "用户喜欢喝咖啡", "category": "user_pref",
+        })
+        r = json.loads(raw)
+        provider._store._link_entities(r["fact_id"], ["用户"])
+
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "summarize", "entity": "用户",
+        })
+        result = json.loads(raw)
+        assert result["facts_count"] >= 1
+        assert "咖啡" in result["current_state"]["user_pref"]["content"]
