@@ -330,7 +330,7 @@ class MemoryStore:
         self._conn.commit()
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
         return {"fact_id": fact_id, "content": old_content, "importance": new_importance,
-                "merged": True, "merge_type": "exact"}
+                "is_persistent": bool(new_persistent), "merged": True, "merge_type": "exact"}
 
     def _find_duplicate(self, content: str, threshold: float = 0.7) -> Optional[dict]:
         """Check if a near-duplicate fact already exists via FTS5 + Jaccard.
@@ -352,7 +352,7 @@ class MemoryStore:
             return None
 
         rows = self._conn.execute(
-            """SELECT f.fact_id, f.content, f.importance, f.trust_score
+            """SELECT f.fact_id, f.content, f.importance, f.trust_score, f.is_persistent
                FROM facts_fts JOIN facts f ON facts_fts.rowid = f.fact_id
                WHERE facts_fts MATCH ?
                ORDER BY rank
@@ -368,6 +368,7 @@ class MemoryStore:
                     "fact_id": row["fact_id"],
                     "content": row["content"],
                     "importance": row["importance"],
+                    "is_persistent": bool(row["is_persistent"]),
                     "merged": True,
                     "merge_type": "dedup",
                 }
@@ -874,8 +875,10 @@ class MemoryStore:
                 ).fetchall()
             return [{key: r[key] for key in r.keys()} for r in rows]
 
-    def count_facts(self) -> int:
+    def count_facts(self, persistent_only: bool = False) -> int:
         with self._lock:
+            if persistent_only:
+                return self._conn.execute("SELECT COUNT(*) FROM facts WHERE is_persistent = 1").fetchone()[0]
             return self._conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
 
     # -- Feedback --------------------------------------------------------------

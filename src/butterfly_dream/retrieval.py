@@ -234,27 +234,41 @@ class ThreeDimRetriever:
         if not safe_query:
             return []
 
-        # Base WHERE clause
-        trust_clause = "f.trust_score >= ?"
-        persistent_clause = "AND f.is_persistent = 1" if persistent_only else ""
-
-        # Query facts_fts
+        # Query facts_fts — use separate parameterized queries for safety
         if category:
-            rows = self.store.execute_query(
-                f"""SELECT f.*, rank FROM facts_fts
-                   JOIN facts f ON facts_fts.rowid = f.fact_id
-                   WHERE facts_fts MATCH ? AND f.category = ? AND {trust_clause} {persistent_clause}
-                   ORDER BY rank LIMIT ?""",
-                (safe_query, category, min_trust, limit),
-            )
+            if persistent_only:
+                rows = self.store.execute_query(
+                    """SELECT f.*, rank FROM facts_fts
+                       JOIN facts f ON facts_fts.rowid = f.fact_id
+                       WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ? AND f.is_persistent = 1
+                       ORDER BY rank LIMIT ?""",
+                    (safe_query, category, min_trust, limit),
+                )
+            else:
+                rows = self.store.execute_query(
+                    """SELECT f.*, rank FROM facts_fts
+                       JOIN facts f ON facts_fts.rowid = f.fact_id
+                       WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ?
+                       ORDER BY rank LIMIT ?""",
+                    (safe_query, category, min_trust, limit),
+                )
         else:
-            rows = self.store.execute_query(
-                f"""SELECT f.*, rank FROM facts_fts
-                   JOIN facts f ON facts_fts.rowid = f.fact_id
-                   WHERE facts_fts MATCH ? AND {trust_clause} {persistent_clause}
-                   ORDER BY rank LIMIT ?""",
-                (safe_query, min_trust, limit),
-            )
+            if persistent_only:
+                rows = self.store.execute_query(
+                    """SELECT f.*, rank FROM facts_fts
+                       JOIN facts f ON facts_fts.rowid = f.fact_id
+                       WHERE facts_fts MATCH ? AND f.trust_score >= ? AND f.is_persistent = 1
+                       ORDER BY rank LIMIT ?""",
+                    (safe_query, min_trust, limit),
+                )
+            else:
+                rows = self.store.execute_query(
+                    """SELECT f.*, rank FROM facts_fts
+                       JOIN facts f ON facts_fts.rowid = f.fact_id
+                       WHERE facts_fts MATCH ? AND f.trust_score >= ?
+                       ORDER BY rank LIMIT ?""",
+                    (safe_query, min_trust, limit),
+                )
 
         results = []
         seen_fact_ids = {}
@@ -294,11 +308,16 @@ class ThreeDimRetriever:
                 existing["fts_rank"] = max(existing["fts_rank"], media_fts_score)
             else:
                 # Fetch the parent fact and add it with media
-                persistent_filter = "AND is_persistent = 1" if persistent_only else ""
-                fact_rows = self.store.execute_query(
-                    f"SELECT * FROM facts WHERE fact_id=? AND trust_score>=? {persistent_filter}",
-                    (fid, min_trust),
-                )
+                if persistent_only:
+                    fact_rows = self.store.execute_query(
+                        "SELECT * FROM facts WHERE fact_id=? AND trust_score>=? AND is_persistent = 1",
+                        (fid, min_trust),
+                    )
+                else:
+                    fact_rows = self.store.execute_query(
+                        "SELECT * FROM facts WHERE fact_id=? AND trust_score>=?",
+                        (fid, min_trust),
+                    )
                 if fact_rows:
                     fact_row = fact_rows[0]
                     fact_dict = {key: fact_row[key] for key in fact_row.keys()}

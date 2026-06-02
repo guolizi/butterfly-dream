@@ -402,7 +402,11 @@ def _call_extraction_llm(
         tags = str(item.get("tags", "")).strip()
         importance = int(item.get("importance", 5))
         importance = max(1, min(10, importance))
-        is_persistent = bool(item.get("is_persistent", False))
+        raw_persistent = item.get("is_persistent", False)
+        if isinstance(raw_persistent, str):
+            is_persistent = raw_persistent.lower() in ("true", "1", "yes")
+        else:
+            is_persistent = bool(raw_persistent)
         facts.append({
             "content": content,
             "category": category,
@@ -459,6 +463,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
         # Thread safety for async extraction state
         self._extraction_lock = threading.Lock()
+        # Track async extraction threads for safe shutdown
+        self._extract_threads: list[threading.Thread] = []
 
     @property
     def name(self) -> str:
@@ -600,7 +606,8 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return ""
         # Synchronously mark messages as consumed (async thread may not finish before
         # on_session_end fires, avoiding duplicate extraction of the same range).
-        self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
+        with self._extraction_lock:
+            self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
         msgs_copy = list(messages)
 
         def _extract_async():
@@ -612,6 +619,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 logger.debug("ButterflyDream pre-compress extraction failed: %s", e)
 
         t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-compress")
+        self._extract_threads.append(t)
+        # Prune finished threads to avoid unbounded growth
+        self._extract_threads[:] = [t for t in self._extract_threads if t.is_alive()]
         t.start()
         return ""
 
@@ -640,11 +650,14 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         if not self._store or not messages:
             return
         if self._llm_extract_enabled:
-            new_msgs = messages[self._last_extracted_idx:]
+            # Read _last_extracted_idx under lock for consistent state
+            with self._extraction_lock:
+                new_msgs = messages[self._last_extracted_idx:]
             if new_msgs:
                 # Synchronously mark all messages as consumed before the async thread
                 # fires, preventing a concurrent on_pre_compress from re-processing.
-                self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
+                with self._extraction_lock:
+                    self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
                 msgs_copy = list(new_msgs)
 
                 def _extract_async():
@@ -665,6 +678,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                         logger.debug("ButterflyDream session-end extraction failed: %s", e)
 
                 t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
+                self._extract_threads.append(t)
                 t.start()
 
     def on_memory_write(self, action: str, target: str, content: str) -> None:
@@ -682,6 +696,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 logger.debug("ButterflyDream memory_write mirror failed: %s", e)
 
     def shutdown(self) -> None:
+        # Wait for async extraction threads to finish (they may be writing to the store)
+        for t in self._extract_threads:
+            if t.is_alive():
+                t.join(timeout=5)
+        self._extract_threads.clear()
         if self._store:
             self._store.close()
         self._store = None
@@ -1129,8 +1148,15 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 # ---------------------------------------------------------------------------
 
 
+_plugin_instance: Optional[ButterflyDreamMemoryProvider] = None
+
+
 def register(ctx) -> None:
     """Register the butterfly-dream memory provider with the plugin system."""
+    global _plugin_instance
+    if _plugin_instance is not None:
+        logger.warning("ButterflyDream already registered, skipping")
+        return
     config = _load_plugin_config()
-    provider = ButterflyDreamMemoryProvider(config=config)
-    ctx.register_memory_provider(provider)
+    _plugin_instance = ButterflyDreamMemoryProvider(config=config)
+    ctx.register_memory_provider(_plugin_instance)
