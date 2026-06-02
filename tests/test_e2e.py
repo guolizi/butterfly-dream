@@ -439,3 +439,42 @@ class TestEdgeCases:
         raw = provider.handle_tool_call("fact_feedback", {"action": "helpful", "fact_id": 99999})
         result = json.loads(raw)
         assert "error" in result or "not found" in str(result)
+
+    def test_timeline_handler(self, provider):
+        """fact_store(action='timeline') dispatches correctly."""
+        # Add a fact with entity linking
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "add", "content": "User prefers dark mode", "category": "user_pref",
+        })
+        add_result = json.loads(raw)
+        fid = add_result["fact_id"]
+
+        # Manually link entity (simulating what LLM extraction would do)
+        provider._store._link_entities(fid, ["UserPreferences"])
+
+        # Query timeline
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "timeline", "entity": "UserPreferences",
+        })
+        result = json.loads(raw)
+        assert isinstance(result, list)
+        assert len(result) >= 1
+        assert result[0]["content"] == "User prefers dark mode"
+
+    def test_timeline_requires_entity(self, provider):
+        """timeline without entity returns error."""
+        raw = provider.handle_tool_call("fact_store", {"action": "timeline"})
+        result = json.loads(raw)
+        assert "error" in result
+
+    def test_search_persistent_only_param(self, provider):
+        """fact_store(action='search') with persistent_only works."""
+        provider._store.add_fact("Persistent pref", is_persistent=True)
+        provider._store.add_fact("Temp note")
+
+        raw = provider.handle_tool_call("fact_store", {
+            "action": "search", "query": "pref", "persistent_only": True,
+        })
+        result = json.loads(raw)
+        # Should find the persistent fact
+        assert len(result) > 0

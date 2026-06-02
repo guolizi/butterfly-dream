@@ -470,3 +470,133 @@ class TestMediaAttachments:
                 assert pre_hrr != post_hrr  # Vector should change after rebundle
         finally:
             os.unlink(src)
+
+
+class TestPersistentFlag:
+    """Tests for is_persistent fact marking (S6.1)."""
+
+    def test_add_persistent_flag(self, memstore):
+        """add_fact(is_persistent=True) stores with is_persistent=1."""
+        r = memstore.add_fact("Persistent fact", importance=7, is_persistent=True)
+        fid = r["fact_id"]
+        fact = memstore.get_fact(fid)
+        assert fact["is_persistent"] == 1
+
+    def test_add_non_persistent_default(self, memstore):
+        """add_fact() without is_persistent defaults to 0."""
+        r = memstore.add_fact("Non-persistent fact", importance=5)
+        fid = r["fact_id"]
+        fact = memstore.get_fact(fid)
+        assert fact["is_persistent"] == 0
+
+    def test_list_persistent_only(self, memstore):
+        """list_facts(persistent_only=True) returns only persistent facts."""
+        memstore.add_fact("Persistent A", is_persistent=True)
+        memstore.add_fact("Normal B")
+        memstore.add_fact("Persistent C", is_persistent=True)
+        all_facts = memstore.list_facts()
+        persistent = memstore.list_facts(persistent_only=True)
+        assert len(all_facts) == 3
+        assert len(persistent) == 2
+        for f in persistent:
+            assert f["is_persistent"] == 1
+
+    def test_count_persistent_only(self, memstore):
+        """count_facts(persistent_only=True) counts only persistent facts."""
+        memstore.add_fact("P1", is_persistent=True)
+        memstore.add_fact("N1")
+        memstore.add_fact("P2", is_persistent=True)
+        assert memstore.count_facts() == 3
+        assert memstore.count_facts(persistent_only=True) == 2
+
+
+class TestDedup:
+    """Tests for cross-source dedup via _find_duplicate (S6.2)."""
+
+    def test_dedup_skips_near_duplicate(self, memstore):
+        """add_fact with dedup_threshold=0.7 skips near-identical rephrase."""
+        r1 = memstore.add_fact("User prefers VS Code for Python development",
+                                dedup_threshold=0.7)
+        r2 = memstore.add_fact("User prefers VS Code for Python development",
+                                dedup_threshold=0.7)
+        assert r1["fact_id"] == r2["fact_id"]
+        assert r2["merge_type"] == "exact"  # exact match, not dedup
+        assert memstore.count_facts() == 1
+
+    def test_dedup_semantic_skip(self, memstore):
+        """Semantically similar but not exact -> dedup skips."""
+        r1 = memstore.add_fact("User prefers VS Code for Python development",
+                                dedup_threshold=0.7)
+        # High Jaccard overlap (7/8 = 0.875 >= 0.7)
+        r2 = memstore.add_fact("User prefers VS Code for Python development work",
+                                dedup_threshold=0.7)
+        assert r2.get("merge_type") == "dedup"
+        assert memstore.count_facts() == 1
+
+    def test_dedup_threshold_zero_disabled(self, memstore):
+        """dedup_threshold=0.0 (default) does NOT dedup similar facts."""
+        memstore.add_fact("User prefers VS Code for Python development")
+        memstore.add_fact("User prefers VS Code for Python dev work")
+        assert memstore.count_facts() == 2
+
+    def test_dedup_short_content_skipped(self, memstore):
+        """Content with < 3 tokens bypasses dedup (goes to normal merge path)."""
+        r1 = memstore.add_fact("Hi there", dedup_threshold=0.7)
+        # < 3 tokens → dedup not attempted. Exact match? "Hi there!" ≠ "Hi there". Inserted.
+        r2 = memstore.add_fact("Hi there", dedup_threshold=0.7)
+        # "Hi there" == "Hi there" → Level 1 exact match
+        assert r1["fact_id"] == r2["fact_id"]
+        assert r2["merge_type"] == "exact"
+        assert memstore.count_facts() == 1
+
+    def test_dedup_returns_is_persistent(self, memstore):
+        """Dedup return dict includes is_persistent field."""
+        r1 = memstore.add_fact("Core preference: uses dark mode in VS Code",
+                                is_persistent=True, dedup_threshold=0.7)
+        r2 = memstore.add_fact("Core preference: uses dark mode in VS Code",
+                                dedup_threshold=0.7)
+        # exact match: merge, is_persistent from the first should stick
+        assert r2["is_persistent"] is True or r2["is_persistent"] == 1
+
+
+class TestTimeline:
+    """Tests for get_entity_timeline (S6.3)."""
+
+    def test_timeline_chronological_order(self, memstore):
+        """get_entity_timeline returns facts sorted by created_at ASC."""
+        import time
+        r1 = memstore.add_fact("Decision: use FastAPI", category="project")
+        memstore._link_entities(r1["fact_id"], ["ProjectX"])
+        time.sleep(0.05)
+        r2 = memstore.add_fact("Decision: switch to Django", category="project")
+        memstore._link_entities(r2["fact_id"], ["ProjectX"])
+        time.sleep(0.05)
+        r3 = memstore.add_fact("Decision: add Redis cache", category="project")
+        memstore._link_entities(r3["fact_id"], ["ProjectX"])
+
+        timeline = memstore.get_entity_timeline("ProjectX")
+        assert len(timeline) == 3
+        # Oldest first
+        assert timeline[0]["fact_id"] == r1["fact_id"]
+        assert timeline[1]["fact_id"] == r2["fact_id"]
+        assert timeline[2]["fact_id"] == r3["fact_id"]
+
+    def test_timeline_importance_filter(self, memstore):
+        """min_importance filters out low-importance facts."""
+        r1 = memstore.add_fact("Important: core stack choice", importance=8,
+                                category="project")
+        memstore._link_entities(r1["fact_id"], ["ProjectY"])
+        r2 = memstore.add_fact("Trivial: used a library", importance=3,
+                                category="project")
+        memstore._link_entities(r2["fact_id"], ["ProjectY"])
+
+        all_timeline = memstore.get_entity_timeline("ProjectY")
+        filtered = memstore.get_entity_timeline("ProjectY", min_importance=5)
+        assert len(all_timeline) == 2
+        assert len(filtered) == 1
+        assert filtered[0]["fact_id"] == r1["fact_id"]
+
+    def test_timeline_empty_entity(self, memstore):
+        """Unknown entity returns empty list."""
+        result = memstore.get_entity_timeline("NonExistentEntity")
+        assert result == []

@@ -163,6 +163,22 @@ class TestSearch:
             assert "_importance" in r
             assert "score" in r
 
+    def test_search_persistent_only(self, store_and_retriever):
+        """search(persistent_only=True) returns only persistent facts."""
+        ms, ret = store_and_retriever
+        ms.add_fact("User preference for Python", importance=7, is_persistent=True)
+        ms.add_fact("Session temp note for Python", importance=4)
+        ms.add_fact("Another persistent Python fact", importance=6, is_persistent=True)
+
+        all_results = ret.search("Python", limit=10)
+        persistent = ret.search("Python", limit=10, persistent_only=True)
+
+        assert len(all_results) >= 2
+        assert len(persistent) >= 1
+        assert len(persistent) < len(all_results)
+        for r in persistent:
+            assert r["is_persistent"] == 1
+
 
 class TestScenarios:
     def test_custom_scenario_weight(self, store_and_retriever):
