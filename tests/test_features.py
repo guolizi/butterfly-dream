@@ -384,3 +384,194 @@ class TestTokenize:
         tokens = tokenize(text)
         for entity in expected_subset:
             assert entity in tokens, f"'{entity}' should be in tokens: {tokens}"
+
+
+# ==============================================================================
+# Mocked 存储-检索集成测试（从 eval/test_extraction.py 迁移）
+# 验证：给定已知事实，存储+检索管道的正确性
+# ==============================================================================
+
+class TestStorageRetrieval:
+    """Deterministic storage → retrieval pipeline tests (LLM mocked)."""
+
+    SCENARIOS = [
+        {
+            "name": "编程语言偏好",
+            "mock_facts": [
+                {"content": "用户之前用Python写后端开发", "category": "user_pref",
+                 "tags": "编程语言", "importance": 7, "is_persistent": False},
+                {"content": "用户上个月从Python切换到Rust", "category": "user_pref",
+                 "tags": "编程语言,变化", "importance": 8, "is_persistent": False},
+                {"content": "用户认为Rust比Python快很多", "category": "user_pref",
+                 "tags": "编程语言,评价", "importance": 6, "is_persistent": False},
+            ],
+            "queries": [
+                ("用户之前用什么语言写后端？", ["Python"]),
+                ("用户现在用什么语言？", ["Rust"]),
+                ("用户为什么切换语言？", ["快"]),
+            ],
+        },
+        {
+            "name": "工作与居住地",
+            "mock_facts": [
+                {"content": "用户搬到了日本东京生活", "category": "user_pref",
+                 "tags": "居住,迁移", "importance": 8, "is_persistent": True},
+                {"content": "用户在Google东京办公室工作", "category": "user_pref",
+                 "tags": "工作,公司", "importance": 8, "is_persistent": True},
+                {"content": "用户的团队在涩谷做搜索相关开发", "category": "project",
+                 "tags": "工作,团队", "importance": 7, "is_persistent": False},
+            ],
+            "queries": [
+                ("用户住在哪个城市？", ["东京"]),
+                ("用户在哪个公司工作？", ["Google"]),
+            ],
+        },
+        {
+            "name": "技术栈",
+            "mock_facts": [
+                {"content": "新项目后端使用FastAPI框架", "category": "project",
+                 "tags": "技术栈,后端", "importance": 7, "is_persistent": False},
+                {"content": "新项目前端使用React框架", "category": "project",
+                 "tags": "技术栈,前端", "importance": 7, "is_persistent": False},
+                {"content": "项目使用PostgreSQL数据库", "category": "project",
+                 "tags": "技术栈,数据库", "importance": 7, "is_persistent": False},
+                {"content": "项目部署在AWS ECS上使用Docker", "category": "project",
+                 "tags": "部署,基础设施", "importance": 6, "is_persistent": False},
+            ],
+            "queries": [
+                ("项目后端用什么框架？", ["FastAPI"]),
+                ("项目用什么数据库？", ["PostgreSQL"]),
+                ("项目部署在哪里？", ["AWS"]),
+            ],
+        },
+        {
+            "name": "跨会话更新",
+            "session1_facts": [
+                {"content": "用户在微软做Azure开发", "category": "user_pref",
+                 "tags": "工作", "importance": 8, "is_persistent": True},
+                {"content": "用户主要负责Kubernetes相关服务", "category": "project",
+                 "tags": "技术栈", "importance": 7, "is_persistent": False},
+            ],
+            "session2_facts": [
+                {"content": "用户跳槽到了字节跳动做TikTok推荐系统", "category": "user_pref",
+                 "tags": "工作,更新", "importance": 9, "is_persistent": True},
+                {"content": "用户的技术栈包含Go和Rust", "category": "user_pref",
+                 "tags": "编程语言", "importance": 7, "is_persistent": False},
+            ],
+            "queries": [
+                ("用户现在在哪个公司？", ["字节跳动"]),
+                ("用户以前在哪个公司？", ["微软"]),
+                ("用户用什么编程语言？", ["Go", "Rust"]),
+                ("用户现在做什么方向？", ["TikTok", "推荐系统"]),
+            ],
+        },
+    ]
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            self._db_path = tmp.name
+        yield
+        if os.path.exists(self._db_path):
+            os.unlink(self._db_path)
+
+    def _make_provider(self):
+        config = {
+            "db_path": self._db_path,
+            "llm_extract": True,
+            "extraction_model": {"provider": "test", "model": "test"},
+            "circuit_breaker": {"max_failures": 3, "cooldown_seconds": 120},
+            "trivial_filter": False,
+            "reflection": False,
+        }
+        provider = ButterflyDreamMemoryProvider(config)
+        provider.initialize(session_id="test-storage-retrieval")
+        return provider
+
+    def _mock_llm_response(self, provider, facts: list):
+        """Mock the LLM HTTP call to return predefined facts."""
+        from unittest.mock import patch, MagicMock
+        inner = json.dumps({"facts": facts}, ensure_ascii=False)
+
+        # Set env so _resolve_provider_credentials returns our test endpoint
+        old_key = os.environ.get("TEST_API_KEY")
+        old_url = os.environ.get("TEST_BASE_URL")
+        os.environ["TEST_API_KEY"] = "test-key-123"
+        os.environ["TEST_BASE_URL"] = "https://test.api"
+
+        response_body = json.dumps({
+            "choices": [{"message": {"content": inner}}]
+        }, ensure_ascii=False)
+        mock_resp = MagicMock()
+        mock_resp.__enter__.return_value.read.return_value = response_body.encode("utf-8")
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            result = provider._run_llm_extraction(
+                [
+                    {"role": "user", "content": "我喜欢用Python写代码"},
+                    {"role": "assistant", "content": "Python是个好选择，有什么特别喜欢的框架吗？"},
+                ]
+            )
+
+        # Restore env
+        if old_key:
+            os.environ["TEST_API_KEY"] = old_key
+        else:
+            del os.environ["TEST_API_KEY"]
+        if old_url:
+            os.environ["TEST_BASE_URL"] = old_url
+        else:
+            del os.environ["TEST_BASE_URL"]
+
+        return result
+
+    def test_single_session_scenarios(self):
+        """All single-session scenarios: extract (mocked) → store → query."""
+        for scenario in self.SCENARIOS:
+            if "session1_facts" in scenario:
+                continue  # handled in test_cross_session
+            provider = self._make_provider()
+            facts = self._mock_llm_response(provider, scenario["mock_facts"])
+            assert len(facts) >= len(scenario["mock_facts"]) * 0.5, (
+                f"{scenario['name']}: stored too few facts ({len(facts)}/{len(scenario['mock_facts'])})"
+            )
+            for query_str, expected_contain in scenario["queries"]:
+                from butterfly_dream.retrieval import ThreeDimRetriever
+                retriever = ThreeDimRetriever(provider._store)
+                results = retriever.search(query=query_str, scenario="chat", limit=5)
+                for ec in expected_contain:
+                    found = any(ec.lower() in (r.get("content") or "").lower() for r in results)
+                    assert found, (
+                        f"{scenario['name']}: query '{query_str}' "
+                        f"expected '{ec}' but not found in top results"
+                    )
+            provider.shutdown()
+
+    def test_cross_session_update(self):
+        """Cross-session scenario: extract session1 → extract session2 → query latest."""
+        scenario = next(s for s in self.SCENARIOS if "session1_facts" in s)
+        provider = self._make_provider()
+        self._mock_llm_response(provider, scenario["session1_facts"])
+        self._mock_llm_response(provider, scenario["session2_facts"])
+
+        from butterfly_dream.retrieval import ThreeDimRetriever
+        retriever = ThreeDimRetriever(provider._store)
+
+        for query_str, expected_contain in scenario["queries"]:
+            results = retriever.search(query=query_str, scenario="chat", limit=5)
+            for ec in expected_contain:
+                found = any(ec.lower() in (r.get("content") or "").lower() for r in results)
+                assert found, (
+                    f"Cross-session: query '{query_str}' expected '{ec}' not found"
+                )
+        provider.shutdown()
+
+    def test_fact_count_matches_expected(self):
+        """Verify the number of stored facts matches what was extracted."""
+        scenario = self.SCENARIOS[0]  # 编程语言偏好: 3 facts
+        provider = self._make_provider()
+        stored = self._mock_llm_response(provider, scenario["mock_facts"])
+        assert len(stored) == len(scenario["mock_facts"]), (
+            f"Expected {len(scenario['mock_facts'])} stored facts, got {len(stored)}"
+        )
+        provider.shutdown()
