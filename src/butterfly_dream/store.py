@@ -20,6 +20,8 @@ from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
 
+import jieba
+
 try:
     from . import holographic as hrr
 except ImportError:
@@ -200,6 +202,38 @@ _RE_CJK_BRACKETS = re.compile(
 _RE_QUOTED_CN = re.compile(r'["\u201c\u2018]([^"\u201d\u2019]{2,})["\u201d\u2019]')
 
 
+def _jieba_segment(text: str) -> str:
+    """Pre-segment text with jieba for FTS5 indexing.
+
+    Inserts spaces between Chinese words so FTS5's unicode61 tokenizer
+    can properly tokenize them. Also pads CJK bigrams so partial-word
+    searches work (e.g. searching "咖啡" finds "喝咖啡").
+
+    English/Latin text passes through unchanged.
+
+    Example:
+        "我喜欢猫咪love cats" -> "我 喜欢 猫咪 我 喜欢 猫咪 love cats"
+    """
+    if not text or not isinstance(text, str):
+        return text or ""
+    parts = []
+    for word in re.split(r'(\s+)', text):
+        if not word.strip():
+            parts.append(word)
+            continue
+        if re.search(r'[\u4e00-\u9fff]', word):
+            # Jieba word-level segmentation
+            words = list(jieba.cut(word))
+            # CJK bigrams for finer-grained search (e.g. "咖啡" finds "喝咖啡")
+            chars = list(word)
+            bigrams = [chars[i] + chars[i + 1] for i in range(len(chars) - 1)]
+            all_tokens = words + bigrams
+            parts.append(" ".join(all_tokens))
+        else:
+            parts.append(word)
+    return "".join(parts)
+
+
 class MemoryStore:
     """Thread-safe SQLite-backed fact store with importance + trust tracking."""
 
@@ -232,6 +266,66 @@ class MemoryStore:
             self._conn.commit()
         except sqlite3.OperationalError:
             pass  # Column already exists
+
+        # register jieba_segment SQLite function for FTS5 CJK tokenization
+        self._conn.create_function("jieba_segment", 1, _jieba_segment)
+
+        # Rebuild FTS5 triggers to use jieba_segment for CJK word segmentation.
+        # Without this, Chinese text stored as e.g. "我喜欢猫咪" gets indexed by
+        # FTS5's unicode61 tokenizer as a single token, making it unsearchable.
+        # jieba_segment inserts spaces: "我 喜欢 猫咪" -> each word is an FTS5 token.
+        self._conn.executescript("""
+            DROP TRIGGER IF EXISTS facts_ai;
+            CREATE TRIGGER IF NOT EXISTS facts_ai AFTER INSERT ON facts BEGIN
+                INSERT INTO facts_fts(rowid, content, tags)
+                    VALUES (new.fact_id, jieba_segment(new.content), jieba_segment(new.tags));
+            END;
+
+            DROP TRIGGER IF EXISTS facts_ad;
+            CREATE TRIGGER IF NOT EXISTS facts_ad AFTER DELETE ON facts BEGIN
+                INSERT INTO facts_fts(facts_fts, rowid, content, tags)
+                    VALUES ('delete', old.fact_id, old.content, old.tags);
+            END;
+
+            DROP TRIGGER IF EXISTS facts_au;
+            CREATE TRIGGER IF NOT EXISTS facts_au AFTER UPDATE ON facts BEGIN
+                INSERT INTO facts_fts(facts_fts, rowid, content, tags)
+                    VALUES ('delete', old.fact_id, old.content, old.tags);
+                INSERT INTO facts_fts(rowid, content, tags)
+                    VALUES (new.fact_id, jieba_segment(new.content), jieba_segment(new.tags));
+            END;
+
+            DROP TRIGGER IF EXISTS media_ai;
+            CREATE TRIGGER IF NOT EXISTS media_ai AFTER INSERT ON media_attachments BEGIN
+                INSERT INTO media_attachments_fts(rowid, description, caption, transcript)
+                    VALUES (new.media_id, jieba_segment(new.description), jieba_segment(new.caption), jieba_segment(new.transcript));
+            END;
+
+            DROP TRIGGER IF EXISTS media_ad;
+            CREATE TRIGGER IF NOT EXISTS media_ad AFTER DELETE ON media_attachments BEGIN
+                INSERT INTO media_attachments_fts(media_attachments_fts, rowid, description, caption, transcript)
+                    VALUES ('delete', old.media_id, old.description, old.caption, old.transcript);
+            END;
+
+            DROP TRIGGER IF EXISTS media_au;
+            CREATE TRIGGER IF NOT EXISTS media_au AFTER UPDATE ON media_attachments BEGIN
+                INSERT INTO media_attachments_fts(media_attachments_fts, rowid, description, caption, transcript)
+                    VALUES ('delete', old.media_id, old.description, old.caption, old.transcript);
+                INSERT INTO media_attachments_fts(rowid, description, caption, transcript)
+                    VALUES (new.media_id, jieba_segment(new.description), jieba_segment(new.caption), jieba_segment(new.transcript));
+            END;
+
+            -- Rebuild FTS5 index for existing data with jieba segmentation
+            DELETE FROM facts_fts;
+            INSERT INTO facts_fts(rowid, content, tags)
+                SELECT fact_id, jieba_segment(content), jieba_segment(tags) FROM facts;
+
+            DELETE FROM media_attachments_fts;
+            INSERT INTO media_attachments_fts(rowid, description, caption, transcript)
+                SELECT media_id, jieba_segment(description), jieba_segment(caption), jieba_segment(transcript)
+                FROM media_attachments;
+        """)
+        self._conn.commit()
 
         # Ensure media subdirectories exist
         for sub in ("im", "au", "vi", "ot"):
@@ -349,7 +443,18 @@ class MemoryStore:
         # Jaccard check below ensures precision; FTS5 just gathers candidates.
         import re as _re
         safe = _re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
-        words = [w for w in safe.split() if len(w) > 1][:5]
+        # Jieba-segment CJK tokens to match FTS5 indexed tokens.
+        # Also add CJK bigrams so partial-word dedup queries work.
+        segmented = []
+        for w in safe.split():
+            if _re.search(r'[\u4e00-\u9fff]', w):
+                words = list(jieba.cut(w))
+                chars = list(w)
+                bigrams = [chars[i] + chars[i + 1] for i in range(len(chars) - 1)]
+                segmented.extend(words + bigrams)
+            else:
+                segmented.append(w)
+        words = [w for w in segmented if len(w) > 1][:10]
         if not words:
             return None
         safe = ' OR '.join(words)
