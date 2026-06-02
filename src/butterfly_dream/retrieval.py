@@ -352,7 +352,12 @@ class ThreeDimRetriever:
         safe = ' '.join(safe.split())
         if len(safe) < 2:
             return ""
-        # Convert to AND query for multi-word
+        # Use OR for broader candidate recall — HRR/Jaccard handles precision downstream.
+        # With AND, any query word not in the indexed content kills the entire query,
+        # making natural language queries (含"什么""哪里""Which""What") always return 0.
+        tokens_clean = safe.split()
+        if len(tokens_clean) > 1:
+            return ' OR '.join(tokens_clean)
         return safe
 
     @staticmethod
