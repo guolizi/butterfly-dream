@@ -222,9 +222,9 @@ MEDIA_CLEANUP_SCHEMA = {
 # ---------------------------------------------------------------------------
 
 # Truncation limits for LLM extraction
-_MAX_EXTRACT_CHARS = 24000
-_EXTRACT_HEAD_CHARS = 12000
-_EXTRACT_TAIL_CHARS = 10000
+_MAX_EXTRACT_CHARS = 1_000_000
+_EXTRACT_HEAD_CHARS = 500_000
+_EXTRACT_TAIL_CHARS = 498_000
 _MAX_MSG_CHARS = 1000
 
 
