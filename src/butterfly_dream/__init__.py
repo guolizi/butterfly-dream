@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from agent.memory_provider import MemoryProvider
 from tools.registry import tool_error
 from hermes_cli.config import cfg_get
+from hermes_constants import get_hermes_home
 
 from .store import MemoryStore
 from .retrieval import ThreeDimRetriever
@@ -480,8 +481,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         if self._store:
             self.shutdown()
 
-        from hermes_constants import get_hermes_home
-        _hermes_home = str(get_hermes_home())
+        # Prefer kwargs hermes_home for proper profile isolation, fall back to
+        # get_hermes_home() for backwards compatibility.
+        _hermes_home = str(kwargs.get("hermes_home")) if kwargs.get("hermes_home") else str(get_hermes_home())
         _default_db = _hermes_home + "/butterfly_memory.db"
         db_path = self._config.get("db_path", _default_db)
         # Expand $HERMES_HOME
@@ -1093,5 +1095,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 # Plugin registration
 # ---------------------------------------------------------------------------
 
-# The Hermes plugin loader discovers this via __init__.py containing
-# "MemoryProvider" or "register_memory_provider" in its source.
+
+def register(ctx) -> None:
+    """Register the butterfly-dream memory provider with the plugin system."""
+    config = _load_plugin_config()
+    provider = ButterflyDreamMemoryProvider(config=config)
+    ctx.register_memory_provider(provider)

@@ -5,3 +5,8 @@ author: guolizi
 homepage: https://github.com/guolizi/butterfly-dream
 requires: []
 memory_provider: true
+hooks:
+  - on_session_end
+  - on_pre_compress
+  - on_memory_write
+  - shutdown
