@@ -8,7 +8,7 @@
     ],
     "queries": [
       {
-        "query": "VS Code editor",
+        "query": "Which editor does the user prefer for Python?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["prefers VS Code", "switched from VS Code"],
@@ -27,7 +27,7 @@
     ],
     "queries": [
       {
-        "query": "喝咖啡",
+        "query": "用户平时喝什么咖啡？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["用户喜欢喝咖啡和编程", "用户每天早上喝一杯黑咖啡"],
@@ -45,7 +45,7 @@
     ],
     "queries": [
       {
-        "query": "喜欢编程",
+        "query": "用户喜欢做什么事情？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["用户喜欢喝咖啡和编程"],
@@ -53,7 +53,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "猫咪吃鱼",
+        "query": "猫咪喜欢吃什么？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["猫咪喜欢吃鱼和睡觉"],
@@ -61,7 +61,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "后端框架",
+        "query": "项目用的后端框架是什么？",
         "type": "search",
         "params": {"scenario": "technical"},
         "expected": ["FastAPI"],
@@ -128,7 +128,7 @@
     ],
     "queries": [
       {
-        "query": "开发者",
+        "query": "用户的职业是什么？",
         "type": "search",
         "params": {"persistent_only": true},
         "expected": ["全栈开发者"],
@@ -146,7 +146,7 @@
     ],
     "queries": [
       {
-        "query": "editor",
+        "query": "What is the user's main development environment?",
         "type": "search",
         "params": {"scenario": "longterm"},
         "expected": ["核心开发环境是Neovim", "VS Code的插件生态"],
@@ -163,7 +163,7 @@
     ],
     "queries": [
       {
-        "query": "Python Rust tooling",
+        "query": "What languages does the user use for backend and tooling?",
         "type": "search",
         "params": {"scenario": "technical"},
         "expected": ["Python写后端 and loves Rust"],
@@ -189,7 +189,6 @@
       }
     ]
   },
-
   {
     "name": "遗忘曲线-跨查询衰减（英文）",
     "setup": [
@@ -199,7 +198,7 @@
     ],
     "queries": [
       {
-        "query": "born March",
+        "query": "When was the user born?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["March 15, 1995"],
@@ -207,7 +206,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "born March",
+        "query": "When was the user born?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["March 15, 1995"],
@@ -222,7 +221,7 @@
         ]
       },
       {
-        "query": "born March",
+        "query": "When was the user born?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["March 15, 1995"],
@@ -257,7 +256,7 @@
     ],
     "queries": [
       {
-        "query": "生日",
+        "query": "用户的生日是什么时候？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["1995年3月15日"],
@@ -265,7 +264,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "生日",
+        "query": "用户的生日是什么时候？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["1995年3月15日"],
@@ -280,7 +279,7 @@
         ]
       },
       {
-        "query": "生日",
+        "query": "用户的生日是什么时候？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["1995年3月15日"],
@@ -317,7 +316,7 @@
     ],
     "queries": [
       {
-        "query": "颜色 蓝色",
+        "query": "用户最喜欢什么颜色？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["喜欢的颜色是蓝色"],
@@ -325,7 +324,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "编程语言 Rust",
+        "query": "用户最喜欢什么编程语言？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Rust"],
@@ -333,7 +332,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "食物 寿司",
+        "query": "用户最喜欢吃什么？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["寿司"],
@@ -341,7 +340,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "运动 游泳",
+        "query": "用户最喜欢的运动是什么？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["游泳"],
@@ -349,7 +348,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "音乐 古典乐",
+        "query": "用户喜欢什么类型的音乐？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["古典乐"],
@@ -367,7 +366,7 @@
     ],
     "queries": [
       {
-        "query": "工作 阿里巴巴",
+        "query": "用户在哪家公司工作？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["阿里巴巴"],
@@ -375,7 +374,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "工作 字节跳动",
+        "query": "用户现在在哪家公司工作？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["字节跳动"],
@@ -386,7 +385,7 @@
         ]
       },
       {
-        "query": "用户住在 北京",
+        "query": "用户住在哪个城市？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["北京"],
@@ -394,7 +393,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "搬到了 上海",
+        "query": "用户现在住在哪个城市？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["上海"],
@@ -414,7 +413,7 @@
     ],
     "queries": [
       {
-        "query": "Neovim Rust",
+        "query": "用户用什么编辑器写Rust代码？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim写Rust"],
@@ -422,7 +421,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "Rust 代码",
+        "query": "平时写Rust用哪个软件？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim写Rust"],
@@ -430,7 +429,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "Neovim 代码",
+        "query": "用户写Rust的编辑器是什么？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim写Rust"],
@@ -438,7 +437,7 @@
         "recall_at_k": [1, 3]
       },
       {
-        "query": "Neovim 写 Rust",
+        "query": "Neovim是用来做什么的？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim写Rust"],
@@ -454,28 +453,28 @@
     ],
     "queries": [
       {
-        "query": "Neovim Rust",
+        "query": "What does the user prefer for Rust development?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim over VS Code"],
         "recall_at_k": [1, 3]
       },
       {
-        "query": "prefers Rust",
+        "query": "Which editor does the user use for Rust?",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim over VS Code"],
         "recall_at_k": [1, 3]
       },
       {
-        "query": "Neovim VS Code development",
+        "query": "User Rust development preference",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim over VS Code"],
         "recall_at_k": [1, 3]
       },
       {
-        "query": "Rust development",
+        "query": "Neovim vs VS Code for Rust",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Neovim over VS Code"],
@@ -491,14 +490,14 @@
     ],
     "queries": [
       {
-        "query": "PyTorch 框架",
+        "query": "用户项目用什么机器学习框架？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["PyTorch"],
         "recall_at_k": [1, 3]
       },
       {
-        "query": "TensorFlow 备选",
+        "query": "项目用了什么新框架？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["TensorFlow"],
@@ -510,7 +509,7 @@
         ]
       },
       {
-        "query": "研究 Transformer",
+        "query": "用户最近在研究什么？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Transformer"],
@@ -575,7 +574,7 @@
     ],
     "queries": [
       {
-        "query": "食物 拉面",
+        "query": "用户喜欢吃什么食物？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["拉面"],
@@ -583,15 +582,15 @@
         "recall_at_k": [1, 3, 5]
       },
       {
-        "query": "编辑器 Vim",
+        "query": "用户用什么编辑器写文件？",
         "type": "search",
         "params": {"scenario": "chat"},
-        "expected": ["Vim作为所有文件的编辑器"],
+        "expected": ["Vim作为所有文件的编辑器", "NeoVim写所有配置文件和代码"],
         "unexpected": ["拉面", "PyTorch", "i3"],
         "recall_at_k": [1, 3, 5]
       },
       {
-        "query": "工作 Google",
+        "query": "用户以前在哪家公司工作过？",
         "type": "search",
         "params": {"scenario": "chat"},
         "expected": ["Google"],
@@ -599,15 +598,15 @@
         "recall_at_k": [1, 3, 5]
       },
       {
-        "query": "技术 书籍",
+        "query": "用户平时读什么书？",
         "type": "search",
         "params": {"scenario": "chat"},
-        "expected": ["技术书籍"],
+        "expected": ["设计数据密集型应用", "科幻小说", "技术书籍"],
         "unexpected": ["拉面", "Google"],
         "recall_at_k": [1, 3, 5]
       },
       {
-        "query": "PostgreSQL 数据库",
+        "query": "用户用什么数据库？",
         "type": "search",
         "params": {"scenario": "technical"},
         "expected": ["PostgreSQL"],

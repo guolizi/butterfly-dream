@@ -3,34 +3,34 @@
     "scenarios": 18,
     "queries": 43,
     "avg_recall_at_k": {
-      "1": 0.9147,
-      "3": 0.9651,
-      "5": 0.1744
+      "1": 0.0659,
+      "3": 0.093,
+      "5": 0.0233
     },
-    "avg_precision": 0.969,
-    "avg_f1": 0.9643,
-    "avg_latency_ms": 0.94,
+    "avg_precision": 0.093,
+    "avg_f1": 0.093,
+    "avg_latency_ms": 0.31,
     "forgetting_curve": {
       "curve": [
         {
           "distractors": 0,
-          "avg_recall@1": 1.0
+          "avg_recall@1": 0.037
         },
         {
           "distractors": 1,
-          "avg_recall@1": 1.0
+          "avg_recall@1": 0.0
         },
         {
           "distractors": 3,
-          "avg_recall@1": 1.0
+          "avg_recall@1": 0.0
         },
         {
           "distractors": 5,
-          "avg_recall@1": 1.0
+          "avg_recall@1": 0.0
         },
         {
           "distractors": 15,
-          "avg_recall@1": 1.0
+          "avg_recall@1": 0.0
         }
       ],
       "total_points": 34
@@ -38,15 +38,15 @@
     "paraphrase_consistency": [
       {
         "scenario": "同义改写鲁棒性-中文",
-        "mean_recall@1": 1.0,
+        "mean_recall@1": 0.0,
         "variance": 0.0,
         "consistency_score": 1.0
       },
       {
         "scenario": "同义改写鲁棒性-英文",
-        "mean_recall@1": 1.0,
-        "variance": 0.0,
-        "consistency_score": 1.0
+        "mean_recall@1": 0.25,
+        "variance": 0.1875,
+        "consistency_score": 0.8125
       }
     ]
   },
@@ -56,18 +56,18 @@
       "n_queries": 1,
       "queries": [
         {
-          "query": "VS Code editor",
+          "query": "Which editor does the user prefer for Python?",
           "type": "search",
           "recall_at_k": {
-            "1": 0.5,
-            "3": 1.0,
-            "5": 1.0
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 5.7,
-          "n_results": 2,
-          "expected_found": 2,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 1.8,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 2
         }
       ]
@@ -77,18 +77,18 @@
       "n_queries": 1,
       "queries": [
         {
-          "query": "喝咖啡",
+          "query": "用户平时喝什么咖啡？",
           "type": "search",
           "recall_at_k": {
-            "1": 0.5,
-            "3": 0.5,
-            "5": 0.5
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 0.6667,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 2
         }
       ]
@@ -98,45 +98,45 @@
       "n_queries": 3,
       "queries": [
         {
-          "query": "喜欢编程",
+          "query": "用户喜欢做什么事情？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "猫咪吃鱼",
+          "query": "猫咪喜欢吃什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.1,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "后端框架",
+          "query": "项目用的后端框架是什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -144,22 +144,22 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "喜欢编程"
+            "recall@1": 0.0,
+            "query": "用户喜欢做什么事情？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "猫咪吃鱼"
+            "recall@1": 0.0,
+            "query": "猫咪喜欢吃什么？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "后端框架"
+            "recall@1": 0.0,
+            "query": "项目用的后端框架是什么？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -227,17 +227,17 @@
       "n_queries": 1,
       "queries": [
         {
-          "query": "开发者",
+          "query": "用户的职业是什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ]
@@ -247,17 +247,17 @@
       "n_queries": 1,
       "queries": [
         {
-          "query": "editor",
+          "query": "What is the user's main development environment?",
           "type": "search",
           "recall_at_k": {
-            "1": 0.5,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 0.6667,
-          "f1": 0.8,
-          "latency_ms": 1.5,
-          "n_results": 3,
-          "expected_found": 2,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 2
         }
       ]
@@ -267,17 +267,17 @@
       "n_queries": 1,
       "queries": [
         {
-          "query": "Python Rust tooling",
+          "query": "What languages does the user use for backend and tooling?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.1,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ]
@@ -307,45 +307,45 @@
       "n_queries": 3,
       "queries": [
         {
-          "query": "born March",
+          "query": "When was the user born?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.9,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "born March",
+          "query": "When was the user born?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "born March",
+          "query": "When was the user born?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -353,22 +353,22 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "born March"
+            "recall@1": 0.0,
+            "query": "When was the user born?"
           },
           {
             "distractors": 5,
-            "recall@1": 1.0,
-            "query": "born March"
+            "recall@1": 0.0,
+            "query": "When was the user born?"
           },
           {
             "distractors": 15,
-            "recall@1": 1.0,
-            "query": "born March"
+            "recall@1": 0.0,
+            "query": "When was the user born?"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -377,45 +377,45 @@
       "n_queries": 3,
       "queries": [
         {
-          "query": "生日",
+          "query": "用户的生日是什么时候？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "生日",
+          "query": "用户的生日是什么时候？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.6,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "生日",
+          "query": "用户的生日是什么时候？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.6,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -423,22 +423,22 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "生日"
+            "recall@1": 0.0,
+            "query": "用户的生日是什么时候？"
           },
           {
             "distractors": 5,
-            "recall@1": 1.0,
-            "query": "生日"
+            "recall@1": 0.0,
+            "query": "用户的生日是什么时候？"
           },
           {
             "distractors": 15,
-            "recall@1": 1.0,
-            "query": "生日"
+            "recall@1": 0.0,
+            "query": "用户的生日是什么时候？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -447,73 +447,73 @@
       "n_queries": 5,
       "queries": [
         {
-          "query": "颜色 蓝色",
+          "query": "用户最喜欢什么颜色？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "编程语言 Rust",
+          "query": "用户最喜欢什么编程语言？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "食物 寿司",
+          "query": "用户最喜欢吃什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "运动 游泳",
+          "query": "用户最喜欢的运动是什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "音乐 古典乐",
+          "query": "用户喜欢什么类型的音乐？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -521,32 +521,32 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "颜色 蓝色"
+            "recall@1": 0.0,
+            "query": "用户最喜欢什么颜色？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "编程语言 Rust"
+            "recall@1": 0.0,
+            "query": "用户最喜欢什么编程语言？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "食物 寿司"
+            "recall@1": 0.0,
+            "query": "用户最喜欢吃什么？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "运动 游泳"
+            "recall@1": 0.0,
+            "query": "用户最喜欢的运动是什么？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "音乐 古典乐"
+            "recall@1": 0.0,
+            "query": "用户喜欢什么类型的音乐？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -555,59 +555,59 @@
       "n_queries": 4,
       "queries": [
         {
-          "query": "工作 阿里巴巴",
+          "query": "用户在哪家公司工作？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "工作 字节跳动",
+          "query": "用户现在在哪家公司工作？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.1,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "用户住在 北京",
+          "query": "用户住在哪个城市？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.3,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "搬到了 上海",
+          "query": "用户现在住在哪个城市？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.1,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -615,27 +615,27 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "工作 阿里巴巴"
+            "recall@1": 0.0,
+            "query": "用户在哪家公司工作？"
           },
           {
             "distractors": 1,
-            "recall@1": 1.0,
-            "query": "工作 字节跳动"
+            "recall@1": 0.0,
+            "query": "用户现在在哪家公司工作？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "用户住在 北京"
+            "recall@1": 0.0,
+            "query": "用户住在哪个城市？"
           },
           {
             "distractors": 1,
-            "recall@1": 1.0,
-            "query": "搬到了 上海"
+            "recall@1": 0.0,
+            "query": "用户现在住在哪个城市？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -644,59 +644,59 @@
       "n_queries": 4,
       "queries": [
         {
-          "query": "Neovim Rust",
+          "query": "用户用什么编辑器写Rust代码？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.9,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "Rust 代码",
+          "query": "平时写Rust用哪个软件？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "Neovim 代码",
+          "query": "用户写Rust的编辑器是什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "Neovim 写 Rust",
+          "query": "Neovim是用来做什么的？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -704,27 +704,27 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Neovim Rust"
+            "recall@1": 0.0,
+            "query": "用户用什么编辑器写Rust代码？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Rust 代码"
+            "recall@1": 0.0,
+            "query": "平时写Rust用哪个软件？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Neovim 代码"
+            "recall@1": 0.0,
+            "query": "用户写Rust的编辑器是什么？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Neovim 写 Rust"
+            "recall@1": 0.0,
+            "query": "Neovim是用来做什么的？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -733,49 +733,49 @@
       "n_queries": 4,
       "queries": [
         {
-          "query": "Neovim Rust",
+          "query": "What does the user prefer for Rust development?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.9,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "prefers Rust",
+          "query": "Which editor does the user use for Rust?",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.7,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "Neovim VS Code development",
+          "query": "User Rust development preference",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.1,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "Rust development",
+          "query": "Neovim vs VS Code for Rust",
           "type": "search",
           "recall_at_k": {
             "1": 1.0,
@@ -783,7 +783,7 @@
           },
           "precision": 1.0,
           "f1": 1.0,
-          "latency_ms": 0.7,
+          "latency_ms": 3.8,
           "n_results": 1,
           "expected_found": 1,
           "expected_total": 1
@@ -793,26 +793,26 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Neovim Rust"
+            "recall@1": 0.0,
+            "query": "What does the user prefer for Rust development?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "Which editor does the user use for Rust?"
+          },
+          {
+            "distractors": 0,
+            "recall@1": 0.0,
+            "query": "User Rust development preference"
           },
           {
             "distractors": 0,
             "recall@1": 1.0,
-            "query": "prefers Rust"
-          },
-          {
-            "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Neovim VS Code development"
-          },
-          {
-            "distractors": 0,
-            "recall@1": 1.0,
-            "query": "Rust development"
+            "query": "Neovim vs VS Code for Rust"
           }
         ],
-        "initial_recall@1": 1.0,
+        "initial_recall@1": 0.0,
         "final_recall@1": 1.0,
         "decay_rate": 0.0
       }
@@ -822,45 +822,45 @@
       "n_queries": 3,
       "queries": [
         {
-          "query": "PyTorch 框架",
+          "query": "用户项目用什么机器学习框架？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.9,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "TensorFlow 备选",
+          "query": "项目用了什么新框架？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "研究 Transformer",
+          "query": "用户最近在研究什么？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0
+            "1": 0.0,
+            "3": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -868,22 +868,22 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "PyTorch 框架"
+            "recall@1": 0.0,
+            "query": "用户项目用什么机器学习框架？"
           },
           {
             "distractors": 3,
-            "recall@1": 1.0,
-            "query": "TensorFlow 备选"
+            "recall@1": 0.0,
+            "query": "项目用了什么新框架？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "研究 Transformer"
+            "recall@1": 0.0,
+            "query": "用户最近在研究什么？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     },
@@ -892,78 +892,78 @@
       "n_queries": 5,
       "queries": [
         {
-          "query": "食物 拉面",
+          "query": "用户喜欢吃什么食物？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0,
-            "5": 1.0
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 1.0,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.3,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "编辑器 Vim",
+          "query": "用户用什么编辑器写文件？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0,
-            "5": 1.0
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 2
+        },
+        {
+          "query": "用户以前在哪家公司工作过？",
+          "type": "search",
+          "recall_at_k": {
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
+          },
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.2,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         },
         {
-          "query": "工作 Google",
+          "query": "用户平时读什么书？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0,
-            "5": 1.0
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
-          "expected_total": 1
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
+          "expected_total": 3
         },
         {
-          "query": "技术 书籍",
+          "query": "用户用什么数据库？",
           "type": "search",
           "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0,
-            "5": 1.0
+            "1": 0.0,
+            "3": 0.0,
+            "5": 0.0
           },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
-          "expected_total": 1
-        },
-        {
-          "query": "PostgreSQL 数据库",
-          "type": "search",
-          "recall_at_k": {
-            "1": 1.0,
-            "3": 1.0,
-            "5": 1.0
-          },
-          "precision": 1.0,
-          "f1": 1.0,
-          "latency_ms": 0.8,
-          "n_results": 1,
-          "expected_found": 1,
+          "precision": 0.0,
+          "f1": 0.0,
+          "latency_ms": 0.1,
+          "n_results": 0,
+          "expected_found": 0,
           "expected_total": 1
         }
       ],
@@ -971,32 +971,32 @@
         "points": [
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "食物 拉面"
+            "recall@1": 0.0,
+            "query": "用户喜欢吃什么食物？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "编辑器 Vim"
+            "recall@1": 0.0,
+            "query": "用户用什么编辑器写文件？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "工作 Google"
+            "recall@1": 0.0,
+            "query": "用户以前在哪家公司工作过？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "技术 书籍"
+            "recall@1": 0.0,
+            "query": "用户平时读什么书？"
           },
           {
             "distractors": 0,
-            "recall@1": 1.0,
-            "query": "PostgreSQL 数据库"
+            "recall@1": 0.0,
+            "query": "用户用什么数据库？"
           }
         ],
-        "initial_recall@1": 1.0,
-        "final_recall@1": 1.0,
+        "initial_recall@1": 0.0,
+        "final_recall@1": 0.0,
         "decay_rate": 0.0
       }
     }
