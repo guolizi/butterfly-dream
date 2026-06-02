@@ -87,11 +87,11 @@
     ]
   },
   {
-    "name": "时间线查询-实体变更",
+    "name": "时间线查询-实体变更（中文）",
     "setup": [
-      {"action": "add_fact", "content": "Started with VS Code editor", "tags": "editor", "category": "user_pref", "importance": 6, "entities": ["编辑器"]},
-      {"action": "add_fact", "content": "Tried Sublime Text for a while", "tags": "editor,trial", "category": "user_pref", "importance": 5, "entities": ["编辑器"]},
-      {"action": "add_fact", "content": "Settled on Neovim as main editor", "tags": "editor,final", "category": "user_pref", "importance": 8, "entities": ["编辑器"]}
+      {"action": "add_fact", "content": "用户最初使用VS Code编辑器", "tags": "editor", "category": "user_pref", "importance": 6, "entities": ["编辑器"]},
+      {"action": "add_fact", "content": "用户试用了一段时间Sublime Text", "tags": "editor,trial", "category": "user_pref", "importance": 5, "entities": ["编辑器"]},
+      {"action": "add_fact", "content": "用户最终固定使用Neovim编辑器", "tags": "editor,final", "category": "user_pref", "importance": 8, "entities": ["编辑器"]}
     ],
     "queries": [
       {
@@ -173,17 +173,17 @@
     ]
   },
   {
-    "name": "矛盾检测",
+    "name": "矛盾检测-中文",
     "setup": [
-      {"action": "add_fact", "content": "User prefers VS Code for development", "tags": "editor", "category": "user_pref", "importance": 6},
-      {"action": "add_fact", "content": "User does not prefer VS Code", "tags": "editor,negative", "category": "user_pref", "importance": 7}
+      {"action": "add_fact", "content": "用户喜欢用VS Code写Python", "tags": "editor", "category": "user_pref", "importance": 6},
+      {"action": "add_fact", "content": "用户不喜欢VS Code觉得太臃肿", "tags": "editor,negative", "category": "user_pref", "importance": 7}
     ],
     "queries": [
       {
         "query": "",
         "type": "contradict",
         "params": {},
-        "expected": ["prefers VS Code", "does not prefer"],
+        "expected": ["喜欢用VS Code", "不喜欢VS Code"],
         "unexpected": [],
         "recall_at_k": [1, 3]
       }

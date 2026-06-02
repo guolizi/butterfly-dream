@@ -1,13 +1,13 @@
 Building prefix dict from the default dictionary ...
 Loading model from cache /tmp/jieba.cache
-Loading model cost 0.589 seconds.
+Loading model cost 0.604 seconds.
 Prefix dict has been built successfully.
 {
   "summary": {
     "scenarios": 10,
     "queries": 12,
     "avg_recall_at_k": {
-      "1": 0.6944,
+      "1": 0.7222,
       "3": 0.875,
       "5": 0.2083
     },
@@ -120,20 +120,20 @@ Prefix dict has been built successfully.
       ]
     },
     {
-      "name": "时间线查询-实体变更",
+      "name": "时间线查询-实体变更（中文）",
       "n_queries": 1,
       "queries": [
         {
           "query": "编辑器",
           "type": "timeline",
           "recall_at_k": {
-            "1": 0.3333,
+            "1": 0.6667,
             "3": 1.0,
             "5": 1.0
           },
           "precision": 1.0,
           "f1": 1.0,
-          "n_results": 3,
+          "n_results": 2,
           "expected_found": 3,
           "expected_total": 3
         }
@@ -213,7 +213,7 @@ Prefix dict has been built successfully.
       ]
     },
     {
-      "name": "矛盾检测",
+      "name": "矛盾检测-中文",
       "n_queries": 1,
       "queries": [
         {

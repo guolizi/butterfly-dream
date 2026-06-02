@@ -603,18 +603,42 @@ class MemoryStore:
 
         # Check for contradiction
         negation_words = {"not", "don't", "doesn't", "didn't", "won't", "can't",
-                         "isn't", "aren't", "wasn't", "weren't", "never", "no",
-                         "不喜欢", "不要", "不是", "没有", "不行", "不会", "不能", "拒绝"}
+                         "isn't", "aren't", "wasn't", "weren't", "never", "no"}
+        cjk_neg_words = {"不喜欢", "不要", "不是", "没有", "不行", "不会", "不能", "拒绝"}
         # Antonym pairs — one fact uses one, the other uses its opposite
         antonym_pairs = [
             ({"love", "like", "enjoy", "prefer", "favorite"},
              {"hate", "dislike", "loathe", "detest", "讨厌", "不喜欢"}),
+            ({"喜欢"}, {"讨厌"}),  # CJK antonym pair (不喜欢 → 不+喜欢 by jieba)
         ]
-        e_tokens = set(e_lower.split())
-        n_tokens = set(n_lower.split())
+        # Tokenize with jieba for CJK support, fall back to split() for English.
+        # Note: jieba splits "不喜欢" into "不" + "喜欢", so CJK negation words
+        # are checked via substring matching on the raw text below.
+        def _cjk_tokens(text: str) -> set[str]:
+            """Tokenize text, using jieba for CJK segments."""
+            import re as _re
+            tokens = set()
+            for word in _re.split(r'(\s+)', text):
+                word = word.strip()
+                if not word:
+                    continue
+                if _re.search(r'[\u4e00-\u9fff]', word):
+                    tokens.update(jieba.cut(word))
+                else:
+                    tokens.add(word)
+            return tokens
+
+        e_tokens = _cjk_tokens(e_lower)
+        n_tokens = _cjk_tokens(n_lower)
         common = e_tokens & n_tokens
-        e_has_neg = any(w in e_tokens for w in negation_words)
-        n_has_neg = any(w in n_tokens for w in negation_words)
+        # English negation: exact token match
+        e_has_eng_neg = any(w in e_tokens for w in negation_words)
+        n_has_eng_neg = any(w in n_tokens for w in negation_words)
+        # CJK negation: substring match (jieba splits compound negation)
+        e_has_cjk_neg = any(w in e_lower for w in cjk_neg_words)
+        n_has_cjk_neg = any(w in n_lower for w in cjk_neg_words)
+        e_has_neg = e_has_eng_neg or e_has_cjk_neg
+        n_has_neg = n_has_eng_neg or n_has_cjk_neg
         is_contradiction = False
 
         # Heuristic 1: shared tokens but one negated
@@ -637,7 +661,7 @@ class MemoryStore:
 
         # Different aspects: combine
         # Check if the new info adds details not in existing
-        new_words = set(n_lower.split()) - set(e_lower.split())
+        new_words = n_tokens - e_tokens
         if len(new_words) >= 2:
             return f"{existing}；{new}"
         return existing  # No meaningful new info
