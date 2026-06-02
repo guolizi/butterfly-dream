@@ -301,17 +301,17 @@ butterfly-dream/
 
 ## 🔄 与 Holographic 对比
 
-基于上游 Hermes `plugins/memory/holographic/__init__.py`（v727 行）逐项核查：
+基于上游 Hermes `main` 分支 `plugins/memory/holographic/__init__.py`（408 行）逐项核查：
 
-| 功能 | Holographic (upstream) | Butterfly Dream |
-|:----|:---------------------|:---------------|
+| 功能 | Holographic (upstream main) | Butterfly Dream |
+|:----|:--------------------------|:---------------|
 | 存储引擎 | SQLite + HRR | SQLite + HRR |
 | 实体解析 + HRR 推理 | ✅ 实体解析 + HRR 代数推理 | ✅ **增强：实体关系图 + SQL 交叉检索** |
 | trust 信任度 + 反馈 | ✅ `fact_feedback` + `trust_score` | ✅ 同上 |
-| **LLM 自动提取** | ✅ **有代码 + Prompt，默认关闭** (`llm_extract: false`) | ✅ **默认开，增强 Prompt（含重要性评分）** |
-| 提取时机 | ✅ 压缩前 + 会话结束 + 记忆写入镜像 | ✅ 同上 |
-| 提取输出字段 | content + category + tags | ✅ 同上 + **importance 1-10** |
-| **⭐ 重要性评分** | ❌ Prompt 无要求，代码不解析 | ✅ LLM 自动评分 1-10，检索加权 |
+| **LLM 自动提取** | ❌ **纯 regex**（`I prefer...`、`we decided...` 等模式匹配） | ✅ **LLM 异步提取 + 重要性/分类/标签** |
+| 提取时机 | ❌ 仅 `on_session_end` + **regex** | ✅ 压缩前 + 会话结束 + 记忆写入镜像，**全 LLM** |
+| 提取输出字段 | content + category + tags（手动 add） | ✅ 同上 + **importance 1-10** |
+| **⭐ 重要性评分** | ❌ | ✅ LLM 自动评分 1-10，检索加权 |
 | **🔇 琐事消息过滤** | ❌ | ✅ 跳过 "ok/好的/👍" 等无信息内容 |
 | **⚡ 熔断保护** | ❌ | ✅ 连续 3 次失败后冷却 120 秒 |
 | **🧠 反思 Reflection** | ❌ | ✅ 每 5 次提取后元分析 → 元事实 |
