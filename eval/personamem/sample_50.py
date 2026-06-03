@@ -6,11 +6,11 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT / 'src'))
+sys.path.insert(0, str(PROJECT / 'eval'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from butterfly_dream import ButterflyDreamMemoryProvider
 from run_personamem import process_context, answer_question, _parse_options
-
 from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
 _load_hermes_env()
 

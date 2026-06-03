@@ -7,7 +7,8 @@ from collections import defaultdict
 
 PROJECT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT / 'src'))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'longmemeval'))
+sys.path.insert(0, str(PROJECT / 'eval'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from butterfly_dream import ButterflyDreamMemoryProvider
 from run_longmemeval import process_sessions, answer_question
