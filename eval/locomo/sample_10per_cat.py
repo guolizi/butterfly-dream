@@ -36,7 +36,7 @@ for conv in data:
 # Sample 10 per category
 sampled = []
 for cat in [1, 2, 3, 4, 5]:
-    pool = [q for q in all_qa if q['qa']['category'] == cat]
+    pool = [q for q in all_qa if q['qa']['category'] == cat and 'answer' in q['qa']]
     picked = random.sample(pool, min(10, len(pool)))
     sampled.extend(picked)
 
@@ -115,7 +115,7 @@ for conv_id, qa_list in by_conv.items():
 
     db = tempfile.mktemp(suffix='.db')
     config = {'db_path': db, 'llm_extract': True,
-              'extraction_model': {'provider': 'openrouter', 'model': 'owl-alpha'}
+              'extraction_model': {'provider': 'openrouter', 'model': 'owl-alpha'},
               'trivial_filter': True}
     provider = ButterflyDreamMemoryProvider(config)
     provider.initialize(session_id=f'locomo-{conv_id}')

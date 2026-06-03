@@ -482,8 +482,17 @@ def _call_extraction_llm(
 
     try:
         content = response_data["choices"][0]["message"]["content"]
+        # Strip markdown code fences (```json ... ``` or ``` ... ```)
+        content = content.strip()
+        if content.startswith("```"):
+            # Remove first line (```json or ```)
+            first_nl = content.index("\n")
+            content = content[first_nl + 1:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
         parsed = json.loads(content)
-    except (KeyError, IndexError, json.JSONDecodeError) as e:
+    except (KeyError, IndexError, json.JSONDecodeError, ValueError) as e:
         logger.warning("ButterflyDream LLM extract: parse failed: %s", e)
         return []
 
@@ -500,8 +509,16 @@ def _call_extraction_llm(
                 if isinstance(v, list):
                     parsed = v
                     break
+                # Handle nested dicts (e.g. {"fact_1": {...}, "fact_2": {...}})
+                if isinstance(v, dict):
+                    parsed = list(parsed.values())
+                    break
 
-    if not isinstance(parsed, list):
+    if isinstance(parsed, list):
+        pass  # good
+    elif isinstance(parsed, dict):
+        logger.debug("LLM extract dict keys: %s", list(parsed.keys())[:5])
+        logger.debug("LLM extract dict sample: %s", str(parsed)[:200])
         logger.warning("ButterflyDream LLM extract: unexpected format: %s", type(parsed).__name__)
         return []
 

@@ -1,0 +1,5 @@
+每维度抽 10 题, 共 42 题
+
+--- conv-41: 32 sessions, 663 turns, 6 QA ---
+ButterflyDream LLM extract: unexpected format: dict
+ButterflyDream LLM extract: parse failed: 'choices'
