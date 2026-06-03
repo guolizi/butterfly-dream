@@ -61,24 +61,24 @@ def load_dataset(subset: str = "oracle") -> list:
 def process_sessions(provider: ButterflyDreamMemoryProvider, sessions: list):
     """Feed haystack sessions into Butterfly Dream for extraction.
 
-    Flatten all sessions into one message list and call on_session_end once,
-    because on_session_end uses an incremental index (_last_extracted_idx)
-    that assumes messages are from the same continuous session.
-    The extraction layer already truncates per-message (_MAX_MSG_CHARS=1000)
-    and total (_MAX_EXTRACT_CHARS=1M), so flattening is safe.
+    Processes each session separately so the extraction LLM handles
+    manageable chunks and session boundaries are preserved. This is
+    important for cross-session evaluation items.
     """
-    all_messages = []
     for session in sessions:
-        for turn in session:
-            all_messages.append({"role": turn["role"], "content": turn["content"]})
-
-    before = provider._store.count_facts() if provider._store else 0
-    provider.on_session_end(all_messages)
-    # Wait for async extraction to finish (max 120s, check every 0.5s)
-    for _ in range(240):
-        time.sleep(0.5)
-        if provider._store and provider._store.count_facts() > before:
-            break
+        session_msgs = [{"role": turn["role"], "content": turn["content"]}
+                        for turn in session]
+        if not session_msgs:
+            continue
+        before = provider._store.count_facts() if provider._store else 0
+        # Reset extraction index so each session is processed independently
+        provider._last_extracted_idx = 0
+        provider.on_session_end(session_msgs)
+        # Wait for async extraction to finish (max 60s per session)
+        for _ in range(120):
+            time.sleep(0.5)
+            if provider._store and provider._store.count_facts() > before:
+                break
 
 
 def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> str:

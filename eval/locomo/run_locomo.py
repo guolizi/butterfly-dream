@@ -55,60 +55,71 @@ def load_dataset(path: str) -> list:
         return json.load(f)
 
 
-def flatten_conversation(conv: dict) -> list:
-    """Flatten all sessions into a single message list.
-
-    LoCoMo uses custom speaker names (not user/assistant).
-    Map alternating speakers to user/assistant for the extraction layer,
-    which only processes role in ("user", "assistant").
-
-    Also injects session dates into the first message of each session
-    so the extraction LLM can capture temporal information.
-    """
-    sessions = sorted(
+def get_session_names(conv: dict) -> list:
+    """Return sorted session keys from a LoCoMo conversation dict."""
+    return sorted(
         [k for k in conv.keys()
          if k.startswith("session_") and "_date" not in k
          and "_observation" not in k and "_summary" not in k],
         key=lambda k: int(k.split("_")[1])
     )
+
+
+def flatten_session(conv: dict, session_name: str) -> list:
+    """Convert one LoCoMo session into a message list for extraction.
+
+    Maps speaker names to user/assistant and injects session date.
+    """
     speaker_a = conv.get("speaker_a", "")
     speaker_b = conv.get("speaker_b", "")
-    all_messages = []
-    for sname in sessions:
-        # Get session date from metadata
-        sess_num = sname.split("_")[1]
-        date_key = f"session_{sess_num}_date_time"
-        sess_date = conv.get(date_key, "")
+    sess_num = session_name.split("_")[1]
+    date_key = f"session_{sess_num}_date_time"
+    sess_date = conv.get(date_key, "")
 
-        for i, turn in enumerate(conv[sname]):
-            speaker = turn["speaker"]
-            # Map to user/assistant alternately per session
-            if speaker == speaker_a:
-                role = "user"
-            elif speaker == speaker_b:
-                role = "assistant"
-            else:
-                role = "user"  # fallback
-            content = turn["text"]
-            # Prepend date context to first message of each session
-            if i == 0 and sess_date:
-                content = f"[Date: {sess_date}] {content}"
-            all_messages.append({
-                "role": role,
-                "content": content,
-            })
+    messages = []
+    for i, turn in enumerate(conv[session_name]):
+        speaker = turn["speaker"]
+        if speaker == speaker_a:
+            role = "user"
+        elif speaker == speaker_b:
+            role = "assistant"
+        else:
+            role = "user"
+        content = turn["text"]
+        if i == 0 and sess_date:
+            content = f"[Date: {sess_date}] {content}"
+        messages.append({"role": role, "content": content})
+    return messages
+
+
+def flatten_conversation(conv: dict) -> list:
+    """Flatten all sessions into a single message list (legacy, for QA answering)."""
+    all_messages = []
+    for sname in get_session_names(conv):
+        all_messages.extend(flatten_session(conv, sname))
     return all_messages
 
 
-def process_conversation(provider: ButterflyDreamMemoryProvider, messages: list):
-    """Feed flattened conversation into Butterfly Dream."""
-    before = provider._store.count_facts() if provider._store else 0
-    provider.on_session_end(messages)
-    # Wait for extraction (max 120s)
-    for _ in range(240):
-        time.sleep(0.5)
-        if provider._store and provider._store.count_facts() > before:
-            break
+def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
+    """Extract facts from a LoCoMo conversation, one session at a time.
+
+    Each session is fed separately to on_session_end so the extraction LLM
+    processes manageable chunks and preserves session boundaries.
+    """
+    session_names = get_session_names(conv)
+    for sname in session_names:
+        session_msgs = flatten_session(conv, sname)
+        if not session_msgs:
+            continue
+        before = provider._store.count_facts() if provider._store else 0
+        # Reset extraction index so each session is processed independently
+        provider._last_extracted_idx = 0
+        provider.on_session_end(session_msgs)
+        # Wait for extraction to complete (max 60s per session)
+        for _ in range(120):
+            time.sleep(0.5)
+            if provider._store and provider._store.count_facts() > before:
+                break
 
 
 def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> str:
@@ -266,10 +277,11 @@ def main():
         print(f"💬 [{conv_idx+1}/{len(data)}] {sid} — {len(qa_list)} QA pairs")
         print(f"{'='*60}")
 
-        # Flatten and extract
+        # Extract per-session
         t0 = time.perf_counter()
-        messages = flatten_conversation(conv)
-        print(f"  📝 Flattened: {len(messages)} turns, {sum(len(m['content']) for m in messages):,} chars")
+        session_names = get_session_names(conv)
+        total_turns = sum(len(conv[s]) for s in session_names)
+        print(f"  📝 {len(session_names)} sessions, {total_turns} turns")
 
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             q_db = tmp.name
@@ -283,7 +295,7 @@ def main():
         qp.initialize(session_id=f"locomo-{sid}")
 
         try:
-            process_conversation(qp, messages)
+            process_conversation(qp, conv)
         except Exception as e:
             print(f"  ⚠️  Extraction error: {e}")
 
