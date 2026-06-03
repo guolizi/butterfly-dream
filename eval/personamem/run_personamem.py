@@ -82,8 +82,8 @@ def process_context(provider: ButterflyDreamMemoryProvider, messages: list, end_
 
     before = provider._store.count_facts() if provider._store else 0
     provider.on_session_end(all_messages)
-    # Wait for async extraction (max 30s)
-    for _ in range(60):
+    # Wait for async extraction (max 120s, check every 0.5s)
+    for _ in range(240):
         time.sleep(0.5)
         if provider._store and provider._store.count_facts() > before:
             break

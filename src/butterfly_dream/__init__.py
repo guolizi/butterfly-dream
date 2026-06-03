@@ -252,9 +252,9 @@ MEDIA_CLEANUP_SCHEMA = {
 # ---------------------------------------------------------------------------
 
 # Truncation limits for LLM extraction
-_MAX_EXTRACT_CHARS = 1_000_000
-_EXTRACT_HEAD_CHARS = 500_000
-_EXTRACT_TAIL_CHARS = 498_000
+_MAX_EXTRACT_CHARS = 3_000_000
+_EXTRACT_HEAD_CHARS = 1_500_000
+_EXTRACT_TAIL_CHARS = 1_498_000
 _MAX_MSG_CHARS = 1000
 
 # Trivial message patterns — skip LLM extraction for low-information content
@@ -333,7 +333,7 @@ def _call_extraction_llm(
     messages_text: str,
     provider: str,
     model: str,
-    timeout: int = 30,
+    timeout: int = 90,
     system_prompt: str | None = None,
 ) -> list[dict]:
     """Call the extraction LLM and return parsed fact objects with importance.
