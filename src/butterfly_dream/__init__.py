@@ -458,10 +458,13 @@ def _call_extraction_llm(
             {"role": "system", "content": base_prompt + lang_hint},
             {"role": "user", "content": f"Extract facts from these conversation turns:\n\n{messages_text}"},
         ],
-        "response_format": {"type": "json_object"},
         "temperature": 0.1,
         "max_tokens": 16384,
     }
+    # Some providers support response_format for guaranteed JSON output,
+    # but not all (e.g. owl-alpha). Only add it for known-good providers.
+    if provider in ("openai", "deepseek"):
+        payload["response_format"] = {"type": "json_object"}
 
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -513,6 +516,10 @@ def _call_extraction_llm(
                 if isinstance(v, dict):
                     parsed = list(parsed.values())
                     break
+        # Single-fact dict: {"content": "...", "category": "...", ...}
+        # Wrap in a list so downstream validation picks it up
+        if isinstance(parsed, dict) and "content" in parsed:
+            parsed = [parsed]
 
     if isinstance(parsed, list):
         pass  # good
