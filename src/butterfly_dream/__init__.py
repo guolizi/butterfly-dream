@@ -37,6 +37,7 @@ _DEFAULT_BASE_URLS = {
     "groq": "https://api.groq.com/openai/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1",
     "minimax": "https://api.minimax.chat/v1",
+    "glm": "https://open.bigmodel.cn/api/paas/v4",
     "ollama": "http://localhost:11434/v1",
 }
 

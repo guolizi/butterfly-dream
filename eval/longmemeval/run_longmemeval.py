@@ -166,7 +166,7 @@ def main():
                         help="Output JSONL path")
     parser.add_argument("--data", default="",
                         help="Direct path to a JSON dataset file (overrides --subset)")
-    parser.add_argument("--model", default="deepseek-v4-flash",
+    parser.add_argument("--model", default="glm-4-flash",
                         help="Extraction model")
     args = parser.parse_args()
     
@@ -207,7 +207,7 @@ def main():
         q_config = {
             "db_path": q_db,
             "llm_extract": True,
-            "extraction_model": {"provider": "deepseek", "model": args.model},
+            "extraction_model": {"provider": "glm", "model": args.model},
             "trivial_filter": True,
             "circuit_breaker": {"max_failures": 5, "cooldown_seconds": 120},
             "reflection": False,
