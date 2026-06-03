@@ -1,0 +1,5 @@
+{"question_id": "acd74206-37dc-4756-94a8-b99a395d9a21", "question_type": "recall_user_shared_facts", "topic": "musicRecommendation", "hypothesis": "(c)", "correct_answer": "(c)", "is_correct": true}
+{"question_id": "f546a74f-54de-40d0-9d88-8b0e30467d7b", "question_type": "provide_preference_aligned_recommendations", "topic": "musicRecommendation", "hypothesis": "(d)", "correct_answer": "(d)", "is_correct": true}
+{"question_id": "b3588797-acdf-40d3-bcc5-951f81896f95", "question_type": "suggest_new_ideas", "topic": "musicRecommendation", "hypothesis": "(c)", "correct_answer": "(a)", "is_correct": false}
+{"question_id": "5370f186-0028-41f4-b436-c48575899fca", "question_type": "suggest_new_ideas", "topic": "musicRecommendation", "hypothesis": "(a)", "correct_answer": "(b)", "is_correct": false}
+{"question_id": "a40d5f67-8ec6-480b-a901-9709eecee9b9", "question_type": "recalling_the_reasons_behind_previous_updates", "topic": "musicRecommendation", "hypothesis": "(a)", "correct_answer": "(d)", "is_correct": false}

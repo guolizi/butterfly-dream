@@ -21,11 +21,18 @@ eval/
 │   └── ...                         ← 各长度/领域子集 JSON
 │
 └── longmemeval/                    ← LongMemEval 外部基准 (ICLR 2025)
-    ├── run_longmemeval.py          ← Butterfly Dream × LongMemEval 适配器
-    ├── debug_one.py                ← 单题诊断脚本
+│   ├── run_longmemeval.py          ← Butterfly Dream × LongMemEval 适配器
+│   ├── debug_one.py                ← 单题诊断脚本
+│   ├── data/
+│   │   ├── longmemeval_oracle.json ← 500 题 Oracle 版
+│   │   └── longmemeval_s.json      ← 500 题 S 版
+│   └── results_*.jsonl             ← 评测结果
+│
+└── personamem/                     ← PersonaMem 外部基准 (COLM 2025)
+    ├── run_personamem.py           ← Butterfly Dream × PersonaMem 适配器
     ├── data/
-    │   ├── longmemeval_oracle.json ← 500 题 Oracle 版
-    │   └── longmemeval_s.json      ← 500 题 S 版
+    │   ├── questions_32k.csv       ← 589 题 (32K tokens)
+    │   └── shared_contexts_32k.jsonl
     └── results_*.jsonl             ← 评测结果
 ```
 
@@ -54,6 +61,17 @@ python3 eval/longmemeval/run_longmemeval.py --data eval/longmemeval/data/longmem
 
 # 500 题全量 (预计 ~5h)
 python3 eval/longmemeval/run_longmemeval.py --subset oracle
+
+# ── PersonaMem 外部基准 ──
+
+# 5 题快速验证
+python3 eval/personamem/run_personamem.py --limit 5
+
+# 按题型筛选
+python3 eval/personamem/run_personamem.py --type recall_user_shared_facts --limit 50
+
+# 589 题全量
+python3 eval/personamem/run_personamem.py
 ```
 
 ## 评测维度概览
@@ -96,3 +114,16 @@ python3 eval/longmemeval/run_longmemeval.py --subset oracle
 | single-session-assistant | 56 |
 | single-session-preference | 30 |
 | **总计** | **500** |
+
+### PersonaMem (personamem/run_personamem.py)
+
+| 维度 | 题数 |
+|:-----|:----:|
+| track_full_preference_evolution | 139 |
+| recall_user_shared_facts | 129 |
+| recalling_the_reasons_behind_previous_updates | 99 |
+| suggest_new_ideas | 93 |
+| generalizing_to_new_scenarios | 57 |
+| provide_preference_aligned_recommendations | 55 |
+| recalling_facts_mentioned_by_the_user | 17 |
+| **总计** | **589** |
