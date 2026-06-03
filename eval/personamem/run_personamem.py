@@ -23,27 +23,11 @@ import tempfile
 import time
 from pathlib import Path
 
-# Load Hermes .env
-def _load_hermes_env():
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file():
-        return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if key not in os.environ:
-                os.environ[key] = val.strip().strip("\"'").strip()
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
 
 _load_hermes_env()
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-
-from butterfly_dream import ButterflyDreamMemoryProvider
-
+# Load Hermes .env
 
 def load_questions(csv_path: str) -> list:
     """Load questions from CSV file."""
@@ -127,14 +111,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str, optio
 
 
 def _generate_answer(question: str, context: str, options: list) -> str:
-    """Use LLM to pick the best option based on retrieved context."""
-    import urllib.request
-    from butterfly_dream.__init__ import _resolve_provider_credentials
-
-    base_url, api_key = _resolve_provider_credentials("openrouter")
-    if not api_key:
-        return options[0] if options else ""
-
+    """Use LLM to pick the best option based on retrieved context (via eval_utils.call_llm)."""
     # Format options for the prompt
     options_text = "\n".join(f"{opt}" for opt in options)
 
@@ -150,40 +127,19 @@ Options:
 
 Reply with ONLY the letter prefix of the best option, e.g. "(a)". Do not explain."""
 
-    url = f"{base_url}/chat/completions"
-    payload = {
-        "model": "owl-alpha",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant that selects the best response option based on user memory. Reply with only the letter prefix."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.1,
-        "max_tokens": 500,
-    }
-
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read())
-        choice = data["choices"][0]["message"]["content"].strip()
-        # Extract letter prefix like "(a)" from the response
-        import re
-        m = re.search(r'\([a-z]\)', choice.lower())
-        if m:
-            return m.group(0)
-        return choice
-    except Exception as e:
-        print(f"  ⚠️  LLM error: {e}")
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that selects the best response option based on user memory. Reply with only the letter prefix."},
+        {"role": "user", "content": prompt},
+    ]
+    choice = call_llm("answer", messages=messages)
+    if not choice:
         return options[0] if options else ""
+    # Extract letter prefix like "(a)" from the response
+    import re
+    m = re.search(r'\([a-z]\)', choice.lower())
+    if m:
+        return m.group(0)
+    return choice
 
 
 def main():

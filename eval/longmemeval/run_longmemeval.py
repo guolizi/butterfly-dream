@@ -21,28 +21,11 @@ import tempfile
 import time
 from pathlib import Path
 
-# Load Hermes .env (contains DEEPSEEK_API_KEY etc.)
-def _load_hermes_env():
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file():
-        return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if key not in os.environ:
-                val = val.strip().strip("\"'").strip()
-                os.environ[key] = val
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
 
 _load_hermes_env()
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-
-from butterfly_dream import ButterflyDreamMemoryProvider
-
+# Load Hermes .env (contains DEEPSEEK_API_KEY etc.)
 
 def load_dataset(subset: str = "oracle") -> list:
     """Load LongMemEval dataset."""
@@ -106,17 +89,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> st
 
 
 def _generate_answer(question: str, context: str) -> str:
-    """Use LLM to generate an answer based on retrieved context."""
-    import urllib.request
-    
-    # Resolve provider credentials from Butterfly Dream config
-    from butterfly_dream.__init__ import _resolve_provider_credentials
-    
-    # Use owl-alpha (OpenRouter free) for answer generation
-    base_url, api_key = _resolve_provider_credentials("openrouter")
-    if not api_key:
-        return "Unable to generate answer: no API key configured."
-    
+    """Use LLM to generate an answer based on retrieved context (via eval_utils.call_llm)."""
     prompt = f"""Based on the following memory context, answer the user's question.
 If the context does not contain enough information to answer, say "I don't have enough information."
 Be concise and direct.
@@ -128,33 +101,12 @@ Question: {question}
 
 Answer:"""
     
-    url = f"{base_url}/chat/completions"
-    payload = {
-        "model": "owl-alpha",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.1,
-        "max_tokens": 500,
-    }
-    
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"Error generating answer: {e}"
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context."},
+        {"role": "user", "content": prompt},
+    ]
+    result = call_llm("answer", messages=messages)
+    return result if result else "Unable to generate answer: no API key configured."
 
 
 def main():

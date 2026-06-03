@@ -34,29 +34,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 # 自动加载 Hermes .env（独立运行时需要 API key）
 # ═══════════════════════════════════════════════════════════════
 
-def _load_hermes_env():
-    """Load ~/.hermes/.env into os.environ if not already set."""
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file():
-        return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if key not in os.environ:  # don't override existing env
-                # Strip surrounding quotes if any
-                val = val.strip().strip("\"'").strip()
-                os.environ[key] = val
-
-_load_hermes_env()
-
-from butterfly_dream import ButterflyDreamMemoryProvider
-from butterfly_dream.retrieval import ThreeDimRetriever
-from butterfly_dream.__init__ import _call_extraction_llm
-
 
 # ═══════════════════════════════════════════════════════════════
 # 对话场景定义

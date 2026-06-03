@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
 """Sample 10 questions per LoCoMo dimension and evaluate."""
 
-import json, random, sys, os, tempfile, time, urllib.request, re
+import json, random, sys, os, tempfile, time, re
 from pathlib import Path
 from collections import defaultdict
-
-# Load hermes env
-env_path = Path.home() / '.hermes' / '.env'
-with open(env_path) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#') or '=' not in line: continue
-        key, _, val = line.partition('=')
-        if key.strip() not in os.environ:
-            os.environ[key.strip()] = val.strip().strip('"')
 
 PROJECT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT / 'src'))
@@ -21,6 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from butterfly_dream import ButterflyDreamMemoryProvider
 from run_locomo import flatten_conversation, flatten_session, get_session_names, load_dataset, CAT_NAMES, process_conversation
+
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
+_load_hermes_env()
 
 random.seed(42)
 
@@ -46,10 +39,6 @@ by_conv = defaultdict(list)
 for s in sampled:
     by_conv[s['conv_id']].append(s)
 
-from butterfly_dream.__init__ import _resolve_provider_credentials
-base_url, api_key = _resolve_provider_credentials('openrouter')
-
-
 def judge_answer(question, answer, hypothesis):
     prompt = (
         f'Given a question, reference answer, and generated answer, score 1-5.\n'
@@ -58,21 +47,12 @@ def judge_answer(question, answer, hypothesis):
         f'Question: {question}\nReference: {answer}\nGenerated: {hypothesis}\n\n'
         f'Output ONLY: {{"score": <1-5>}}'
     )
-    payload = {'model': 'owl-alpha', 'messages': [{'role': 'user', 'content': prompt}],
-               'temperature': 0, 'max_tokens': 500}
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f'{base_url}/chat/completions', data=body,
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-        method='POST')
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            rdata = json.loads(resp.read())
-        text = rdata['choices'][0]['message']['content'].strip()
-        m = re.search(r'"score"\s*:\s*(\d)', text)
-        return int(m.group(1)) if m else 3
-    except Exception:
+    messages = [{'role': 'user', 'content': prompt}]
+    text = call_llm('judge', messages=messages, temperature=0)
+    if not text:
         return 3
+    m = re.search(r'"score"\s*:\s*(\d)', text)
+    return int(m.group(1)) if m else 3
 
 
 def answer_question(provider, question):
@@ -85,22 +65,11 @@ def answer_question(provider, question):
         f'If not enough info, say "I don\'t have enough information."\n\n'
         f'Context:\n{context}\n\nQuestion: {question}\nAnswer:'
     )
-    payload = {'model': 'owl-alpha',
-               'messages': [
-                   {'role': 'system', 'content': 'Answer based only on the memory context.'},
-                   {'role': 'user', 'content': prompt}],
-               'temperature': 0.1, 'max_tokens': 500}
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f'{base_url}/chat/completions', data=body,
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-        method='POST')
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            rdata = json.loads(resp.read())
-        return rdata['choices'][0]['message']['content'].strip()
-    except Exception as e:
-        return f'Error: {e}'
+    messages = [
+        {'role': 'system', 'content': 'Answer based only on the memory context.'},
+        {'role': 'user', 'content': prompt}]
+    result = call_llm('answer', messages=messages)
+    return result if result else 'Error: no API key configured'
 
 
 cat_scores = {1: [], 2: [], 3: [], 4: [], 5: []}

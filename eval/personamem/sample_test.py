@@ -5,24 +5,6 @@ from pathlib import Path
 
 random.seed(42)
 
-def _load_hermes_env():
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file(): return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line: continue
-            k, _, v = line.partition("=")
-            k = k.strip()
-            if k not in os.environ:
-                os.environ[k] = v.strip().strip("\"'").strip()
-
-_load_hermes_env()
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-os.chdir(str(Path(__file__).resolve().parent.parent.parent))
-
-from run_personamem import _parse_options, process_context, answer_question
-from butterfly_dream import ButterflyDreamMemoryProvider
 
 def load_contexts(size):
     path = Path(f"eval/personamem/data/shared_contexts_{size}.jsonl")

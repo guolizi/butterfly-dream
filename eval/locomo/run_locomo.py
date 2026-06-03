@@ -20,25 +20,11 @@ import os
 import sys
 import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
-def _load_hermes_env():
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file(): return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line: continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if key not in os.environ:
-                os.environ[key] = val.strip().strip("\"'").strip()
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
 
 _load_hermes_env()
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-
-from butterfly_dream import ButterflyDreamMemoryProvider
 
 
 CAT_NAMES = {
@@ -139,13 +125,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> st
 
 
 def _generate_answer(question: str, context: str) -> str:
-    """Use LLM to generate an answer."""
-    from butterfly_dream.__init__ import _resolve_provider_credentials
-
-    base_url, api_key = _resolve_provider_credentials("openrouter")
-    if not api_key:
-        return "Unable to generate answer."
-
+    """Use LLM to generate an answer via eval_utils.call_llm()."""
     prompt = f"""Based on the following memory context about a conversation between two people, answer the question.
 Be concise and direct. If the context doesn't contain enough information, say "I don't have enough information."
 
@@ -156,40 +136,16 @@ Question: {question}
 
 Answer:"""
 
-    url = f"{base_url}/chat/completions"
-    payload = {
-        "model": "owl-alpha",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context. Be concise."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.1,
-        "max_tokens": 500,
-    }
-
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        return f"Error: {e}"
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context. Be concise."},
+        {"role": "user", "content": prompt},
+    ]
+    result = call_llm("answer", messages=messages)
+    return result if result else "Unable to generate answer."
 
 
 def judge_answer(question: str, gold: str, hypothesis: str) -> int:
-    """Use LLM to judge answer quality (1-5 scale)."""
-    from butterfly_dream.__init__ import _resolve_provider_credentials
-
-    base_url, api_key = _resolve_provider_credentials("openrouter")
-    if not api_key:
-        return 0
-
+    """Use LLM to judge answer quality (1-5 scale) via eval_utils.call_llm()."""
     prompt = f"""Rate the following answer on a scale of 1-5 based on semantic equivalence with the reference.
 
 Question: {question}
@@ -205,33 +161,16 @@ Scoring:
 
 Reply with ONLY the number (1-5). No explanation."""
 
-    url = f"{base_url}/chat/completions"
-    payload = {
-        "model": "owl-alpha",
-        "messages": [
-            {"role": "system", "content": "You are a precise evaluator. Reply with only a number."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.0,
-        "max_tokens": 500,
-    }
-
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read())
-        raw = data["choices"][0]["message"]["content"].strip()
-        import re
-        m = re.search(r'[1-5]', raw)
-        return int(m.group(0)) if m else 0
-    except Exception:
+    messages = [
+        {"role": "system", "content": "You are a precise evaluator. Reply with only a number."},
+        {"role": "user", "content": prompt},
+    ]
+    raw = call_llm("judge", messages=messages, temperature=0)
+    if not raw:
         return 0
+    import re
+    m = re.search(r'[1-5]', raw)
+    return int(m.group(0)) if m else 0
 
 
 def main():

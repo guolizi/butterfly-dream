@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
 """Sample 50 LongMemEval questions across all dimensions and evaluate."""
 
-import json, random, sys, os, tempfile, time, urllib.request, re
+import json, random, sys, os, tempfile, time, re
 from pathlib import Path
 from collections import defaultdict
-
-# Load env
-env_path = Path.home() / '.hermes' / '.env'
-with open(env_path) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#') or '=' not in line: continue
-        key, _, val = line.partition('=')
-        if key.strip() not in os.environ:
-            os.environ[key.strip()] = val.strip().strip('"')
 
 PROJECT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT / 'src'))
@@ -21,7 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'longmemeval'))
 
 from butterfly_dream import ButterflyDreamMemoryProvider
 from run_longmemeval import process_sessions, answer_question
-from butterfly_dream.__init__ import _resolve_provider_credentials
+
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
+_load_hermes_env()
 
 random.seed(42)
 
@@ -49,10 +41,6 @@ for t in types:
     count = sum(1 for s in sampled if s['question_type'] == t)
     print(f'  {t}: {count}')
 
-# Load judge credentials (use owl-alpha via OpenRouter for judging)
-judge_base, judge_key = _resolve_provider_credentials('openrouter')
-
-
 def judge_answer(question, answer, hypothesis):
     prompt = (
         f'Score 1-5: 5=correct+complete, 4=correct+incomplete, '
@@ -60,22 +48,12 @@ def judge_answer(question, answer, hypothesis):
         f'Q: {question}\nRef: {answer}\nGen: {hypothesis}\n'
         f'Output ONLY: {{"score": <1-5>}}'
     )
-    payload = {'model': 'owl-alpha',
-               'messages': [{'role': 'user', 'content': prompt}],
-               'temperature': 0, 'max_tokens': 500}
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f'{judge_base}/chat/completions', data=body,
-        headers={'Authorization': f'Bearer {judge_key}', 'Content-Type': 'application/json'},
-        method='POST')
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            rdata = json.loads(resp.read())
-        text = rdata['choices'][0]['message']['content'].strip()
-        m = re.search(r'"score"\s*:\s*(\d)', text)
-        return int(m.group(1)) if m else 3
-    except Exception:
+    messages = [{'role': 'user', 'content': prompt}]
+    text = call_llm('judge', messages=messages, temperature=0)
+    if not text:
         return 3
+    m = re.search(r'"score"\s*:\s*(\d)', text)
+    return int(m.group(1)) if m else 3
 
 
 # Run

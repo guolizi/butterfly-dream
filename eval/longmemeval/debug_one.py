@@ -3,21 +3,6 @@
 import json, os, sys, time, tempfile
 from pathlib import Path
 
-def _load_hermes_env():
-    env_path = Path.home() / ".hermes" / ".env"
-    if not env_path.is_file(): return
-    with open(env_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line: continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if key not in os.environ:
-                os.environ[key] = val.strip().strip("\"'").strip()
-
-_load_hermes_env()
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-from butterfly_dream import ButterflyDreamMemoryProvider
 
 # Load first question
 data_dir = Path(__file__).resolve().parent / "data"
@@ -104,6 +89,7 @@ print(f"🔍 检索: '{entry['question']}'")
 print("=" * 70)
 
 from butterfly_dream.retrieval import ThreeDimRetriever
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
 retriever = ThreeDimRetriever(provider._store)
 results = retriever.search(query=entry["question"], scenario="chat", limit=5)
 for i, r in enumerate(results):

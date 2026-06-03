@@ -1,0 +1,25 @@
+# Butterfly Dream 评测管线 — 统一模型配置
+# 所有 eval 脚本从这里读取模型设置，换模型只改这一个文件
+
+extraction:
+  provider: openrouter
+  model: owl-alpha
+
+answer:
+  provider: openrouter
+  model: owl-alpha
+
+judge:
+  provider: openrouter
+  model: owl-alpha
+
+# DeepSeek V4 Flash 备选（reasoning model，judge 需要 max_tokens >= 500）
+# extraction:
+#   provider: deepseek
+#   model: deepseek-v4-flash
+# answer:
+#   provider: deepseek
+#   model: deepseek-v4-flash
+# judge:
+#   provider: deepseek
+#   model: deepseek-v4-flash
