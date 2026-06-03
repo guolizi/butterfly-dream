@@ -1,0 +1,31 @@
+每维度抽 10 题, 共 42 题
+
+--- conv-41: 32 sessions, 663 turns, 6 QA ---
+ButterflyDream LLM extract: parse failed: Expecting ':' delimiter: line 77 column 13 (char 5313)
+  facts=226, 216.7s
+  [X] cat=1 score=3 What causes does John feel passionate about supporting?
+  [X] cat=1 score=3 What causes has John done events for?
+  [X] cat=1 score=3 What damages have happened to John's car?
+  [X] cat=1 score=3 What type of volunteering have John and Maria both done
+  [X] cat=4 score=3 What kind of event did John and his family attend in Ju
+  [X] cat=4 score=3 What yoga activity has Maria been trying to improve her
+
+--- conv-26: 19 sessions, 419 turns, 7 QA ---
+  facts=180, 251.2s
+  [X] cat=1 score=3 What did Melanie paint recently?
+  [X] cat=2 score=3 When did Melanie go camping in June?
+  [X] cat=2 score=3 When did Melanie go to the pottery workshop?
+  [X] cat=2 score=3 When did Melanie read the book "nothing is impossible"?
+  [X] cat=3 score=3 What fields would Caroline be likely to pursue in her e
+  [X] cat=5 score=3 Is Oscar Melanie's pet?
+  [X] cat=5 score=3 Did Caroline make the black and white bowl in the photo
+
+--- conv-43: 29 sessions, 680 turns, 5 QA ---
+  facts=263, 273.7s
+  [X] cat=1 score=3 What does John do to share his knowledge?
+  [X] cat=1 score=3 What schools did John play basketball in and how many y
+  [X] cat=1 score=3 What books has Tim read?
+  [X] cat=3 score=3 Who is Anthony?
+  [X] cat=4 score=3 What does John want to do after his basketball career?
+
+--- conv-50: 30 sessions, 568 turns, 7 QA ---

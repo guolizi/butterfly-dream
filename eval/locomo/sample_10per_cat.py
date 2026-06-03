@@ -59,7 +59,7 @@ def judge_answer(question, answer, hypothesis):
         f'Output ONLY: {{"score": <1-5>}}'
     )
     payload = {'model': 'deepseek-v4-flash', 'messages': [{'role': 'user', 'content': prompt}],
-               'temperature': 0, 'max_tokens': 50}
+               'temperature': 0, 'max_tokens': 500}
     body = json.dumps(payload).encode()
     req = urllib.request.Request(
         f'{base_url}/chat/completions', data=body,
