@@ -164,7 +164,7 @@ Answer:"""
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 256,
+        "max_tokens": 500,
     }
 
     body = json.dumps(payload).encode("utf-8")

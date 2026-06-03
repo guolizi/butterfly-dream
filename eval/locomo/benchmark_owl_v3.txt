@@ -29,3 +29,34 @@ ButterflyDream LLM extract: parse failed: Expecting ':' delimiter: line 77 colum
   [X] cat=4 score=3 What does John want to do after his basketball career?
 
 --- conv-50: 30 sessions, 568 turns, 7 QA ---
+  facts=223, 196.2s
+  [X] cat=1 score=3 What style of guitars does Calvin own?
+  [X] cat=2 score=3 What was Dave doing in the first weekend of October 202
+  [X] cat=3 score=3 Would Calvin enjoy performing at the Hollywood Bowl?
+  [X] cat=3 score=3 Which country do Calvin and Dave want to meet in?
+  [X] cat=4 score=3 What workshop did Dave get picked for on 11 August, 202
+  [X] cat=4 score=3 What did Calvin do recently at his Japanese house?
+  [X] cat=4 score=3 How did the audience in Tokyo react when Calvin sang on
+
+--- conv-49: 25 sessions, 509 turns, 5 QA ---
+  facts=182, 194.2s
+  [V] cat=1 score=5 How many Prius has Evan owned?
+  [X] cat=2 score=3 When did Sam first go to the doctor and find out he had
+  [X] cat=2 score=3 When will Evan and his partner have their honeymoon in 
+  [X] cat=3 score=3 How often does Sam get health checkups?
+  [X] cat=4 score=3 What painting did Evan share with Sam in October?
+
+--- conv-30: 19 sessions, 369 turns, 1 QA ---
+  facts=162, 245.7s
+  [X] cat=2 score=3 When did Jon host a dance competition?
+
+--- conv-42: 29 sessions, 629 turns, 6 QA ---
+  facts=242, 264.7s
+  [X] cat=2 score=3 When did someone write Joanna a touching letter?
+  [X] cat=2 score=3 How long did it take for Joanna to finish writing her b
+  [X] cat=2 score=3 When did Nate adopt Max?
+  [X] cat=3 score=3 What state did Joanna visit in summer 2021?
+  [X] cat=4 score=3 How does Nate feel about Joanna's ability to bounce bac
+  [X] cat=4 score=3 How does Nate describe the process of taking care of tu
+
+--- conv-48: 30 sessions, 681 turns, 2 QA ---
