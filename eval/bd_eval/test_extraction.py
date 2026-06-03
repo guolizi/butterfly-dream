@@ -10,8 +10,8 @@
   对话 → _run_llm_extraction(真实 LLM) → 存储事实 → 自然语言查询 → 验证结果
 
 用法：
-    python3 eval/test_extraction.py                              # 默认用 deepseek-v4-flash
-    python3 eval/test_extraction.py --model deepseek-v4-flash     # 指定模型
+    python3 eval/test_extraction.py                              # 默认用 owl-alpha
+    python3 eval/test_extraction.py --model owl-alpha             # 指定模型
     python3 eval/test_extraction.py --provider openai --model gpt-4o-mini
     python3 eval/test_extraction.py --compare                     # 对比多个模型
     python3 eval/test_extraction.py --name "偏好"                 # 只跑特定场景
@@ -462,9 +462,9 @@ def run_scenario(scenario: dict, provider: str, model: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 _DEFAULT_MODELS = [
-    {"provider": "deepseek", "model": "deepseek-v4-flash"},
+    {"provider": "openrouter", "model": "owl-alpha"},
     # 添加其他模型时在这里扩展，例如：
-    # {"provider": "deepseek", "model": "deepseek-v4-pro"},
+    # {"provider": "openrouter", "model": "deepseek-v4-pro"},
     # {"provider": "openai", "model": "gpt-4o-mini"},
 ]
 
@@ -573,8 +573,8 @@ def main():
         description="🦋 Butterfly Dream 端到端提取评测 — 使用真实 LLM"
     )
     parser.add_argument("--name", default="", help="只跑名字包含此关键词的场景")
-    parser.add_argument("--provider", default="deepseek", help="LLM provider (默认: deepseek)")
-    parser.add_argument("--model", default="deepseek-v4-flash", help="LLM model (默认: deepseek-v4-flash)")
+    parser.add_argument("--provider", default="openrouter", help="LLM provider (默认: openrouter)")
+    parser.add_argument("--model", default="owl-alpha", help="LLM model (默认: owl-alpha)")
     parser.add_argument("--json", action="store_true", help="JSON 格式输出")
     parser.add_argument("--compare", action="store_true",
                         help="对比多个模型（忽略 --provider/--model，使用内置列表）")

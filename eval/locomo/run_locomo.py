@@ -142,7 +142,7 @@ def _generate_answer(question: str, context: str) -> str:
     """Use LLM to generate an answer."""
     from butterfly_dream.__init__ import _resolve_provider_credentials
 
-    base_url, api_key = _resolve_provider_credentials("deepseek")
+    base_url, api_key = _resolve_provider_credentials("openrouter")
     if not api_key:
         return "Unable to generate answer."
 
@@ -158,7 +158,7 @@ Answer:"""
 
     url = f"{base_url}/chat/completions"
     payload = {
-        "model": "deepseek-v4-flash",
+        "model": "owl-alpha",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context. Be concise."},
             {"role": "user", "content": prompt},
@@ -186,7 +186,7 @@ def judge_answer(question: str, gold: str, hypothesis: str) -> int:
     """Use LLM to judge answer quality (1-5 scale)."""
     from butterfly_dream.__init__ import _resolve_provider_credentials
 
-    base_url, api_key = _resolve_provider_credentials("deepseek")
+    base_url, api_key = _resolve_provider_credentials("openrouter")
     if not api_key:
         return 0
 
@@ -207,7 +207,7 @@ Reply with ONLY the number (1-5). No explanation."""
 
     url = f"{base_url}/chat/completions"
     payload = {
-        "model": "deepseek-v4-flash",
+        "model": "owl-alpha",
         "messages": [
             {"role": "system", "content": "You are a precise evaluator. Reply with only a number."},
             {"role": "user", "content": prompt},

@@ -131,7 +131,7 @@ def _generate_answer(question: str, context: str, options: list) -> str:
     import urllib.request
     from butterfly_dream.__init__ import _resolve_provider_credentials
 
-    base_url, api_key = _resolve_provider_credentials("deepseek")
+    base_url, api_key = _resolve_provider_credentials("openrouter")
     if not api_key:
         return options[0] if options else ""
 
@@ -152,7 +152,7 @@ Reply with ONLY the letter prefix of the best option, e.g. "(a)". Do not explain
 
     url = f"{base_url}/chat/completions"
     payload = {
-        "model": "deepseek-v4-flash",
+        "model": "owl-alpha",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant that selects the best response option based on user memory. Reply with only the letter prefix."},
             {"role": "user", "content": prompt},

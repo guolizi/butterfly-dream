@@ -63,7 +63,7 @@ for size in ["32k", "128k", "1M"]:
             q_db = tmp.name
         qp = ButterflyDreamMemoryProvider({
             "db_path": q_db, "llm_extract": True,
-            "extraction_model": {"provider": "deepseek", "model": "deepseek-v4-flash"},
+            "extraction_model": {"provider": "openrouter", "model": "owl-alpha"},
             "trivial_filter": True,
             "circuit_breaker": {"max_failures": 5, "cooldown_seconds": 120},
             "reflection": False,

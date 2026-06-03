@@ -60,3 +60,8 @@ ButterflyDream LLM extract: parse failed: Expecting ':' delimiter: line 77 colum
   [X] cat=4 score=3 How does Nate describe the process of taking care of tu
 
 --- conv-48: 30 sessions, 681 turns, 2 QA ---
+  facts=282, 305.8s
+  [X] cat=3 score=3 Why did Jolene sometimes put off doing yoga?
+  [X] cat=3 score=3 What card game is Deborah talking about?
+
+--- conv-47: 31 sessions, 689 turns, 2 QA ---

@@ -49,8 +49,8 @@ for t in types:
     count = sum(1 for s in sampled if s['question_type'] == t)
     print(f'  {t}: {count}')
 
-# Load judge credentials (use deepseek for judging)
-judge_base, judge_key = _resolve_provider_credentials('deepseek')
+# Load judge credentials (use owl-alpha via OpenRouter for judging)
+judge_base, judge_key = _resolve_provider_credentials('openrouter')
 
 
 def judge_answer(question, answer, hypothesis):
@@ -60,7 +60,7 @@ def judge_answer(question, answer, hypothesis):
         f'Q: {question}\nRef: {answer}\nGen: {hypothesis}\n'
         f'Output ONLY: {{"score": <1-5>}}'
     )
-    payload = {'model': 'deepseek-v4-flash',
+    payload = {'model': 'owl-alpha',
                'messages': [{'role': 'user', 'content': prompt}],
                'temperature': 0, 'max_tokens': 500}
     body = json.dumps(payload).encode()

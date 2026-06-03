@@ -47,7 +47,7 @@ for s in sampled:
     by_conv[s['conv_id']].append(s)
 
 from butterfly_dream.__init__ import _resolve_provider_credentials
-base_url, api_key = _resolve_provider_credentials('deepseek')
+base_url, api_key = _resolve_provider_credentials('openrouter')
 
 
 def judge_answer(question, answer, hypothesis):
@@ -58,7 +58,7 @@ def judge_answer(question, answer, hypothesis):
         f'Question: {question}\nReference: {answer}\nGenerated: {hypothesis}\n\n'
         f'Output ONLY: {{"score": <1-5>}}'
     )
-    payload = {'model': 'deepseek-v4-flash', 'messages': [{'role': 'user', 'content': prompt}],
+    payload = {'model': 'owl-alpha', 'messages': [{'role': 'user', 'content': prompt}],
                'temperature': 0, 'max_tokens': 500}
     body = json.dumps(payload).encode()
     req = urllib.request.Request(
@@ -85,7 +85,7 @@ def answer_question(provider, question):
         f'If not enough info, say "I don\'t have enough information."\n\n'
         f'Context:\n{context}\n\nQuestion: {question}\nAnswer:'
     )
-    payload = {'model': 'deepseek-v4-flash',
+    payload = {'model': 'owl-alpha',
                'messages': [
                    {'role': 'system', 'content': 'Answer based only on the memory context.'},
                    {'role': 'user', 'content': prompt}],

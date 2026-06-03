@@ -43,7 +43,7 @@ sampled = random.sample(questions, min(50, len(questions)))
 print(f'PersonaMem 32K: sampled {len(sampled)} questions from {len(questions)} total')
 
 # Load judge credentials
-judge_base, judge_key = _resolve_provider_credentials('deepseek')
+judge_base, judge_key = _resolve_provider_credentials('openrouter')
 
 
 def judge_answer(question, options, correct_answer, hypothesis):
@@ -53,7 +53,7 @@ def judge_answer(question, options, correct_answer, hypothesis):
         f'Q: {question}\nOptions: {options}\nCorrect: {correct_answer}\n'
         f'Generated: {hypothesis}\nOutput ONLY: {{"score": <1-5>}}'
     )
-    payload = {'model': 'deepseek-v4-flash',
+    payload = {'model': 'owl-alpha',
                'messages': [{'role': 'user', 'content': prompt}],
                'temperature': 0, 'max_tokens': 500}
     body = json.dumps(payload).encode()

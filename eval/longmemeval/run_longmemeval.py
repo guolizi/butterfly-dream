@@ -10,7 +10,7 @@
 
 用法：
     python run_longmemeval.py --subset oracle --limit 50
-    python run_longmemeval.py --subset oracle --limit 50 --model deepseek-v4-flash
+    python run_longmemeval.py --subset oracle --limit 50 --model owl-alpha
 """
 
 import argparse
@@ -112,8 +112,8 @@ def _generate_answer(question: str, context: str) -> str:
     # Resolve provider credentials from Butterfly Dream config
     from butterfly_dream.__init__ import _resolve_provider_credentials
     
-    # Use deepseek for answer generation
-    base_url, api_key = _resolve_provider_credentials("deepseek")
+    # Use owl-alpha (OpenRouter free) for answer generation
+    base_url, api_key = _resolve_provider_credentials("openrouter")
     if not api_key:
         return "Unable to generate answer: no API key configured."
     
@@ -130,7 +130,7 @@ Answer:"""
     
     url = f"{base_url}/chat/completions"
     payload = {
-        "model": "deepseek-v4-flash",
+        "model": "owl-alpha",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context."},
             {"role": "user", "content": prompt},

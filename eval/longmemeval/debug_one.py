@@ -52,7 +52,7 @@ with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
 config = {
     "db_path": db_path,
     "llm_extract": True,
-    "extraction_model": {"provider": "deepseek", "model": "deepseek-v4-flash"},
+    "extraction_model": {"provider": "openrouter", "model": "owl-alpha"},
     "trivial_filter": True,
     "circuit_breaker": {"max_failures": 5, "cooldown_seconds": 120},
     "reflection": False,
