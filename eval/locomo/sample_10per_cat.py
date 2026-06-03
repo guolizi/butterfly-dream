@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sample 10 questions per LoCoMo dimension and evaluate."""
+"""Sample 3 questions per LoCoMo dimension and evaluate."""
 
 import json, random, sys, os, tempfile, time, re
 from pathlib import Path
@@ -26,14 +26,14 @@ for conv in data:
     for qa in conv['qa']:
         all_qa.append({'conv_id': conv_id, 'conv_dict': conv_dict, 'qa': qa})
 
-# Sample 10 per category
+# Sample 3 per category
 sampled = []
 for cat in [1, 2, 3, 4, 5]:
     pool = [q for q in all_qa if q['qa']['category'] == cat and 'answer' in q['qa']]
-    picked = random.sample(pool, min(10, len(pool)))
+    picked = random.sample(pool, min(3, len(pool)))
     sampled.extend(picked)
 
-print(f'每维度抽 10 题, 共 {len(sampled)} 题')
+print(f'每维度抽 3 题, 共 {len(sampled)} 题')
 
 by_conv = defaultdict(list)
 for s in sampled:

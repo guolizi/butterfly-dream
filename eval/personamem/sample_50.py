@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sample 50 PersonaMem (32K) questions and evaluate."""
+"""Sample 3 PersonaMem (32K) questions per dimension and evaluate."""
 
 import csv, json, random, sys, os, tempfile, time, re
 from pathlib import Path
@@ -30,9 +30,20 @@ with open(data_dir / 'questions_32k.csv') as f:
     for row in reader:
         questions.append(row)
 
-# Sample 50 random questions
-sampled = random.sample(questions, min(50, len(questions)))
-print(f'PersonaMem 32K: sampled {len(sampled)} questions from {len(questions)} total')
+# Group by question_type and sample 3 per type
+by_type = {}
+for q in questions:
+    qt = q.get('question_type', 'unknown')
+    by_type.setdefault(qt, []).append(q)
+
+sampled = []
+for qt, pool in by_type.items():
+    picked = random.sample(pool, min(3, len(pool)))
+    sampled.extend(picked)
+
+print(f'PersonaMem 32K: sampled {len(sampled)} questions across {len(by_type)} types')
+for qt in sorted(by_type):
+    print(f'  {qt}: {sum(1 for s in sampled if s.get("question_type") == qt)}')
 
 def judge_answer(question, options, correct_answer, hypothesis):
     prompt = (

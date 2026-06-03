@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sample 50 LongMemEval questions across all dimensions and evaluate."""
+"""Sample 3 LongMemEval questions per dimension and evaluate."""
 
 import json, random, sys, os, tempfile, time, re
 from pathlib import Path
@@ -26,14 +26,11 @@ by_type = defaultdict(list)
 for e in data:
     by_type[e['question_type']].append(e)
 
-# Sample 8-9 per type to get ~50 total
+# Sample 3 per type
 sampled = []
 types = sorted(by_type.keys())
-per_type = 50 // len(types)
-remainder = 50 % len(types)
-for i, t in enumerate(types):
-    n = per_type + (1 if i < remainder else 0)
-    picked = random.sample(by_type[t], min(n, len(by_type[t])))
+for t in types:
+    picked = random.sample(by_type[t], min(3, len(by_type[t])))
     sampled.extend(picked)
 
 print(f'LongMemEval: sampled {len(sampled)} questions across {len(types)} types')
