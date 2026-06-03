@@ -166,7 +166,7 @@ def main():
                         help="Output JSONL path")
     parser.add_argument("--data", default="",
                         help="Direct path to a JSON dataset file (overrides --subset)")
-    parser.add_argument("--model", default="glm-4-flash",
+    parser.add_argument("--model", default="glm-4.7-flash",
                         help="Extraction model")
     args = parser.parse_args()
     

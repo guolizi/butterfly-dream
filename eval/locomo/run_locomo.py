@@ -241,7 +241,7 @@ def main():
                         help="Process only this conversation ID (e.g. conv-26)")
     parser.add_argument("--output", default="",
                         help="Output JSONL path")
-    parser.add_argument("--model", default="glm-4-flash",
+    parser.add_argument("--model", default="glm-4.7-flash",
                         help="Extraction model")
     parser.add_argument("--no-judge", action="store_true",
                         help="Skip LLM judge (faster, exact match only)")
