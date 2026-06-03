@@ -1,0 +1,90 @@
+LongMemEval: sampled 50 questions across 6 types
+  knowledge-update: 9
+  multi-session: 9
+  single-session-assistant: 8
+  single-session-preference: 8
+  single-session-user: 8
+  temporal-reasoning: 8
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [1/50] [X] knowledge-update               score=3 facts=10 How many titles are currently on my to-watch 
+  [2/50] [X] knowledge-update               score=3 facts=13 What was the amount I was pre-approved for wh
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [3/50] [X] knowledge-update               score=3 facts=9 How many Instagram followers do I currently h
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: The read operation timed out
+  [4/50] [X] knowledge-update               score=3 facts=0 What brand of BBQ sauce am I currently obsess
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [5/50] [X] knowledge-update               score=3 facts=0 How many new postcards have I added to my col
+  [6/50] [X] knowledge-update               score=3 facts=22 How many sessions of the bereavement support 
+  [7/50] [X] knowledge-update               score=3 facts=12 How many engineers do I lead when I just star
+  [8/50] [X] knowledge-update               score=3 facts=29 What new kitchen gadget did I invest in befor
+  [9/50] [X] knowledge-update               score=3 facts=10 How many short stories have I written since I
+  [10/50] [X] multi-session                  score=3 facts=11 What is the total weight of the new feed I pu
+  [11/50] [X] multi-session                  score=3 facts=20 How many different doctors did I visit?
+  [12/50] [X] multi-session                  score=3 facts=23 How many hours in total did I spend driving t
+  [13/50] [X] multi-session                  score=3 facts=32 How many different types of food delivery ser
+  [14/50] [X] multi-session                  score=3 facts=40 How many graduation ceremonies have I attende
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [15/50] [X] multi-session                  score=3 facts=4 How many days did it take for my iPad case to
+  [16/50] [V] multi-session                  score=5 facts=15 What is the total cost of my recently purchas
+  [17/50] [X] multi-session                  score=3 facts=25 How much total money have I spent on bike-rel
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [18/50] [X] multi-session                  score=3 facts=32 How many magazine subscriptions do I currentl
+  [19/50] [X] single-session-assistant       score=3 facts=6 I was looking back at our previous conversati
+  [20/50] [X] single-session-assistant       score=3 facts=5 I wanted to follow up on our previous convers
+  [21/50] [X] single-session-assistant       score=3 facts=17 I was thinking back to our previous conversat
+  [22/50] [X] single-session-assistant       score=3 facts=0 I was going through our previous chat. Can yo
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: HTTP Error 500: Internal Server Error
+  [23/50] [X] single-session-assistant       score=3 facts=0 I wanted to follow up on our previous convers
+  [24/50] [X] single-session-assistant       score=3 facts=9 I'm going back to our previous chat about the
+  [25/50] [X] single-session-assistant       score=3 facts=3 I was going through our previous conversation
+  [26/50] [X] single-session-assistant       score=3 facts=4 I'm looking back at our previous chat about t
+  [27/50] [X] single-session-preference      score=3 facts=3 I've been struggling with my slow cooker reci
+  [28/50] [X] single-session-preference      score=3 facts=5 I've got some free time tonight, any document
+  [29/50] [X] single-session-preference      score=3 facts=6 Can you suggest some useful accessories for m
+  [30/50] [X] single-session-preference      score=3 facts=3 Can you recommend some resources where I can 
+  [31/50] [X] single-session-preference      score=3 facts=4 I'm planning a trip to Denver soon. Any sugge
+  [32/50] [X] single-session-preference      score=3 facts=0 Can you recommend a show or movie for me to w
+  [33/50] [X] single-session-preference      score=3 facts=4 I am planning another theme park weekend; do 
+  [34/50] [X] single-session-preference      score=3 facts=2 I've been having trouble with the battery lif
+  [35/50] [X] single-session-user            score=3 facts=7 What is the name of the music streaming servi
+  [36/50] [X] single-session-user            score=3 facts=5 What type of rice is my favorite?
+  [37/50] [X] single-session-user            score=3 facts=15 What was my previous stance on spirituality?
+  [38/50] [V] single-session-user            score=5 facts=9 How old was I when my grandma gave me the sil
+  [39/50] [X] single-session-user            score=3 facts=11 What did my dad gave me as a birthday gift?
+  [40/50] [X] single-session-user            score=3 facts=7 Where did I attend for my study abroad progra
+  [41/50] [X] single-session-user            score=3 facts=0 How much did I spend on a designer handbag?
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: The read operation timed out
+  [42/50] [X] single-session-user            score=3 facts=0 How many largemouth bass did I catch on my fi
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [43/50] [X] temporal-reasoning             score=3 facts=0 How long had I been a member of 'Book Lovers 
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [44/50] [X] temporal-reasoning             score=3 facts=26 What is the order of the concerts and musical
+  [45/50] [X] temporal-reasoning             score=3 facts=4 How many days did it take me to finish 'The N
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [46/50] [X] temporal-reasoning             score=3 facts=10 Which event happened first, my cousin's weddi
+  [47/50] [X] temporal-reasoning             score=3 facts=14 Which event happened first, the purchase of t
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: The read operation timed out
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [48/50] [X] temporal-reasoning             score=3 facts=10 Who did I go with to the music event last Sat
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [49/50] [X] temporal-reasoning             score=3 facts=7 Which trip did I take first, the one to Europ
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+ButterflyDream LLM extract request failed: The read operation timed out
+ButterflyDream LLM extract request failed: HTTP Error 429: Too Many Requests
+  [50/50] [X] temporal-reasoning             score=3 facts=14 What is the order of airlines I flew with fro
+
+=================================================================
+  knowledge-update                    0/9 = 0%  avg=3.0
+  multi-session                       1/9 = 11%  avg=3.2
+  single-session-assistant            0/8 = 0%  avg=3.0
+  single-session-preference           0/8 = 0%  avg=3.0
+  single-session-user                 1/8 = 12%  avg=3.2
+  temporal-reasoning                  0/8 = 0%  avg=3.0
+  Total                               2/50 = 4%  avg=57.7s/q
+=================================================================

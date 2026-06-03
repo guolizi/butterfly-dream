@@ -488,10 +488,18 @@ def _call_extraction_llm(
         return []
 
     if isinstance(parsed, dict):
-        for key in ("facts", "memories", "extractions", "results", "insights", "patterns"):
+        # Try common wrapper keys
+        for key in ("facts", "memories", "extractions", "results", "insights",
+                     "patterns", "data", "items", "output", "response", "content"):
             if key in parsed and isinstance(parsed[key], list):
                 parsed = parsed[key]
                 break
+        # If still a dict, try the first list-valued key
+        if isinstance(parsed, dict):
+            for v in parsed.values():
+                if isinstance(v, list):
+                    parsed = v
+                    break
 
     if not isinstance(parsed, list):
         logger.warning("ButterflyDream LLM extract: unexpected format: %s", type(parsed).__name__)

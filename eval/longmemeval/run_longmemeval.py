@@ -74,6 +74,7 @@ def process_sessions(provider: ButterflyDreamMemoryProvider, sessions: list):
         # Reset extraction index so each session is processed independently
         provider._last_extracted_idx = 0
         provider.on_session_end(session_msgs)
+        time.sleep(1.0)  # rate limit between sessions
         # Wait for async extraction to finish (max 60s per session)
         for _ in range(120):
             time.sleep(0.5)

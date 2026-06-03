@@ -115,7 +115,7 @@ for conv_id, qa_list in by_conv.items():
 
     db = tempfile.mktemp(suffix='.db')
     config = {'db_path': db, 'llm_extract': True,
-              'extraction_model': {'provider': 'deepseek', 'model': 'deepseek-v4-flash'},
+              'extraction_model': {'provider': 'openrouter', 'model': 'owl-alpha'}
               'trivial_filter': True}
     provider = ButterflyDreamMemoryProvider(config)
     provider.initialize(session_id=f'locomo-{conv_id}')
@@ -148,6 +148,9 @@ for conv_id, qa_list in by_conv.items():
         os.unlink(db)
     except OSError:
         pass
+
+    # Rate limit: 1.5s delay between questions
+    time.sleep(1.5)
 
 # Summary
 print()

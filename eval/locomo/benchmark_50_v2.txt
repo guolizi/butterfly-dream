@@ -1,0 +1,90 @@
+每维度抽 10 题, 共 50 题
+
+--- conv-41: 32 sessions, 663 turns, 6 QA ---
+  facts=219, 145.1s
+  [X] cat=1 score=3 What causes does John feel passionate about supporting?
+  [X] cat=1 score=3 What causes has John done events for?
+  [X] cat=1 score=3 What damages have happened to John's car?
+  [X] cat=1 score=3 What type of volunteering have John and Maria both done
+  [X] cat=4 score=3 What kind of event did John and his family attend in Ju
+  [X] cat=4 score=3 What yoga activity has Maria been trying to improve her
+
+--- conv-26: 19 sessions, 419 turns, 5 QA ---
+  facts=142, 122.6s
+  [X] cat=1 score=3 What did Melanie paint recently?
+  [X] cat=2 score=3 When did Melanie go camping in June?
+  [X] cat=2 score=3 When did Melanie go to the pottery workshop?
+  [X] cat=2 score=3 When did Melanie read the book "nothing is impossible"?
+  [X] cat=3 score=3 What fields would Caroline be likely to pursue in her e
+
+--- conv-43: 29 sessions, 680 turns, 8 QA ---
+  facts=217, 175.2s
+  [X] cat=1 score=3 What does John do to share his knowledge?
+  [X] cat=1 score=3 What schools did John play basketball in and how many y
+  [X] cat=1 score=3 What books has Tim read?
+  [X] cat=3 score=3 Who is Anthony?
+  [X] cat=4 score=3 What does John want to do after his basketball career?
+  [X] cat=5 score=3 How long did Tim and his high school basketball teammat
+  [X] cat=5 score=3 What did Anthony and Tim end up playing during the char
+  [X] cat=5 score=3 What cult did Tim join recently?
+
+--- conv-50: 30 sessions, 568 turns, 8 QA ---
+  facts=182, 129.1s
+  [X] cat=1 score=3 What style of guitars does Calvin own?
+  [X] cat=2 score=3 What was Dave doing in the first weekend of October 202
+  [X] cat=3 score=3 Would Calvin enjoy performing at the Hollywood Bowl?
+  [X] cat=3 score=3 Which country do Calvin and Dave want to meet in?
+  [X] cat=4 score=3 What workshop did Dave get picked for on 11 August, 202
+  [X] cat=4 score=3 What did Calvin do recently at his Japanese house?
+  [X] cat=4 score=3 How did the audience in Tokyo react when Calvin sang on
+  [X] cat=5 score=3 When did Calvin first get interested in motorcycles?
+
+--- conv-49: 25 sessions, 509 turns, 5 QA ---
+  facts=166, 151.1s
+  [X] cat=1 score=3 How many Prius has Evan owned?
+  [X] cat=2 score=3 When did Sam first go to the doctor and find out he had
+  [V] cat=2 score=5 When will Evan and his partner have their honeymoon in 
+  [X] cat=3 score=3 How often does Sam get health checkups?
+  [X] cat=4 score=3 What painting did Evan share with Sam in October?
+
+--- conv-30: 19 sessions, 369 turns, 4 QA ---
+  facts=121, 121.1s
+  [X] cat=2 score=3 When did Jon host a dance competition?
+  [X] cat=5 score=3 What kind of flooring is Gina looking for in her dance 
+  [X] cat=5 score=3 What temporary job did Jon take to cover expenses?
+  [X] cat=5 score=3 What was Jon's favorite dancing memory?
+
+--- conv-42: 29 sessions, 629 turns, 8 QA ---
+  facts=220, 171.1s
+  [X] cat=2 score=3 When did someone write Joanna a touching letter?
+  [X] cat=2 score=1 How long did it take for Joanna to finish writing her b
+  [X] cat=2 score=3 When did Nate adopt Max?
+  [X] cat=3 score=3 What state did Joanna visit in summer 2021?
+  [X] cat=4 score=3 How does Nate feel about Joanna's ability to bounce bac
+  [X] cat=4 score=3 How does Nate describe the process of taking care of tu
+  [X] cat=5 score=3 What does Joanna love most about having turtles?
+  [X] cat=5 score=3 How many people attended the gaming party hosted by Joa
+
+--- conv-48: 30 sessions, 681 turns, 2 QA ---
+  facts=233, 180.7s
+  [X] cat=3 score=3 Why did Jolene sometimes put off doing yoga?
+  [X] cat=3 score=3 What card game is Deborah talking about?
+
+--- conv-47: 31 sessions, 689 turns, 3 QA ---
+  facts=245, 176.2s
+  [X] cat=3 score=3 What are John's suspected health problems?
+  [X] cat=3 score=3 What is the game with different colored cards that was 
+  [X] cat=5 score=3 What game is James hooked on playing on 5 November, 202
+
+--- conv-44: 28 sessions, 675 turns, 1 QA ---
+  facts=187, 152.1s
+  [X] cat=4 score=3 What outdoor activities does Andrew plan on trying afte
+
+============================================================
+  [1] single-session single-hop      0/10 = 0%  avg=3.0
+  [2] single-session multi-hop       1/10 = 10%  avg=3.0
+  [3] cross-session single-hop       0/10 = 0%  avg=3.0
+  [4] cross-session multi-hop        0/10 = 0%  avg=3.0
+  [5] temporal reasoning             0/10 = 0%  avg=3.0
+  Total                           1/50 = 2%  avg=3.5s/q
+============================================================
