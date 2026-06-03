@@ -46,4 +46,9 @@ CODE_REVIEW*.md
 # LongMemEval large datasets
 eval/longmemeval/data/
 eval/longmemeval/results_*.jsonl
+
+# PersonaMem large datasets (32K kept, 128K/1M excluded)
+eval/personamem/data/shared_contexts_128k.jsonl
+eval/personamem/data/shared_contexts_1M.jsonl
+eval/personamem/results_*.jsonl
 eval/bd_eval/__pycache__/
