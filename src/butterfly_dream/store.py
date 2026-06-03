@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS facts (
     retrieval_count INTEGER DEFAULT 0,
     helpful_count   INTEGER DEFAULT 0,
     is_persistent   INTEGER DEFAULT 0,         -- 1 = long-lived fact, survives prefetch filtering
+    content_date    TEXT,                       -- event date from conversation (e.g. '2023-01-19')
     created_at      TEXT DEFAULT (datetime('now')),
     updated_at      TEXT DEFAULT (datetime('now')),
     hrr_vector      BLOB
@@ -124,6 +125,7 @@ END;
 CREATE INDEX IF NOT EXISTS idx_facts_trust       ON facts(trust_score DESC);
 CREATE INDEX IF NOT EXISTS idx_facts_importance  ON facts(importance DESC);
 CREATE INDEX IF NOT EXISTS idx_facts_created     ON facts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_content_date ON facts(content_date);
 CREATE INDEX IF NOT EXISTS idx_facts_category    ON facts(category);
 CREATE INDEX IF NOT EXISTS idx_entities_name   ON entities(name);
 
@@ -258,6 +260,13 @@ class MemoryStore:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Migrate: add content_date column for temporal extraction
+        try:
+            self._conn.execute("ALTER TABLE facts ADD COLUMN content_date TEXT")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # register jieba_segment SQLite function for FTS5 CJK tokenization
         self._conn.create_function("jieba_segment", 1, _jieba_segment)
 
@@ -334,6 +343,7 @@ class MemoryStore:
         merge: bool = True,
         is_persistent: bool = False,
         dedup_threshold: float = 0.0,
+        content_date: Optional[str] = None,
     ) -> dict:
         """Store a fact with three-level merging strategy.
 
@@ -393,7 +403,7 @@ class MemoryStore:
                     return self._merge_semantic(candidate, content, extracted, category, tags, importance, is_persistent)
 
             # Level 3: Insert new fact
-            return self._insert_new(content, category, tags, importance, extracted, is_persistent)
+            return self._insert_new(content, category, tags, importance, extracted, is_persistent, content_date)
 
     def _merge_exact_match(self, existing: tuple, importance: float, tags: str,
                             is_persistent: bool = False) -> dict:
@@ -684,15 +694,16 @@ class MemoryStore:
         self, content: str, category: str, tags: str,
         importance: float, entities: list[str],
         is_persistent: bool = False,
+        content_date: Optional[str] = None,
     ) -> dict:
         """Insert a brand-new fact."""
         hrr_vector = self._encode_hrr(content, entities)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         cursor = self._conn.execute(
-            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, hrr_vector)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, content_date, hrr_vector)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (content, category, tags, importance, self._default_trust,
-             1 if is_persistent else 0, hrr_blob),
+             1 if is_persistent else 0, content_date, hrr_blob),
         )
         fact_id = cursor.lastrowid
         if entities:
@@ -999,6 +1010,24 @@ class MemoryStore:
             if persistent_only:
                 return self._conn.execute("SELECT COUNT(*) FROM facts WHERE is_persistent = 1").fetchone()[0]
             return self._conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
+
+    def search_by_date(self, date: str, limit: int = 50) -> list[dict]:
+        """Find facts with a specific content_date (YYYY-MM-DD).
+
+        Args:
+            date: ISO date string to match (exact or prefix for month/year queries).
+            limit: Max facts to return.
+        """
+        with self._lock:
+            # Exact match first, then prefix (for "2023-01" matching "2023-01-19")
+            rows = self._conn.execute(
+                """SELECT * FROM facts WHERE content_date = ?
+                   UNION
+                   SELECT * FROM facts WHERE content_date LIKE ? AND content_date != ?
+                   ORDER BY content_date LIMIT ?""",
+                (date, date + "%", date, limit),
+            ).fetchall()
+            return [{key: r[key] for key in r.keys()} for r in rows]
 
     # -- Feedback --------------------------------------------------------------
 

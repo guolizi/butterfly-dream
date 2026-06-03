@@ -42,6 +42,85 @@ _DEFAULT_BASE_URLS = {
 
 
 # ---------------------------------------------------------------------------
+# Date normalization helper
+# ---------------------------------------------------------------------------
+
+def _normalize_date(raw) -> Optional[str]:
+    """Normalize various date formats to YYYY-MM-DD string.
+
+    Handles:
+    - Already ISO: "2023-01-19" → "2023-01-19"
+    - Common formats: "January 19, 2023", "19 January 2023", "Jan 19, 2023"
+    - Chinese: "2023年1月19日", "2023/01/19", "2023.01.19"
+    - Returns None if no valid date found or input is None/empty.
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # Already ISO format
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', raw):
+        return raw
+
+    # Try common English formats
+    from datetime import datetime as _dt
+    for fmt in (
+        "%B %d, %Y",    # January 19, 2023
+        "%b %d, %Y",    # Jan 19, 2023
+        "%d %B %Y",     # 19 January 2023
+        "%d %b %Y",     # 19 Jan 2023
+        "%Y/%m/%d",     # 2023/01/19
+        "%Y.%m.%d",     # 2023.01.19
+        "%m/%d/%Y",     # 01/19/2023 (US)
+        "%d/%m/%Y",     # 19/01/2023 (EU)
+    ):
+        try:
+            return _dt.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+
+    # Chinese date: 2023年1月19日
+    m = re.match(r'(\d{4})年(\d{1,2})月(\d{1,2})日?', raw)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+
+    return None  # Unparseable — skip
+
+
+def _extract_date_from_content(content: str) -> Optional[str]:
+    """Fallback: extract a date from fact content text when LLM omits content_date.
+
+    Tries common patterns like "on 19 January, 2023", "January 19, 2023",
+    "2023-01-19", "2023年1月19日", etc.
+    Returns YYYY-MM-DD or None.
+    """
+    if not content:
+        return None
+
+    # Pattern: "on <date>"
+    m = re.search(r'\bon\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})', content)
+    if m:
+        return _normalize_date(m.group(1))
+
+    # Pattern: standalone date at various positions
+    for pattern in [
+        r'(\d{1,2}\s+[A-Z][a-z]+\s+\d{4})',       # 19 January 2023
+        r'([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',      # January 19, 2023
+        r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})',           # 2023-01-19 or 2023/01/19
+        r'(\d{4}年\d{1,2}月\d{1,2}日?)',              # 2023年1月19日
+    ]:
+        m = re.search(pattern, content)
+        if m:
+            result = _normalize_date(m.group(1))
+            if result:
+                return result
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # LLM extraction prompt (enhanced with importance scoring)
 # ---------------------------------------------------------------------------
 
@@ -60,6 +139,7 @@ Rules:
 - If nothing worth extracting, return an empty array.
 - Deduplicate: don't extract the same fact multiple times.
 - Output extracted facts in the SAME language as the conversation. If the user speaks Chinese, output in Chinese. If the user speaks English, output in English. Match the conversation's primary language.
+- **TEMPORAL: If the conversation mentions specific dates, include them in the fact content.** For example, if someone says "I got married on June 15, 2023", extract "Got married on June 15, 2023" (not just "Got married"). Preserve the original date format from the conversation.
 
 **Importance scoring (1-10):**
 - 9-10: Critical identity/security info, core project architecture, irreversible decisions
@@ -83,17 +163,18 @@ Set is_persistent=false for facts that are:
 - One-off decisions that might change next session
 
 Return a JSON array of objects, each with:
-- "content": the fact statement (plain text, max 400 chars)
+- "content": the fact statement (plain text, max 400 chars, INCLUDE any dates mentioned)
 - "category": one of "user_pref", "project", "tool", "general"
 - "tags": optional comma-separated tags
 - "importance": integer 1-10
 - "is_persistent": boolean (true if worth keeping across sessions)
+- "content_date": (optional) ISO date string (YYYY-MM-DD) if a specific date is mentioned in the fact. null if no date.
 
 Example:
 [
-  {"content": "用户偏好使用VS Code开发Python，使用black格式化", "category": "user_pref", "tags": "editor,python", "importance": 6, "is_persistent": true},
-  {"content": "项目使用FastAPI框架，搭配SQLAlchemy异步模式", "category": "project", "tags": "backend,stack", "importance": 8, "is_persistent": true},
-  {"content": "当前正在排查数据库连接池的问题", "category": "project", "tags": "bug,debugging", "importance": 4, "is_persistent": false}
+  {"content": "用户偏好使用VS Code开发Python，使用black格式化", "category": "user_pref", "tags": "editor,python", "importance": 6, "is_persistent": true, "content_date": null},
+  {"content": "项目使用FastAPI框架，搭配SQLAlchemy异步模式", "category": "project", "tags": "backend,stack", "importance": 8, "is_persistent": true, "content_date": null},
+  {"content": "Jon lost his job as a banker on 19 January, 2023", "category": "general", "tags": "career,job", "importance": 7, "is_persistent": true, "content_date": "2023-01-19"}
 ]"""
 
 
@@ -785,6 +866,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     importance=fact.get("importance", 5),
                     is_persistent=fact.get("is_persistent", False),
                     dedup_threshold=0.7,
+                    content_date=_normalize_date(fact.get("content_date")) or _extract_date_from_content(fact.get("content", "")),
                 )
                 stored.append(result)
             except Exception as e:
