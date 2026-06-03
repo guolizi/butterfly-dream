@@ -1,0 +1,3737 @@
+[
+  {
+    "name": "用户偏好-编程语言偏好变化",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我最近在学习Rust，感觉比Python快很多"
+      },
+      {
+        "role": "assistant",
+        "content": "Rust的性能确实很出色，你之前主要用什么语言？"
+      },
+      {
+        "role": "user",
+        "content": "之前一直用Python写后端，上个月开始切换到Rust了"
+      }
+    ],
+    "golden_facts": [
+      "用户之前用Python写后端开发",
+      "用户上个月从Python切换到Rust",
+      "用户认为Rust比Python快很多"
+    ],
+    "queries": [
+      [
+        "用户之前用什么语言写后端？",
+        [
+          "Python"
+        ]
+      ],
+      [
+        "用户现在用什么语言？",
+        [
+          "Rust"
+        ]
+      ],
+      [
+        "用户为什么切换语言？",
+        [
+          "快"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "builtin",
+      "n_messages": 3,
+      "total_chars": 75,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "用户信息-工作与居住地",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我刚搬到东京，在Google开始新工作了"
+      },
+      {
+        "role": "assistant",
+        "content": "恭喜！东京是个很不错的城市。Google在东京有办公室吗？"
+      },
+      {
+        "role": "user",
+        "content": "有的，我在涩谷的办公室工作，团队主要做搜索相关"
+      }
+    ],
+    "golden_facts": [
+      "用户搬到了日本东京生活",
+      "用户在Google东京办公室工作",
+      "用户的团队在涩谷做搜索相关开发"
+    ],
+    "queries": [
+      [
+        "用户住在哪个城市？",
+        [
+          "东京"
+        ]
+      ],
+      [
+        "用户在哪个公司工作？",
+        [
+          "Google"
+        ]
+      ],
+      [
+        "用户的团队做什么？",
+        [
+          "搜索"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "builtin",
+      "n_messages": 3,
+      "total_chars": 72,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "项目信息-技术栈",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我们新项目准备用FastAPI写后端，前端用React"
+      },
+      {
+        "role": "assistant",
+        "content": "很好的技术选型。数据库选了什么？"
+      },
+      {
+        "role": "user",
+        "content": "PostgreSQL，部署在AWS上，用Docker管理"
+      },
+      {
+        "role": "assistant",
+        "content": "你们用Kubernetes吗？"
+      },
+      {
+        "role": "user",
+        "content": "暂时不用K8s，直接用ECS部署，以后可能会迁移"
+      }
+    ],
+    "golden_facts": [
+      "新项目后端使用FastAPI框架",
+      "新项目前端使用React框架",
+      "项目使用PostgreSQL数据库",
+      "项目部署在AWS ECS上使用Docker"
+    ],
+    "queries": [
+      [
+        "项目后端用什么框架？",
+        [
+          "FastAPI"
+        ]
+      ],
+      [
+        "项目用什么数据库？",
+        [
+          "PostgreSQL"
+        ]
+      ],
+      [
+        "项目部署在哪里？",
+        [
+          "AWS"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "builtin",
+      "n_messages": 5,
+      "total_chars": 110,
+      "n_golden": 4,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "多轮对话-偏好积累",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我养了一只橘猫，超级可爱"
+      },
+      {
+        "role": "assistant",
+        "content": "橘猫很亲人！叫什么名字？"
+      },
+      {
+        "role": "user",
+        "content": "叫小胖，已经三岁了，最喜欢吃鱼"
+      },
+      {
+        "role": "assistant",
+        "content": "哈哈，橘猫果然爱吃。你还有其他宠物吗？"
+      },
+      {
+        "role": "user",
+        "content": "还有一条金毛，叫旺财，它们相处得很好"
+      }
+    ],
+    "golden_facts": [
+      "用户养了一只三岁的橘猫叫小胖",
+      "用户还养了一条金毛犬叫旺财",
+      "小胖最喜欢吃鱼"
+    ],
+    "queries": [
+      [
+        "用户养了什么宠物？",
+        [
+          "橘猫",
+          "金毛"
+        ]
+      ],
+      [
+        "橘猫叫什么名字？",
+        [
+          "小胖"
+        ]
+      ],
+      [
+        "金毛叫什么名字？",
+        [
+          "旺财"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "builtin",
+      "n_messages": 5,
+      "total_chars": 76,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "跨会话-信息更新",
+    "sessions": [
+      {
+        "conversation": [
+          {
+            "role": "user",
+            "content": "我目前在微软工作，做Azure相关的开发"
+          },
+          {
+            "role": "assistant",
+            "content": "Azure是个很庞大的平台，你主要负责哪部分？"
+          },
+          {
+            "role": "user",
+            "content": "主要是Kubernetes相关的服务"
+          }
+        ]
+      },
+      {
+        "conversation": [
+          {
+            "role": "user",
+            "content": "我刚跳槽到字节跳动了，现在做TikTok推荐系统"
+          },
+          {
+            "role": "assistant",
+            "content": "从Azure到推荐系统，跨度挺大的"
+          },
+          {
+            "role": "user",
+            "content": "是的，不过技术栈还是用Go和Rust"
+          }
+        ]
+      }
+    ],
+    "golden_facts": [
+      "用户在微软做Azure开发",
+      "用户主要负责Kubernetes相关服务",
+      "用户跳槽到了字节跳动做TikTok推荐系统",
+      "用户的技术栈包含Go和Rust"
+    ],
+    "queries": [
+      [
+        "用户现在在哪个公司？",
+        [
+          "字节跳动"
+        ]
+      ],
+      [
+        "用户以前在哪个公司？",
+        [
+          "微软"
+        ]
+      ],
+      [
+        "用户用什么编程语言？",
+        [
+          "Go",
+          "Rust"
+        ]
+      ],
+      [
+        "用户现在做什么方向？",
+        [
+          "TikTok",
+          "推荐系统"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "builtin-2sess",
+      "n_messages": 6,
+      "total_chars": 120,
+      "n_golden": 4,
+      "n_queries": 4
+    }
+  },
+  {
+    "name": "[short][work-software] 软件架构迁移讨论",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近在考虑把老的单体应用拆成微服务，你觉得技术栈怎么选比较好？我们团队之前主要用Python，但性能有点瓶颈。"
+      },
+      {
+        "role": "assistant",
+        "content": "微服务的话，Go语言在高并发和性能上很有优势，配合gRPC做服务间通信效率很高。另外，容器化部署推荐用Kubernetes来管理。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，Go我们确实想试试。那部署方案呢？我们目前还在用虚拟机，迁移到Kubernetes会不会太复杂？"
+      },
+      {
+        "role": "assistant",
+        "content": "可以先从非核心服务试点，用Kubernetes的Deployment和Service逐步替换。另外，你们IDE偏好是什么？如果统一用VS Code，配合插件调试Go和gRPC会很方便。"
+      },
+      {
+        "role": "user",
+        "content": "我平时就用VS Code，团队成员也大多如此。那第一阶段先拆用户服务和订单服务，用Go+gRPC，下个月底上线测试环境，你觉得可行吗？"
+      }
+    ],
+    "golden_facts": [
+      "团队决定使用Go语言和gRPC进行微服务架构",
+      "部署目标平台是Kubernetes",
+      "用户偏好使用VS Code作为开发IDE"
+    ],
+    "queries": [
+      [
+        "我们项目选用什么语言和通信框架？",
+        [
+          "Go语言",
+          "gRPC"
+        ]
+      ],
+      [
+        "团队计划把服务部署到哪里？",
+        [
+          "Kubernetes"
+        ]
+      ],
+      [
+        "开发时大家用什么编辑器？",
+        [
+          "VS Code"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "work-software",
+      "n_messages": 5,
+      "total_chars": 329,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-travel] 京都旅行规划",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我想规划一次京都之旅，主要想看一些古寺和神社，预算大概5000人民币左右。"
+      },
+      {
+        "role": "assistant",
+        "content": "听起来不错！京都的清水寺和金阁寺是必去的。您对住宿有什么要求吗？比如喜欢现代酒店还是传统旅馆？"
+      },
+      {
+        "role": "user",
+        "content": "我更倾向于住传统日式旅馆，想体验榻榻米和温泉。另外，我吃素，所以希望旅馆能提供素食餐点。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白了。素食方面很多京都的旅馆可以安排精进料理。那您除了寺庙，还有什么其他活动感兴趣吗？"
+      },
+      {
+        "role": "user",
+        "content": "我还想体验一下茶道，据说京都的茶道体验很正宗。"
+      }
+    ],
+    "golden_facts": [
+      "用户计划去京都旅行，预算大约5000人民币。",
+      "用户偏好传统日式旅馆，并需要素食餐点。",
+      "用户想参观古寺和神社，并体验茶道。"
+    ],
+    "queries": [
+      [
+        "去日本旅行预算是多少？",
+        [
+          "5000"
+        ]
+      ],
+      [
+        "用户喜欢什么类型的住宿？",
+        [
+          "传统日式旅馆"
+        ]
+      ],
+      [
+        "用户有什么饮食方面的需求？",
+        [
+          "素食"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-travel",
+      "n_messages": 5,
+      "total_chars": 195,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-health] 减肥与健康状况咨询",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我最近想减肥，但膝盖有点疼，有没有什么低冲击的运动推荐？"
+      },
+      {
+        "role": "assistant",
+        "content": "当然，低冲击运动比如游泳、瑜伽或骑行都很适合。不过我需要了解一下你的饮食习惯和健康状况，比如有没有过敏或慢性病？"
+      },
+      {
+        "role": "user",
+        "content": "我是素食主义者，还有高血压，所以饮食上也比较注意。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白了。素食和高血压的话，瑜伽和游泳确实是不错的选择。你之前有练过瑜伽吗？"
+      },
+      {
+        "role": "user",
+        "content": "有，我已经坚持练了两个月瑜伽了，感觉膝盖压力小了很多。接下来想再试试游泳。"
+      }
+    ],
+    "golden_facts": [
+      "用户是素食主义者",
+      "用户有高血压",
+      "用户已练习瑜伽两个月"
+    ],
+    "queries": [
+      [
+        "用户遵循什么饮食方式？",
+        [
+          "素食"
+        ]
+      ],
+      [
+        "用户有什么慢性病？",
+        [
+          "高血压"
+        ]
+      ],
+      [
+        "用户坚持了多久的瑜伽锻炼？",
+        [
+          "两个月",
+          "瑜伽"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-health",
+      "n_messages": 5,
+      "total_chars": 183,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-entertainment] 娱乐爱好交流",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近我迷上了科幻片，Netflix上好多新片都看不过来了。"
+      },
+      {
+        "role": "assistant",
+        "content": "太好了！科幻片确实很精彩。你平时除了看电影还有别的爱好吗？"
+      },
+      {
+        "role": "user",
+        "content": "我还会弹吉他，不过只是业余水平。最近在练习一首新曲子。"
+      },
+      {
+        "role": "assistant",
+        "content": "吉他也很酷！那你平时喜欢看科幻小说吗？还是只看电影？"
+      },
+      {
+        "role": "user",
+        "content": "其实我更喜欢看电影，不过偶尔也看一些科幻小说。Netflix上的原创科幻剧集真的很棒。"
+      }
+    ],
+    "golden_facts": [
+      "用户喜欢科幻片",
+      "用户订阅了Netflix",
+      "用户会弹吉他"
+    ],
+    "queries": [
+      [
+        "用户喜欢什么类型的电影？",
+        [
+          "科幻"
+        ]
+      ],
+      [
+        "用户有什么视频平台订阅？",
+        [
+          "Netflix"
+        ]
+      ],
+      [
+        "用户有什么音乐相关的爱好？",
+        [
+          "吉他"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-entertainment",
+      "n_messages": 5,
+      "total_chars": 154,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][work-data] customer_churn_ml_project",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近在做一个customer churn预测的项目，用的数据集是从Kaggle上找的，大概有10万条记录。"
+      },
+      {
+        "role": "assistant",
+        "content": "听起来不错！你打算用什么模型来建模？有没有什么特别考虑？"
+      },
+      {
+        "role": "user",
+        "content": "我试了几种，最后选了XGBoost，调了一下超参数之后效果提升挺明显的。"
+      },
+      {
+        "role": "assistant",
+        "content": "评估指标用了什么？我猜不是单纯的accuracy吧？"
+      },
+      {
+        "role": "user",
+        "content": "对，主要看F1 score，因为churn类别不太平衡。另外部署在AWS SageMaker上，方便做A/B测试。"
+      }
+    ],
+    "golden_facts": [
+      "User is using a customer churn dataset from Kaggle.",
+      "User chose XGBoost model.",
+      "User deployed the model on AWS SageMaker.",
+      "User uses F1 score as evaluation metric."
+    ],
+    "queries": [
+      [
+        "这个项目用的数据集是从哪里来的？",
+        [
+          "Kaggle"
+        ]
+      ],
+      [
+        "用户最终选了什么模型？",
+        [
+          "XGBoost"
+        ]
+      ],
+      [
+        "模型部署在什么平台上？",
+        [
+          "SageMaker"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "work-data",
+      "n_messages": 5,
+      "total_chars": 200,
+      "n_golden": 4,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-home] 周末家庭计划与宠物",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "你好，我最近买了一个空气炸锅，有什么好的食谱推荐吗？我家猫咪咪最近有点挑食，我正试着给它换三文鱼味的猫粮。"
+      },
+      {
+        "role": "assistant",
+        "content": "恭喜入手空气炸锅！可以试试做脆皮鸡翅，温度180度烤15分钟。猫咪挑食的话，三文鱼味猫粮确实受欢迎，但建议慢慢混合旧粮过渡哦。对了，你家孩子周末有什么安排吗？"
+      },
+      {
+        "role": "user",
+        "content": "周六下午有钢琴课，上完课想带他去公园玩。空气炸锅的食谱还有没有更快的？比如15分钟以内的？"
+      },
+      {
+        "role": "assistant",
+        "content": "15分钟的话，空气炸锅可以做烤红薯片或者速冻春卷。周六钢琴课结束后去公园真是好主意，天气好的话可以带些零食。你家咪咪对新粮适应得如何？"
+      },
+      {
+        "role": "user",
+        "content": "今天开始混着喂，它还挺爱吃的。我想周末做点lasagna带去野餐，空气炸锅能加热吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "可以！空气炸锅加热lasagna很方便，180度5-8分钟就行，外层还会变得酥脆。看来咪咪适应得不错，三文鱼味果然是对的。"
+      }
+    ],
+    "golden_facts": [
+      "用户养了一只猫叫咪咪，最近在换三文鱼味猫粮。",
+      "用户最近买了空气炸锅。",
+      "用户的孩子周六下午有钢琴课。"
+    ],
+    "queries": [
+      [
+        "我家猫咪叫什么名字？",
+        [
+          "咪咪"
+        ]
+      ],
+      [
+        "我最近买了什么厨房电器？",
+        [
+          "空气炸锅"
+        ]
+      ],
+      [
+        "我的孩子周六下午有什么活动？",
+        [
+          "钢琴课"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-home",
+      "n_messages": 6,
+      "total_chars": 347,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[medium][life-travel] 日本旅行规划对话",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "你好，我想计划一次去日本的旅行，今年秋天。你能给我一些建议吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "当然可以！秋天去日本非常美。你想要什么样的体验？打算待多久？"
+      },
+      {
+        "role": "user",
+        "content": "我打算待14天，十月初出发。我想看一些文化景点和自然风光。预算大概15000元人民币，不包括机票。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，这个预算如果在规划合理的话是足够的。你有没有必须去的景点？"
+      },
+      {
+        "role": "user",
+        "content": "我一定要去京都的寺庙，特别是清水寺。还有，我想花一天时间去东京迪士尼乐园。另外，想体验一晚传统日式旅馆。"
+      },
+      {
+        "role": "assistant",
+        "content": "很棒！京都的寺庙在秋天特别美。住宿方面，你喜欢现代酒店还是有当地特色的住处？"
+      },
+      {
+        "role": "user",
+        "content": "大部分时间我想住市中心的精品酒店，但住一晚日式旅馆体验一下。还有，我是素食者，所以需要有好素菜选择的餐馆。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白了。我可以推荐一些素食友好的餐馆。交通方面呢？你打算用日本铁路通票吗？"
+      },
+      {
+        "role": "user",
+        "content": "是的，我觉得JR Pass比较划算。我更喜欢火车而不是巴士。另外，我想避开像新宿那样高峰时段人特别多的地方。"
+      },
+      {
+        "role": "assistant",
+        "content": "记下了。让我大致规划一下行程：先从东京开始，然后坐新干线去京都，可能再去奈良一日游。日式旅馆的话，我推荐箱根的一家，可以看到富士山。"
+      },
+      {
+        "role": "user",
+        "content": "听起来不错。但预算方面我再确认一下，15000元要包括住宿、食物、交通和门票，够吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "是的，精打细算是够的。比如有些晚上可以住青旅或胶囊旅馆，但你说过想住精品酒店。"
+      },
+      {
+        "role": "user",
+        "content": "其实混合也行。精品酒店我希望每晚不超过500元。日式旅馆贵一点可以接受，只住一晚。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，我来找找选项。除了素食，还有其他饮食限制吗？比如无麸质？"
+      },
+      {
+        "role": "user",
+        "content": "没有，只是素食。我也喜欢街头小吃，但要注意食材。"
+      }
+    ],
+    "golden_facts": [
+      "用户计划在十月初去日本旅行14天。",
+      "用户的旅行预算为15000元人民币（不包括机票）。",
+      "用户必须去的景点包括京都的清水寺和东京迪士尼乐园。",
+      "用户想住一晚传统日式旅馆。",
+      "用户大部分时间偏好市中心精品酒店。",
+      "用户是素食者。",
+      "用户更喜欢火车而非巴士，并想避开高峰时段拥挤的地方如新宿。",
+      "用户希望精品酒店每晚不超过500元。"
+    ],
+    "queries": [
+      [
+        "我在日本旅行预算是多少？",
+        [
+          "15000元"
+        ]
+      ],
+      [
+        "我在日本旅行要去哪些景点？",
+        [
+          "清水寺",
+          "东京迪士尼乐园"
+        ]
+      ],
+      [
+        "我有什么饮食限制？",
+        [
+          "素食者"
+        ]
+      ],
+      [
+        "我在日本想住什么样的住宿？",
+        [
+          "精品酒店",
+          "日式旅馆"
+        ]
+      ],
+      [
+        "我计划什么时候去日本旅行？",
+        [
+          "十月初"
+        ]
+      ],
+      [
+        "我打算在日本待多久？",
+        [
+          "14天"
+        ]
+      ],
+      [
+        "我有什么交通偏好？",
+        [
+          "火车",
+          "巴士"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "life-travel",
+      "n_messages": 15,
+      "total_chars": 619,
+      "n_golden": 8,
+      "n_queries": 7
+    }
+  },
+  {
+    "name": "[medium][work-software] 软件项目技术栈与架构讨论",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "我们新项目要开始了，后端框架我还在纠结，Flask和FastAPI你觉得哪个更合适？"
+      },
+      {
+        "role": "assistant",
+        "content": "考虑到我们的项目对实时性和并发有一定要求，我建议用FastAPI。它原生支持异步，性能更好，而且自动生成API文档，团队开发起来效率会更高。"
+      },
+      {
+        "role": "user",
+        "content": "有道理。前端方面呢？我们团队之前多用Vue，但有人提议换React，你怎么看？"
+      },
+      {
+        "role": "assistant",
+        "content": "如果团队有Vue经验确实可以快速上手，但长远看React生态更成熟，特别是TypeScript支持非常好。我建议采用React + TypeScript的组合，这样类型安全，后期维护成本低。"
+      },
+      {
+        "role": "user",
+        "content": "好，那数据库选型呢？业务主要是用户和订单关系型数据，用PostgreSQL还是MongoDB？"
+      },
+      {
+        "role": "assistant",
+        "content": "关系型数据用PostgreSQL更合适，它支持复杂的JOIN和事务，而且我们有地理信息需求，PostGIS扩展也能满足。选PostgreSQL没错。"
+      },
+      {
+        "role": "user",
+        "content": "部署环境我们计划用云服务，老板倾向AWS，你怎么看？具体用ECS还是直接EC2？"
+      },
+      {
+        "role": "assistant",
+        "content": "AWS ECS是个好选择。它管理容器比EC2简单，自动伸缩、负载均衡都集成好了，成本也更可控。建议用Fargate启动类型，不用操心底层服务器。"
+      },
+      {
+        "role": "user",
+        "content": "CI/CD那边我们之前用Jenkins感觉太重了，有没有更轻量的方案？"
+      },
+      {
+        "role": "assistant",
+        "content": "GitHub Actions完全够用，直接跟代码仓库集成，配置简单，而且我们已经在用GitHub了。建议用GitHub Actions做自动化测试和部署，省去维护Jenkins的麻烦。"
+      },
+      {
+        "role": "user",
+        "content": "对了，团队站会时间和形式怎么定？我建议每天都开，但有人觉得太频繁。"
+      },
+      {
+        "role": "assistant",
+        "content": "每个项目节奏不同，我建议每周二上午10点开一次站立会议，每次15-20分钟，同步进度和阻塞项。这样频率适中，大家也容易调整日程。"
+      },
+      {
+        "role": "user",
+        "content": "好，那先按这个来。对了，我刚才在写登录接口的单元测试时，发现用pytest对FastAPI的异步测试老是报错，你知道怎么处理吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "需要用`pytest-asyncio`插件，并且给测试函数加`@pytest.mark.asyncio`装饰器。另外注意事件循环的作用域，建议在conftest里用`event_loop` fixture固定事件循环。"
+      },
+      {
+        "role": "user",
+        "content": "我试了，但还是有一个Connection refused错误，好像是数据库连接池满了？我们的PostgreSQL连接池我配的是10个，够用吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "10个连接对于初期完全够用，但如果有多个异步协程同时请求，可能确实会暂时占满。建议用`asyncpg`的连接池，并且把连接池大小调到20，再加上重试机制。另外检查一下是否有未关闭的连接。"
+      },
+      {
+        "role": "user",
+        "content": "好的，我调整一下。另外，我们的数据库迁移方案还没定，之前用的Alembic，这次也继续用吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "对，Alembic是SQLAlchemy的标配，我们继续用。记得在CI里加上自动迁移检查，避免部署时漏掉变更。"
+      },
+      {
+        "role": "user",
+        "content": "我们刚刚把第一期功能开发完了，准备部署到测试环境，但ECS里容器启动总是崩溃，日志显示健康检查失败。"
+      },
+      {
+        "role": "assistant",
+        "content": "检查一下健康检查的端点路径是否与FastAPI应用里的路由匹配？我们用的是`/health`吗？另外确认下任务定义里的端口映射是否一致，还有启动命令有没有正确写。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我用的就是/health，端口映射是80->8000，启动命令是uvicorn main:app --host 0.0.0.0 --port 8000，应该没错啊？"
+      },
+      {
+        "role": "assistant",
+        "content": "那可能是健康检查的超时时间太短了，FastAPI首次启动需要加载模型和初始化连接池，建议把健康检查的初始延迟改成30秒，超时改成10秒试试。"
+      },
+      {
+        "role": "user",
+        "content": "有道理，我先改一下。对了，我们计划下周一开始第一轮内测，你觉得我们还需要做压力测试吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "建议先用Locust做一个简单的接口压测，重点测登录和订单查询两个接口。这样内测前我们能知道系统瓶颈，及时优化。"
+      }
+    ],
+    "golden_facts": [
+      "后端框架选用FastAPI",
+      "前端采用React和TypeScript",
+      "数据库选用PostgreSQL",
+      "部署到AWS ECS并使用Fargate启动类型",
+      "CI/CD工具选用GitHub Actions",
+      "每周二上午10点开站立会议",
+      "数据库迁移工具使用Alembic",
+      "健康检查端点路径是/health"
+    ],
+    "queries": [
+      [
+        "我们团队用了哪个后端框架？",
+        [
+          "FastAPI"
+        ]
+      ],
+      [
+        "前端技术栈是什么？",
+        [
+          "React",
+          "TypeScript"
+        ]
+      ],
+      [
+        "项目部署在哪个云服务上，用了什么容器管理服务？",
+        [
+          "AWS",
+          "ECS"
+        ]
+      ],
+      [
+        "CI/CD用的是哪个工具？",
+        [
+          "GitHub Actions"
+        ]
+      ],
+      [
+        "团队站会时间是什么时候？",
+        [
+          "每周二",
+          "10点"
+        ]
+      ],
+      [
+        "数据库迁移工具是什么？",
+        [
+          "Alembic"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "work-software",
+      "n_messages": 24,
+      "total_chars": 1525,
+      "n_golden": 8,
+      "n_queries": 6
+    }
+  },
+  {
+    "name": "[medium][life-health] 健身与饮食规划咨询",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "你好，我最近想认真开始健身，但不知道从哪里入手。你能帮我制定一个计划吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "当然没问题！先告诉我你的主要目标是什么？比如减脂、增肌还是提高耐力？另外，你目前的身高体重是多少？"
+      },
+      {
+        "role": "user",
+        "content": "我目前身高168cm，体重80kg。主要目标是减重，希望能减到70kg左右。我之前试过跑步，但膝盖不太舒服，所以可能不能做太多high-impact的运动。"
+      },
+      {
+        "role": "assistant",
+        "content": "了解，膝盖有旧伤的话确实要避免跑步和跳跃类动作。我们可以重点安排游泳、椭圆机、还有力量训练。你以前有过力量训练经验吗？"
+      },
+      {
+        "role": "user",
+        "content": "以前在健身房练过一点，但不太系统。我比较喜欢游泳和瑜伽，这两项我可以坚持。最近三个月我已经开始每周游三次，体重从85kg降到了80kg，但感觉最近平台期了。"
+      },
+      {
+        "role": "assistant",
+        "content": "三个月减5kg，这个进度很不错！平台期很常见，通常需要调整饮食和增加一些力量训练来突破。说到饮食，你有什么忌口或者过敏吗？比如乳制品、坚果之类的。"
+      },
+      {
+        "role": "user",
+        "content": "有，我有乳糖不耐受，喝牛奶会拉肚子，所以平时都用豆奶或者燕麦奶。另外我有高血压，医生让我控制盐分摄入，所以外卖我尽量少点。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，这两点很重要。乳糖不耐受的话，蛋白粉建议选whey isolate或者植物蛋白，普通whey concentrate可能也会有问题。高血压方面，我们饮食计划会严格控制钠含量，多用天然香料调味。你平时一天大概吃多少卡路里？有没有记录过？"
+      },
+      {
+        "role": "user",
+        "content": "我最近用MyFitnessPal记了一个月，平均每天大概1800卡左右。但感觉不太精确，有时候吃零食没记进去。"
+      },
+      {
+        "role": "assistant",
+        "content": "1800卡对于减重来说是合理的，但如果你有漏记的零食，实际可能更高。建议你接下来两周严格记录，包括所有snack和酱料。对了，你目前每周去几次健身房？除了游泳之外。"
+      },
+      {
+        "role": "user",
+        "content": "游泳算是在健身房的泳池，另外我还会去上瑜伽课，每周两节。之前也尝试过一点器械，但不太敢上大重量，怕伤到膝盖。总的算下来，每周去健身房大概4次吧。"
+      },
+      {
+        "role": "assistant",
+        "content": "每周4次，频率不错。我们可以把训练分成：两次游泳+一次瑜伽+一次力量训练。力量训练先从自重和轻哑铃开始，重点加强核心和臀腿，同时改善膝盖稳定性。你觉得这样安排可以吗？"
+      },
+      {
+        "role": "user",
+        "content": "听起来不错。但我现在最困扰的是晚上总想吃夜宵，尤其是加班后，控制不住会点炸鸡或者泡面。有没有什么建议？"
+      },
+      {
+        "role": "assistant",
+        "content": "夜宵习惯确实会影响减重。你可以试试晚餐增加蛋白质和膳食纤维，比如鸡胸肉、西兰花，让自己更有饱腹感。如果实在饿，可以喝一杯无糖豆奶或者吃一小把坚果。另外，把家里零食换成健康选项，比如希腊酸奶（ lactose-free 的）、水果。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我试试。对了，我下周要去体检，想顺便查一下血脂和血糖，因为家族有糖尿病史，我不太放心。你觉得需要额外检查什么吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "既然有家族史，建议空腹血糖和糖化血红蛋白都查一下。另外血压你已经在关注了，很好。你可以跟医生说你的膝盖旧伤，如果条件允许，做个膝关节MRI看看软骨情况，这样我们后续制定运动计划更安全。"
+      },
+      {
+        "role": "user",
+        "content": "好的，我记下了。那我们先按照这个计划开始吧，等我体检结果出来再调整。另外，我需要买蛋白粉吗？还是先从食物中获取？"
+      },
+      {
+        "role": "assistant",
+        "content": "初期可以先从食物中获取，比如鸡胸肉、鱼、鸡蛋、豆腐、豆制品。如果你力量训练后觉得恢复慢，可以考虑whey isolate或植物蛋白粉，记得选无乳糖的。每天额外补充20-30g蛋白质就够了。等你体检结果出来，我们再细化。"
+      },
+      {
+        "role": "user",
+        "content": "好，那我先执行两周看看。谢谢你的建议！"
+      }
+    ],
+    "golden_facts": [
+      "用户身高168cm，体重80kg，目标是减重到70kg（减10kg）",
+      "用户有乳糖不耐受，不能喝普通牛奶",
+      "用户膝盖有旧伤，不能进行跑步等高冲击运动",
+      "用户喜欢游泳和瑜伽，每周游泳三次，瑜伽两节",
+      "用户坚持了三个月，体重从85kg降到80kg（减5kg）",
+      "用户有高血压，需要控制盐分摄入",
+      "用户每天平均摄入1800卡路里",
+      "用户每周去健身房4次"
+    ],
+    "queries": [
+      [
+        "用户的减重目标是多少公斤？",
+        [
+          "减重",
+          "70kg"
+        ]
+      ],
+      [
+        "用户对什么食物不耐受？",
+        [
+          "乳糖不耐受"
+        ]
+      ],
+      [
+        "用户有哪些运动偏好或限制？",
+        [
+          "膝盖",
+          "游泳",
+          "瑜伽"
+        ]
+      ],
+      [
+        "用户过去三个月的减肥进度如何？",
+        [
+          "三个月",
+          "85kg",
+          "80kg"
+        ]
+      ],
+      [
+        "用户有什么健康状况需要特别注意？",
+        [
+          "高血压",
+          "控制盐分"
+        ]
+      ],
+      [
+        "用户每天摄入多少卡路里？",
+        [
+          "1800卡"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "life-health",
+      "n_messages": 19,
+      "total_chars": 1346,
+      "n_golden": 8,
+      "n_queries": 6
+    }
+  },
+  {
+    "name": "[medium][work-product] fitness_app_product_planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "刚做完新一轮user research，发现我们的用户画像其实可以细化成两个主要persona。一个是刚入门的新手，一个是已经有一定基础的进阶用户。"
+      },
+      {
+        "role": "assistant",
+        "content": "哦？具体说说这两个persona的特点？这样我们后续做feature planning会更有方向。"
+      },
+      {
+        "role": "user",
+        "content": "新手这边我们叫他们“健身小白”，他们需要guided workouts，最好每个动作都有video demonstrations。进阶用户更关心训练数据的自定义和进阶计划。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白，那这些persona的需求在目前的roadmap里有体现吗？上次stakeholder meeting的结果怎么样？"
+      },
+      {
+        "role": "user",
+        "content": "stakeholder meeting刚刚开完，CEO和CTO意见有点不一样。CEO特别强调要加gamification，比如badges和leaderboards，他觉得能提高用户粘性。但CTO坚持要先优化performance，把crash rate降下来再说新功能。"
+      },
+      {
+        "role": "assistant",
+        "content": "那最后怎么平衡的？时间线上有commitment吗？"
+      },
+      {
+        "role": "user",
+        "content": "我们最后达成了一致：先把核心的workout tracking功能在Q3底前发掉，这已经是之前承诺的deadline了。然后Q4集中做social sharing，包括跟Strava的integration，同时把gamification作为Q4的secondary priority。不过CTO那边要求performance优化贯穿整个Q3和Q4，不能停。"
+      },
+      {
+        "role": "assistant",
+        "content": "那这次sprint retrospective你们有没有复盘之前的问题？比如个人化训练计划那个feature之前讨论过，后来怎么处理的？"
+      },
+      {
+        "role": "user",
+        "content": "对，retro上大家也聊到这个了。其实上次stakeholder meeting的结果之一就是同意把“个人化训练计划”作为下一个big feature，但不在今年Q4之前启动。我们现在先聚焦手头这些。"
+      },
+      {
+        "role": "assistant",
+        "content": "那这个personalized training plan的具体设计有初步想法了吗？比如是针对小白还是进阶用户？"
+      },
+      {
+        "role": "user",
+        "content": "目前偏向于同时覆盖，但MVP会先从健身小白做起，因为他们的churn rate更高。我们会用AI根据用户数据和偏好动态生成计划。不过这是明年Q1的事了，现在先不展开。"
+      },
+      {
+        "role": "assistant",
+        "content": "听起来很合理。那social sharing feature你们打算怎么跟strava集成？是只导出数据还是双向同步？"
+      },
+      {
+        "role": "user",
+        "content": "初步计划是单向导出，用户可以把workout记录分享到Strava，后续再看要不要做双向。先快速验证用户需求。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，那这次的roadmap文档能分享给我一份吗？我帮你整理一下feature priority matrix。"
+      },
+      {
+        "role": "user",
+        "content": "可以，我把notion链接发你。另外还有个事，CEO那边希望Q4的gamification里加入team challenge功能，但CTO担心会增加backend复杂度，我打算下周一再约个会协调一下。"
+      }
+    ],
+    "golden_facts": [
+      "用户研究发现了两个主要persona：健身小白和进阶用户",
+      "CEO强烈主张加入gamification，包括badges和leaderboards",
+      "CTO坚持优先优化性能，降低crash rate",
+      "核心workout tracking功能承诺在Q3底前发布",
+      "Q4计划推出social sharing功能，包括与Strava的integration",
+      "健身小白需要guided workouts和video demonstrations",
+      "stakeholder meeting同意将个人化训练计划作为下一个big feature"
+    ],
+    "queries": [
+      [
+        "用户研究发现了哪些主要用户画像？",
+        [
+          "健身小白",
+          "进阶用户"
+        ]
+      ],
+      [
+        "CEO在产品上最想要什么类型的元素？",
+        [
+          "gamification",
+          "badges",
+          "leaderboards"
+        ]
+      ],
+      [
+        "CTO对技术优化的首要要求是什么？",
+        [
+          "性能",
+          "crash rate"
+        ]
+      ],
+      [
+        "核心workout tracking功能计划在什么时候发布？",
+        [
+          "Q3底",
+          "Q3"
+        ]
+      ],
+      [
+        "Q4计划推出什么新功能？",
+        [
+          "social sharing",
+          "Strava"
+        ]
+      ],
+      [
+        "下一个big feature被同意是什么？",
+        [
+          "个人化训练计划",
+          "personalized training plans"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "work-product",
+      "n_messages": 15,
+      "total_chars": 1188,
+      "n_golden": 7,
+      "n_queries": 6
+    }
+  },
+  {
+    "name": "[long][work-software] 微服务项目架构讨论与问题排查",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近我们在做一个电商平台的重构，从单体拆成微服务。我想先跟你讨论一下整体架构设计，看看有没有什么建议。"
+      },
+      {
+        "role": "assistant",
+        "content": "没问题，我先了解一下你们目前的规划。你们打算用什么样的API网关和服务网格？很多团队选Kong或者Kong的替代品，服务网格的话Istio比较流行。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我们定了用Kong做API Gateway，然后内部服务间的通信打算用Istio做service mesh。之前做过一些PoC，发现Kong的插件生态挺丰富的。"
+      },
+      {
+        "role": "assistant",
+        "content": "Kong + Istio是很成熟的方案。那数据库层呢？微服务通常需要不同的数据库引擎来匹配业务。"
+      },
+      {
+        "role": "user",
+        "content": "对，我们计划用PostgreSQL做主数据存储，Redis做缓存，还有一个MongoDB来存产品目录，因为产品结构的schema经常变。"
+      },
+      {
+        "role": "assistant",
+        "content": "混合持久化很合理。你们后端服务主要用什么语言和框架？"
+      },
+      {
+        "role": "user",
+        "content": "我个人比较喜欢Python，所以后端服务基本都用FastAPI写的。性能够用，而且asyncio处理I/O密集任务很顺手。"
+      },
+      {
+        "role": "assistant",
+        "content": "FastAPI + Python不错，开发效率高。前端呢？"
+      },
+      {
+        "role": "user",
+        "content": "前端是React加TypeScript，用了Next.js做SSR，用户体验好而且SEO友好。"
+      },
+      {
+        "role": "assistant",
+        "content": "前端栈也很主流。部署方面你们用容器化吗？"
+      },
+      {
+        "role": "user",
+        "content": "必须的啊，所有服务都Docker化，然后跑在Kubernetes上，集群是AWS EKS。我们之前试过手动部署，太痛苦了，现在全自动化了。"
+      },
+      {
+        "role": "assistant",
+        "content": "自动化是关键。CI/CD管道你们用什么？"
+      },
+      {
+        "role": "user",
+        "content": "GitHub Actions做CI，ArgoCD做GitOps风格的CD。每次push到main分支自动build镜像然后部署到dev环境。"
+      },
+      {
+        "role": "assistant",
+        "content": "这个流程很现代。你们这个项目是什么时候开始的？"
+      },
+      {
+        "role": "user",
+        "content": "8个月前开始的，当时团队只有5个人，现在扩到12个了。基本上是从0到1在搭。"
+      },
+      {
+        "role": "assistant",
+        "content": "团队扩张挺快的。那从单体迁移到微服务这个里程碑完成了吗？"
+      },
+      {
+        "role": "user",
+        "content": "上个月刚完成，前后花了3个月。迁移过程挺折腾的，但总算做完了，现在系统稳定多了。"
+      },
+      {
+        "role": "assistant",
+        "content": "恭喜！迁移完成后的运维也很重要。你们团队用什么工具管理项目和文档？"
+      },
+      {
+        "role": "user",
+        "content": "项目用Jira管理，技术文档和设计文档都在Confluence上。我们很注重文档，每次架构变更都要更新。"
+      },
+      {
+        "role": "assistant",
+        "content": "文档是团队的财富。代码评审流程呢？"
+      },
+      {
+        "role": "user",
+        "content": "代码评审必须有至少两个approval才能merge。这个规矩我们执行得很严格，大家也都认同。"
+      },
+      {
+        "role": "assistant",
+        "content": "两个approval能有效减少合入bug。你们团队会定期开一些会议吗？"
+      },
+      {
+        "role": "user",
+        "content": "每周一和周三早上开standup，每两周周五下午做retrospective。平时非紧急的事情我更喜欢在Slack上异步沟通，不打断大家。"
+      },
+      {
+        "role": "assistant",
+        "content": "异步沟通效率高，也方便记录。最近有没有遇到什么线上问题？"
+      },
+      {
+        "role": "user",
+        "content": "有的，上周末部署了一个新版本后，支付服务时不时返回503错误，而且没有规律。我们排查了两天还没找到根因，挺头疼的。"
+      },
+      {
+        "role": "assistant",
+        "content": "503通常是上游服务不可用或者负载太高。你们支付服务依赖哪些服务？有没有最近改过配置？"
+      },
+      {
+        "role": "user",
+        "content": "支付服务依赖订单服务和用户服务，这次部署主要是加了新的支付渠道——Stripe，但回滚了还是有问题。我们怀疑是不是数据库连接池太小了。"
+      },
+      {
+        "role": "assistant",
+        "content": "可以先查一下PostgreSQL的pg_stat_activity看看活跃连接数，另外Redis连接有没有增加？你的MongoDB也需要检查一下。"
+      },
+      {
+        "role": "user",
+        "content": "好，我等下就去查。另外我们还没有分布式追踪，很难定位全链路的问题。我打算引入OpenTelemetry做tracing，你觉得呢？"
+      },
+      {
+        "role": "assistant",
+        "content": "强烈推荐。在微服务架构下，没有tracing排查问题就像瞎子摸象。Jaeger或Zipkin都可以和OpenTelemetry集成。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，Jaeger我们已经搭好了，就差接入OpenTelemetry SDK。这个优先级要提到最高了。"
+      },
+      {
+        "role": "assistant",
+        "content": "你平时开发环境是怎么配的？那种快速切换微服务项目的能力很重要。"
+      },
+      {
+        "role": "user",
+        "content": "我用VS Code，装了Python和Remote - Containers插件。每个服务一个dev container，方便隔离依赖。"
+      },
+      {
+        "role": "assistant",
+        "content": "dev container是个好习惯。对了，你们有没有考虑过服务间超时设置？503也可能是因为上游响应太慢，Istio的timeout配置可以调一调。"
+      },
+      {
+        "role": "user",
+        "content": "对，Istio的VirtualService里我们设置了retry timeout，但可能某些场景下还是不够。我先查数据库连接，再试调timeout。"
+      },
+      {
+        "role": "assistant",
+        "content": "可以。如果方便的话，你可以在Kong层面也加一些rate limiting和circuit breaker，防止突发流量把payment压垮。"
+      },
+      {
+        "role": "user",
+        "content": "好主意，Kong有现成的插件，之前没开是因为觉得不需要，现在看起来必须上了。"
+      },
+      {
+        "role": "assistant",
+        "content": "另外你们的产品目录是MongoDB存的，那搜索功能是用什么？Elasticsearch？"
+      },
+      {
+        "role": "user",
+        "content": "搜索暂时直接用MongoDB的text index，等用户量再大点可能要上ES。现在团队资源有限，先把核心问题解决。"
+      },
+      {
+        "role": "assistant",
+        "content": "理解，分阶段迭代。你们Kubernetes集群的Pod资源限制设定合理吗？有时候503是节点资源不足导致Pod被OOMKill。"
+      },
+      {
+        "role": "user",
+        "content": "这个检查过，资源限制是合理的，但我们可以再看看监控。我们用的Prometheus + Grafana监控，Grafana上有个面板显示payment service的内存曲线有点毛刺。"
+      },
+      {
+        "role": "assistant",
+        "content": "内存波动大可能是有内存泄漏。建议用Python的memory_profiler或者tracemalloc压测一下。FastAPI的话可以加个中间件记录allocations。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，晚上我写个压测脚本跑跑看。对了，我们想在下个sprint里把GitOps流程完善一下，比如用ArgoCD的Sync Wave控制部署顺序。"
+      },
+      {
+        "role": "assistant",
+        "content": "Sync Wave对依赖服务多的场景很好用。你们现在部署顺序怎么控制的？"
+      },
+      {
+        "role": "user",
+        "content": "目前靠脚本手动控制，但不太可靠。我们团队有两个devops工程师，他们正在写云原生的helm chart。"
+      },
+      {
+        "role": "assistant",
+        "content": "手动始终不是长久之计。利用ArgoCD的sync-waves和sync-phases可以做到自动依赖管理。"
+      },
+      {
+        "role": "user",
+        "content": "好的，我让他们参考官方文档。另外有个文化上的问题，我们团队有些人觉得写文档浪费时间，你觉得怎么推行？"
+      },
+      {
+        "role": "assistant",
+        "content": "可以尝试把文档写进Definition of Done，比如每次合并代码都必须更新相关Confluence页面。甚至可以设置一个文档review环节。"
+      },
+      {
+        "role": "user",
+        "content": "这个主意不错，我可以在周四的retrospective上提出来。对了，我们当前版本还有一个性能问题，商品列表页加载慢，前台用的Next.js SSR请求后端聚合接口，可能太慢了。"
+      },
+      {
+        "role": "assistant",
+        "content": "可以用BFF模式，让前端只调用一个聚合接口，后端负责用异步方式合并多个微服务的数据。FastAPI的async/await很适合。"
+      },
+      {
+        "role": "user",
+        "content": "我们已经有一个BFF层了，但好像是Redis缓存击穿了，大量请求直接打到MongoDB。准备优化一下缓存策略。"
+      },
+      {
+        "role": "assistant",
+        "content": "Redis缓存击穿可以加互斥锁或者使用分布式锁，比如Redlock。另外可以考虑用MongoDB的change streams来作缓存失效通知。"
+      },
+      {
+        "role": "user",
+        "content": "分布式锁用Redis的setnx可以实现吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "可以，但要注意锁的过期时间和重入问题。用Redlock或者Redigo库会更稳妥。你们如果用了Istio，也可以在sidecar层面做限流缓存。"
+      },
+      {
+        "role": "user",
+        "content": "好的，这些建议太实用了。今天聊了很多，我整理一下重点，先查数据库连接，再排查内存泄漏，下周计划引入OpenTelemetry。"
+      },
+      {
+        "role": "assistant",
+        "content": "很好，优先级很清晰。如果遇到具体代码层面的问题，随时可以问。你们支付服务的源代码是用FastAPI写的吗？"
+      },
+      {
+        "role": "user",
+        "content": "是的，所有Python微服务都是用FastAPI，包括支付。我们看到FastAPI的starlette middleware里有一个BaseHTTPMiddleware，不知道会不会有性能影响。"
+      },
+      {
+        "role": "assistant",
+        "content": "BaseHTTPMiddleware有微小的同步开销，建议直接使用底层ASGI middleware形式。不过一般业务场景下差别不大。"
+      },
+      {
+        "role": "user",
+        "content": "行，那我们可以先不重构那个。对了，我们最近在做安全审计，发现有些ServiceAccount权限过大，要不要用RBAC收紧？"
+      },
+      {
+        "role": "assistant",
+        "content": "必须的，Kubernetes RBAC最小权限原则。Istio也有授权策略，可以按namespace和service account控制。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我们security engineer下个月入职，到时候让他专门搞这部分。现在团队12个人，有两个是new hire，还在onboarding。"
+      },
+      {
+        "role": "assistant",
+        "content": "onboarding流程可以写到Confluence文档里，减轻老队员重复解释的负担。"
+      },
+      {
+        "role": "user",
+        "content": "对，我们已经有人写了onboarding checklist，包括设置开发环境、了解服务架构、跑e2e测试。新来的同事反馈不错。"
+      },
+      {
+        "role": "assistant",
+        "content": "那挺好的。你们e2e测试用什么框架？"
+      },
+      {
+        "role": "user",
+        "content": "cypress，主要测前端，然后后端有pytest的集成测试。但e2e比较慢，我们只在main分支上跑。"
+      },
+      {
+        "role": "assistant",
+        "content": "合理，CI时间太长会影响开发体验。可以分阶段跑，比如单元测试在PR时跑，集成和e2e在merge后跑。"
+      },
+      {
+        "role": "user",
+        "content": "现在其实已经这样了，GitHub Actions workflow里有多个job并行。Cypress测试跑大概15分钟，还能接受。"
+      },
+      {
+        "role": "assistant",
+        "content": "15分钟还行。对了，你们有做蓝绿部署或者金丝雀发布吗？"
+      },
+      {
+        "role": "user",
+        "content": "目前是滚动更新，但考虑做金丝雀。Istio的DestinationRule可以配置subset，配合ArgoCD的渐进式发布。打算下个季度试试。"
+      },
+      {
+        "role": "assistant",
+        "content": "好，金丝雀发布能降低发布风险。今天聊得挺全面了，从架构到运维到安全问题都覆盖了。你们团队效率很高。"
+      },
+      {
+        "role": "user",
+        "content": "谢谢你，今天的讨论很有帮助，我整理一下行动项发到Slack频道里，让大家同步。"
+      }
+    ],
+    "golden_facts": [
+      "技术栈：Kong做API Gateway，Istio做服务网格。",
+      "数据库：PostgreSQL做主数据库，Redis做缓存，MongoDB存储产品目录。",
+      "用户偏好后端语言Python和框架FastAPI。",
+      "前端使用React + TypeScript + Next.js (SSR)。",
+      "部署使用Docker + Kubernetes，集群在AWS EKS。",
+      "CI/CD用GitHub Actions做CI，ArgoCD做GitOps CD。",
+      "项目从单体迁移到微服务花了3个月，上个月完成。",
+      "团队用Jira管理任务，Confluence管理文档。",
+      "代码评审需要至少两个approval才能合并。",
+      "每周一和周三有standup，每两周周五有retrospective。",
+      "用户偏好非紧急事宜Slack异步沟通。",
+      "当前问题：支付服务部署后间歇性503错误。",
+      "用户使用VS Code + Remote - Containers开发。",
+      "计划引入OpenTelemetry做分布式追踪。",
+      "项目8个月前开始，初始5人，现在12人。"
+    ],
+    "queries": [
+      [
+        "API网关和微服务架构用了什么？",
+        [
+          "Kong",
+          "Istio"
+        ]
+      ],
+      [
+        "数据库用了哪些？",
+        [
+          "PostgreSQL",
+          "Redis",
+          "MongoDB"
+        ]
+      ],
+      [
+        "后端用什么语言和框架？",
+        [
+          "Python",
+          "FastAPI"
+        ]
+      ],
+      [
+        "前端技术栈是什么？",
+        [
+          "React",
+          "TypeScript",
+          "Next.js"
+        ]
+      ],
+      [
+        "部署环境是怎样的？",
+        [
+          "Docker",
+          "Kubernetes",
+          "AWS EKS"
+        ]
+      ],
+      [
+        "CI/CD工具链是什么？",
+        [
+          "GitHub Actions",
+          "ArgoCD"
+        ]
+      ],
+      [
+        "从单体迁移到微服务花了多久？",
+        [
+          "3个月",
+          "上个月"
+        ]
+      ],
+      [
+        "项目管理用什么工具？",
+        [
+          "Jira",
+          "Confluence"
+        ]
+      ],
+      [
+        "代码评审需要多少个approval？",
+        [
+          "两个",
+          "2个",
+          "至少两个"
+        ]
+      ],
+      [
+        "团队多长时间一次standup和retro？",
+        [
+          "每周一和周三",
+          "两",
+          "retrospective"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "long",
+      "domain": "work-software",
+      "n_messages": 71,
+      "total_chars": 3877,
+      "n_golden": 15,
+      "n_queries": 10
+    }
+  },
+  {
+    "name": "[long][life-travel] Japan family trip planning with parents - detailed preferences",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "你好，我想计划一次全家去日本的旅行，大概两周左右，能帮我设计一下行程吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "当然可以！先问一下，你们大概打算什么时间去？去哪些城市有兴趣？"
+      },
+      {
+        "role": "user",
+        "content": "时间的话，我考虑明年春天，大概是4月5号到15号。城市的话东京、京都肯定要去的，大阪也可以走一趟。我爸妈没去过日本，我想让他们体验好一点。"
+      },
+      {
+        "role": "assistant",
+        "content": "4月上旬正好是樱花季末，很棒的时机！你们是三个人一起？预算大概怎么样？"
+      },
+      {
+        "role": "user",
+        "content": "对，我、我爸和我妈。预算的话，整个行程我打算控制在25万日元左右，大约1700美金。再高的话压力有点大。"
+      },
+      {
+        "role": "assistant",
+        "content": "25万日元三人两周旅行，需要精打细算。东京住宿可能会占大头。你们对住宿风格有什么偏好？比如喜欢现代酒店、民宿，还是想体验日式旅馆？"
+      },
+      {
+        "role": "user",
+        "content": "在东京我想住青年旅社，能省钱嘛，而且爬爬富士山什么的不太需要豪华房间。但在京都一定要住一次传统的日式旅馆，像那种带榻榻米和温泉的，我爸妈肯定喜欢。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，京都的日式旅馆（ryokan）体验很经典。富士山的话，4月中旬还比较冷，而且登山季通常是7~8月，可能没法爬，但是可以安排附近景点或者箱根泡温泉看富士山。你们对户外活动有兴趣吗？"
+      },
+      {
+        "role": "user",
+        "content": "爬富士山确实有点勉强，那换成看富士山周边吧。户外活动我挺喜欢的，我爸妈走不太远的路，所以轻徒步或者风景点就行。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白了。那交通方面，你们打算怎么在城市间移动？比如东京到京都这一段。"
+      },
+      {
+        "role": "user",
+        "content": "我听说新干线很快，想体验一下，所以东京到京都坐新干线。其他市内的话就地铁和公交，不打算租车，开车太麻烦了。"
+      },
+      {
+        "role": "assistant",
+        "content": "新干线是必须的体验。可以考虑买JR Pass，如果行程包含往返大阪可能划算。你们要去的景点有哪些特别想看的？比如东京和京都的标志性地方。"
+      },
+      {
+        "role": "user",
+        "content": "东京的话，涩谷十字路口一定要去，就是那个有名的马路。京都的话，伏见稻荷大社必须打卡，千本鸟居太美了。还有京都那些寺庙，我想参加一个跟团导览，有讲解的那种。"
+      },
+      {
+        "role": "assistant",
+        "content": "伏见稻荷和涩谷都是经典！京都还有清水寺、金阁寺等，很多导游团可以提供深度讲解。对了，你们有没有什么饮食上的特殊要求？日本很多料理有鱼和肉，我担心有些地方不太方便。"
+      },
+      {
+        "role": "user",
+        "content": "我吃素，而且我对贝类过敏，所以寿司里面的虾啊贝柱什么的都不能吃。另外我其实有乳糜泻，不能吃麸质，所以拉面、天妇罗那些面衣都要避开。我爸妈倒是什么都能吃，但为了我，他们愿意找适合的餐厅。"
+      },
+      {
+        "role": "assistant",
+        "content": "这个信息很重要！乳糜泻（celiac disease）在日本确实要特别小心，酱油里通常含小麦，得找 gluten-free 的餐厅。我会推荐东京有一些专门的素食和gluten-free餐厅。另外在大阪，你们想安排什么活动？"
+      },
+      {
+        "role": "user",
+        "content": "大阪主要是想逛逛道顿堀和心斋桥，但最期待的是参加一个美食团，虽然我很多不能吃，但我爸妈可以大吃特吃。我也能尝一些适合的东西，比如烤红薯、抹茶冰淇淋。"
+      },
+      {
+        "role": "assistant",
+        "content": "大阪美食团很有意思，我可以找一些包含素食选项的Food Tour。另外我还想到一个一日游选项：从东京去日光，那里有东照宫和华严瀑布，风景很美，你们感兴趣吗？"
+      },
+      {
+        "role": "user",
+        "content": "日光！我听说过，东照宫确实很华丽。如果能加进去就太好了，反正我爸妈也喜欢自然和寺庙结合的地方。一日游从东京出发时间上够吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "够的，早上早点出发，晚上回来，新干线和特急配合，时间很充裕。那么我概括一下你的需求：4月5日到15日，三人，预算25万日元，东京住青旅，京都住日式旅馆，主要交通靠火车和地铁，东京必去涩谷，一日游日光，京都必须去伏见稻荷并参加寺庙导览团，然后大阪加美食团，饮食上你纯素、无麸质、贝类过敏。还有其他需要补充的吗？"
+      },
+      {
+        "role": "user",
+        "content": "嗯，基本就是这样。哦对了，我爸妈对住宿不挑，只要干净就行。我自己在东京住青旅的话最好有独立房间，因为晚上要工作一会儿。还有我想在东京安排一天去秋叶原逛逛，虽然是宅文化但我想买点手办。"
+      },
+      {
+        "role": "assistant",
+        "content": "没问题，秋叶原可以安排半天或一天。青旅独立房间（private room）虽然贵一点但还是比酒店便宜。那我把这些细节都记录下来，之后给你生成一个详细的每日行程，包括餐厅推荐（标记哪些适合你）和交通建议。你觉得这样安排整体节奏怎么样？"
+      },
+      {
+        "role": "user",
+        "content": "听起来不错，节奏不要太赶，毕竟带着爸妈。每天最多两个主要景点，中间有休息时间。对了，从京都到大阪怎么走方便？也是新干线吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "京都到大阪很近，坐JR新快速或特急只要半小时左右，新干线也可以但稍贵且没必要，普通列车就行。那大阪你们打算住几晚？京都住几晚？"
+      },
+      {
+        "role": "user",
+        "content": "我还没定具体天数。东京大概4晚，日光一日游那天算在东京住宿里；京都3到4晚，大阪2晚左右，这样时间差不多能填满。你觉得合理吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "很合理！我建议东京4天含日光一日游，京都4天，大阪3天（去掉前后移动日，实际2整天）。这样总行程约11天，剩下时间可以灵活安排或提早去机场。对了，你们回程是从哪个城市离开？"
+      },
+      {
+        "role": "user",
+        "content": "我想从大阪关西机场飞回，毕竟最后在大阪，不用再折回东京。签证方面我已经有了，机票还没定，等我确认行程再买。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，关西机场飞回很方便。那么住宿方面，东京青旅你有看到中意的吗？或者我帮你推荐几家合适且提供独立房间的？"
+      },
+      {
+        "role": "user",
+        "content": "我还没查，你推荐几家吧。要便宜但安静，最好有公共厨房，我可以自己做饭保证 gluten-free。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，我推荐几家：浅草的Khaosan World，或者新宿的Nui。都有独立房间和共用厨房，价格大概每人每晚3000-4000日元。京都的日式旅馆（ryokan）预算就得高一些，好的体验型大约每人每晚15000日元左右，但包含早餐和温泉。你的预算够吗？"
+      },
+      {
+        "role": "user",
+        "content": "京都可以把预算放宽，毕竟是最期待的部分。如果每人每晚15000，住三晚的话我和爸妈两个房间大概9万日元，加上东京青旅每晚1万日元（我单独一间，爸妈也许能合住一间），总共住宿大约15万左右，剩下10万用于交通、门票和饮食，够吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "差不多，交通方面购买7天JR Pass（约5万日元）可以覆盖新干线东京-京都-大阪以及日光往返，还会划算。饮食每人每天3000日元，三人10天约9万，但你可能吃得便宜，加上景点门票，25万日元需要稍微控制，但应该可行。我建议把一些活动比如美食团稍微挑平价的。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，那美食团我就选一个便宜的，或者让爸妈去参加，我在旁边逛逛。另外，京都寺庙导览团你推荐哪些？最好是英文或者中文的，我爸妈不太会日语。"
+      },
+      {
+        "role": "assistant",
+        "content": "有英文的寺庙徒步团，比如“Kyoto Free Walking Tour”虽然免费但可能不适合你爸妈，我推荐“Kyoto Cultural Walking Tour”价格大概每人5000日元，会去清水寺和金阁寺，有专业讲解。另外伏见稻荷大社是免费的，可以自己逛。"
+      },
+      {
+        "role": "user",
+        "content": "好的，这个可以有。伏见稻荷我看攻略说最好一大早就去，人少。那我们京都第二天一早去伏见稻荷，然后下午参加寺庙导览团？"
+      },
+      {
+        "role": "assistant",
+        "content": "完全可以，伏见稻荷24小时开放，清晨6点去几乎没人，然后回城休息吃午饭，下午导览团大概2点到5点。这样一天充实但不累。需要我帮你把所有这些整理成一个完整的行程表格吗？"
+      },
+      {
+        "role": "user",
+        "content": "太好了，你整理吧。对了，我想确认一下，新干线从东京到京都大概多久？需要提前买票吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "东京到京都约2小时20分钟，使用JR Pass的话直接划指定席就行，不需要另外买票。建议到日本后去绿色窗口划座，节假日人多。你的日期是4月初，樱花季尾巴，可能游客不少，最好提前几天划座。"
+      },
+      {
+        "role": "user",
+        "content": "明白了。那日光一日游怎么安排？也是用JR Pass吗？"
+      },
+      {
+        "role": "assistant",
+        "content": "日光在一日游的范围内，从东京站坐东北新干线到宇都宫，再转日光线，全程约2小时。JR Pass可以覆盖这段路程（除了部分私铁可能需要补票）。注意，JR Pass不能坐东武铁道直达日光的列车，但新干线+JR线可以到。"
+      },
+      {
+        "role": "user",
+        "content": "好，那我到时候注意一下。感谢你详细解答！我先把这些信息跟我爸妈沟通一下，然后决定最终行程。"
+      },
+      {
+        "role": "assistant",
+        "content": "不客气，如果有什么调整随时告诉我。另外提醒一下，你提到的无麸质饮食，在日本有些餐厅会标注“グルテンフリー”，我会在你的行程里特别标注那些餐厅。最后确认一遍关键点：4月5日到15日，东京青旅独立房间、京都有温泉的日式旅馆、涩谷、伏见稻荷、日光、寺庙导览团、大阪美食团，素食无麸质贝类过敏，对吗？"
+      },
+      {
+        "role": "user",
+        "content": "完全正确！那就麻烦你先帮我做一个初步的每日计划，我再跟爸妈商量。谢谢！"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，我这就开始起草，稍后发给你。另外，由于你乳糜泻比较严重，我会特别推荐东京的“Gluten-Free Tabelog”上评分高的店，比如“こめや”和“Little Bird Bistro”。京都也有几家，比如“Vegans Cafe and Restaurant”。请放心。"
+      },
+      {
+        "role": "user",
+        "content": "太好了，非常感谢！那我等你文档。"
+      },
+      {
+        "role": "assistant",
+        "content": "没问题，大约10分钟后发给你。最后一个小问题：你们打算从东京飞到日本还是从国内坐船？如果是飞机，成田还是羽田？"
+      },
+      {
+        "role": "user",
+        "content": "我打算飞东京成田机场，因为从国内直飞成田的航班多，价格便宜。回来从大阪走。"
+      },
+      {
+        "role": "assistant",
+        "content": "成田到市区大概1小时，N'EX或Skyliner都可以用JR Pass部分段。好的，一切准备就绪，等你家人的反馈。祝你们旅途愉快！"
+      }
+    ],
+    "golden_facts": [
+      "用户整个行程的总预算是25万日元（约1700美元）",
+      "用户在东京偏好住青年旅社以节省费用",
+      "用户在京都必须体验传统日式旅馆（ryokan）",
+      "用户是素食者且对贝类过敏",
+      "用户患有乳糜泻，不能摄入麸质",
+      "用户必去的景点包括涩谷十字路口和伏见稻荷大社",
+      "用户计划从东京到京都乘坐新干线",
+      "用户与父母三人同行",
+      "用户计划在行程中加入日光一日游",
+      "用户希望参加京都寺庙的导游团",
+      "用户对大阪美食团感兴趣",
+      "用户的旅行日期是2025年4月5日至15日",
+      "用户偏好公共交通（火车和公交），不租车"
+    ],
+    "queries": [
+      [
+        "旅行预算总额是多少？",
+        [
+          "25万日元"
+        ]
+      ],
+      [
+        "在东京想住什么类型的住宿？",
+        [
+          "青年旅社"
+        ]
+      ],
+      [
+        "京都住宿的偏好是什么？",
+        [
+          "日式旅馆",
+          "ryokan"
+        ]
+      ],
+      [
+        "饮食上有哪些禁忌？",
+        [
+          "素食",
+          "贝类过敏",
+          "麸质",
+          "乳糜泻"
+        ]
+      ],
+      [
+        "必去景点有哪些？",
+        [
+          "涩谷十字路口",
+          "伏见稻荷大社"
+        ]
+      ],
+      [
+        "城市间移动采用什么交通工具？",
+        [
+          "新干线"
+        ]
+      ],
+      [
+        "旅行时间和同行人员？",
+        [
+          "4月5日至15日",
+          "父母"
+        ]
+      ],
+      [
+        "有什么一日游计划？",
+        [
+          "日光"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "long",
+      "domain": "life-travel",
+      "n_messages": 48,
+      "total_chars": 3538,
+      "n_golden": 13,
+      "n_queries": 8
+    }
+  },
+  {
+    "name": "[very-long][work-software] NovaCart微服务开发项目",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "嗨，我最近在规划一个新项目叫NovaCart，是个电商平台。想用微服务架构，后端用Python，前端用TypeScript。我们先从架构讨论开始吧？"
+      },
+      {
+        "role": "assistant",
+        "content": "太好了！NovaCart这个名字不错。微服务架构是个好选择。你后端Python的话，打算用哪个框架？FastAPI最近很火，异步支持很好。前端TypeScript配React还是Vue？"
+      },
+      {
+        "role": "user",
+        "content": "FastAPI我一直在用，确实不错。前端用React加Next.js，TS是必须的。另外我想用PostgreSQL做数据库，Redis做缓存。对了，API网关我们是不是需要？我倾向于用Kong。"
+      },
+      {
+        "role": "assistant",
+        "content": "Kong是个成熟的API网关，支持插件扩展，适合微服务场景。数据库方面PostgreSQL 15最新版本性能提升不少，你打算用ORM还是直接SQL？很多人在FastAPI里用SQLAlchemy。"
+      },
+      {
+        "role": "user",
+        "content": "其实我不太喜欢ORM。SQLAlchemy虽然功能强大，但有时候性能瓶颈，调试也麻烦。我更喜欢直接用asyncpg写raw SQL，这样对查询优化更可控。而且PostgreSQL的JSONB字段很适合存商品属性之类的灵活数据。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白，用asyncpg确实性能更好，JSONB也是PostgreSQL的强项。那表的主键你打算用什么类型？UUID还是自增ID？UUID在分布式环境下更方便。"
+      },
+      {
+        "role": "user",
+        "content": "对，UUID做主键，这样未来分库分表也容易。自增ID在微服务里容易冲突。对了，后台任务方面，我想用Celery加Redis作为broker和result backend。以前用过，挺稳的。"
+      },
+      {
+        "role": "assistant",
+        "content": "Celery+Redis组合很经典。你Python版本呢？现在Python 3.11挺稳定的，性能也有提升。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，Python 3.11，FastAPI用最新的。部署方面我打算用Docker容器化，然后上Kubernetes。我们团队对AWS比较熟，所以会用EKS。CI/CD想用GitHub Actions，Helm charts管理部署，ArgoCD做GitOps。"
+      },
+      {
+        "role": "assistant",
+        "content": "很好的技术栈！EKS加ArgoCD是现在的标准实践。Helm charts能让部署标准化。对了，你们微服务之间通信打算怎么处理？服务网格考虑过吗？"
+      },
+      {
+        "role": "user",
+        "content": "初期先用REST，后面如果服务多了可能会上Istio做service mesh。不过现在先不着急。API版本我会用URL前缀/v1/，这样清晰。"
+      },
+      {
+        "role": "assistant",
+        "content": "RESTful设计，OpenAPI文档自动生成，很好。认证方面有什么计划？JWT？"
+      },
+      {
+        "role": "user",
+        "content": "对，JWT加refresh token，另外我还想集成OAuth2用Google登录。用户认证服务单独一个微服务。"
+      },
+      {
+        "role": "assistant",
+        "content": "不错。测试策略呢？你们团队对测试覆盖率有要求吗？"
+      },
+      {
+        "role": "user",
+        "content": "有，覆盖率必须大于80%。单元测试用pytest和pytest-asyncio，集成测试用testcontainers启动PostgreSQL和Redis。另外代码风格我们统一用Black格式化，linting用Ruff。"
+      },
+      {
+        "role": "assistant",
+        "content": "Ruff比Flake8快很多，而且规则全面。代码审查流程呢？"
+      },
+      {
+        "role": "user",
+        "content": "PR必须至少两个approval才能合并，用squash merge保持历史干净。我们每天上午10点有standup meeting，团队都在中国时区。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，时间固定方便。你们项目的时间线有规划吗？第一个里程碑是什么？"
+      },
+      {
+        "role": "user",
+        "content": "第一个里程碑是第三周末把基础服务部署到staging环境。第二个里程碑是第六周集成Stripe支付网关。这两个比较关键。"
+      },
+      {
+        "role": "assistant",
+        "content": "Stripe集成涉及到Webhook和安全，到时候可以详细讨论。日志和监控方面有什么想法？"
+      },
+      {
+        "role": "user",
+        "content": "日志我们用structlog输出JSON格式，然后送到CloudWatch去。监控用Prometheus加Grafana，还会加一些自定义的业务指标，比如订单转化率之类的。"
+      },
+      {
+        "role": "assistant",
+        "content": "很好。错误处理呢？统一异常处理机制？"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我打算实现一个centralized error handler，自定义异常类，返回RFC 7807 Problem Details格式，这样API消费者能统一处理错误。"
+      },
+      {
+        "role": "assistant",
+        "content": "考虑得很全面。那代码仓库你们用GitHub Private repo？分支策略呢？"
+      },
+      {
+        "role": "user",
+        "content": "对，GitHub Private。分支策略用Git Flow，develop和main分支保护。每个feature从develop切分支，合并前必须通过CI和review。"
+      },
+      {
+        "role": "assistant",
+        "content": "Git Flow对微服务项目合适。你们团队几个人？分工怎样？"
+      },
+      {
+        "role": "user",
+        "content": "现在核心团队四个后端，两个前端，一个DevOps。前端就是React+TypeScript，后端我负责架构和核心模块。大家远程协作，Slack沟通。"
+      },
+      {
+        "role": "assistant",
+        "content": "团队规模不错。你之前提到用Celery做后台任务，具体有哪些场景？"
+      },
+      {
+        "role": "user",
+        "content": "比如订单超时取消、邮件通知、数据同步这些。Celery beat定时任务也会用到。另外我打算用async/await模式而不是多线程，Python的GIL限制，异步更适合I/O密集型。"
+      },
+      {
+        "role": "assistant",
+        "content": "对，FastAPI本身就是异步框架，用async/await更自然。你提到数据同步，是跟外部系统同步吗？"
+      },
+      {
+        "role": "user",
+        "content": "是的，比如同步库存到第三方平台，或者从ERP拉数据。后续可能会用到事件驱动，先简单用Celery实现。"
+      },
+      {
+        "role": "assistant",
+        "content": "事件驱动可以以后考虑Kafka或者RabbitMQ。先跑起来再说。那数据库迁移工具你打算用什么？"
+      },
+      {
+        "role": "user",
+        "content": "Alembic配合asyncpg，虽然我不喜欢ORM但迁移工具还是需要。不过我会手动写migration SQL，不用autogenerate，因为autogenerate有时候不准。"
+      },
+      {
+        "role": "assistant",
+        "content": "手动写更可控。对了，你们有做性能测试的计划吗？"
+      },
+      {
+        "role": "user",
+        "content": "等staging环境搭好后会用locust做压力测试，主要测商品查询和下单接口。缓存策略也要测一下，Redis缓存商品详情。"
+      },
+      {
+        "role": "assistant",
+        "content": "商品详情缓存失效策略怎么设计？"
+      },
+      {
+        "role": "user",
+        "content": "用缓存旁路模式，更新时先更新数据库再删除缓存。如果缓存miss就回源数据库。商品属性变化不频繁，TTL设置一小时。"
+      },
+      {
+        "role": "assistant",
+        "content": "合理。支付服务集成Stripe的话，你们是直接在前端用Stripe Elements还是后端API？"
+      },
+      {
+        "role": "user",
+        "content": "前端用Stripe Elements收集卡号，然后后端用Stripe's API创建PaymentIntent。这样PCI合规范围小。Webhook端点用来处理支付结果，更新订单状态。"
+      },
+      {
+        "role": "assistant",
+        "content": "好，Stripe的webhook需要验证签名，确保安全。你们在Kubernetes上怎么管理Secrets？"
+      },
+      {
+        "role": "user",
+        "content": "用External Secrets Operator集成AWS Secrets Manager，这样敏感信息不在Git里。Helm values里只放占位符。"
+      },
+      {
+        "role": "assistant",
+        "content": "很规范。你们微服务间的同步通信除了REST，有没有考虑gRPC？"
+      },
+      {
+        "role": "user",
+        "content": "目前没有，REST够用了。如果以后有高性能要求，可能会在内部服务间用gRPC。但现在先保持简单，统一用HTTP/JSON。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白。你们每个微服务是独立部署还是合在一起？"
+      },
+      {
+        "role": "user",
+        "content": "独立部署，每个服务有自己的Docker image和Helm chart。ArgoCD通过Application CRD管理每个服务，做到GitOps。"
+      },
+      {
+        "role": "assistant",
+        "content": "那共享库怎么处理？比如数据模型或者工具函数？"
+      },
+      {
+        "role": "user",
+        "content": "我们会建一个internal Python package，用私有PyPI或者直接git submodule。不过尽量保持每个服务自治，共享库只放最通用的东西。"
+      },
+      {
+        "role": "assistant",
+        "content": "合理。对了，你们用的FastAPI版本？"
+      },
+      {
+        "role": "user",
+        "content": "最新稳定版，0.109吧好像。它会自动生成OpenAPI 3.1文档，我们还能用Swagger UI调试。"
+      },
+      {
+        "role": "assistant",
+        "content": "FastAPI的文档确实方便。数据库连接池呢？asyncpg自带连接池，你打算怎么配置？"
+      },
+      {
+        "role": "user",
+        "content": "每个服务自己管理连接池，最小5最大20，根据负载调整。还会用PgBouncer做连接池中间层，减少PostgreSQL连接数。"
+      },
+      {
+        "role": "assistant",
+        "content": "PgBouncer在Kubernetes上可以sidecar部署。你们测试环境怎么搭建？"
+      },
+      {
+        "role": "user",
+        "content": "用GitHub Actions的self-hosted runner在EKS上临时起环境跑集成测试，用testcontainers。这样接近生产。不过成本有点高，正在优化。"
+      },
+      {
+        "role": "assistant",
+        "content": "可以考虑用ephemeral namespace，测试完自动销毁。你们代码质量工具除了Ruff和Black，还用mypy做类型检查吗？"
+      },
+      {
+        "role": "user",
+        "content": "用，mypy strict模式。FastAPI依赖Pydantic，类型提示天然支持。我们还用pre-commit hook保证提交前检查。"
+      },
+      {
+        "role": "assistant",
+        "content": "很好的实践。文档方面，除了API文档，你们有写架构决策记录(ADR)吗？"
+      },
+      {
+        "role": "user",
+        "content": "正在考虑。打算用Markdown存在repo的docs/adr目录下，记录重要决策，比如为什么选Celery而不是别的。"
+      },
+      {
+        "role": "assistant",
+        "content": "ADR对长期维护很有帮助。最后问一下，你们的staging环境域名是什么？要配置SSL证书。"
+      },
+      {
+        "role": "user",
+        "content": "staging.novacart.io，用cert-manager自动签发Let's Encrypt证书。生产域名是novacart.io。"
+      },
+      {
+        "role": "assistant",
+        "content": "很好。那我们现在可以开始写第一个服务的代码了？比如用户认证服务？"
+      },
+      {
+        "role": "user",
+        "content": "好的，先搭骨架。用FastAPI的Application factory模式，然后集成JWT和OAuth2。我们一步步来。"
+      },
+      {
+        "role": "assistant",
+        "content": "没问题，你先初始化项目结构，把依赖写进requirements.txt，我用ruff和black帮你格式化。"
+      },
+      {
+        "role": "user",
+        "content": "好，我开个branch叫feature/auth-service。你帮我review一下auth的schema怎么设计？用户表用email作为唯一标识。"
+      },
+      {
+        "role": "assistant",
+        "content": "用户表可以用uuid作为PK，email唯一索引，密码用bcrypt哈希。JSONB字段存扩展属性，比如头像、偏好设置。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我也是这么想的。然后refresh token存Redis，设置7天过期。JWT access token 15分钟过期。"
+      },
+      {
+        "role": "assistant",
+        "content": "合理。Google OAuth2的client id和secret要放到Secrets Manager里。我们还要处理OAuth2 callback endpoint。"
+      },
+      {
+        "role": "user",
+        "content": "对。另外用户注册后要发验证邮件，这个任务交给Celery异步处理。"
+      },
+      {
+        "role": "assistant",
+        "content": "邮件服务可以用SendGrid或者AWS SES？"
+      },
+      {
+        "role": "user",
+        "content": "用SES吧，成本低，而且我们在AWS上。Celery task里调用SES API。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的。那我们先写user registration的endpoint，包括输入validation和error handling返回RFC 7807格式。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，我先把路由和依赖写好，你帮我看一下代码风格和潜在问题。"
+      },
+      {
+        "role": "assistant",
+        "content": "当然，你把PR发过来，我review。"
+      },
+      {
+        "role": "user",
+        "content": "对了，关于logging，每个服务启动时设置structlog的processors，包括添加service name和trace id。"
+      },
+      {
+        "role": "assistant",
+        "content": "trace id可以从请求头里取，如果没有就生成一个，用uuid。这样全链路跟踪方便。"
+      },
+      {
+        "role": "user",
+        "content": "嗯，跟你想的一样。另外我们health check endpoint要返回数据库和Redis连接状态。"
+      },
+      {
+        "role": "assistant",
+        "content": "OK。我们还需要一个/metrics endpoint暴露Prometheus指标，用prometheus-fastapi-instrumentator。"
+      },
+      {
+        "role": "user",
+        "content": "对，这个库很方便。我们自定义几个业务指标，比如注册人数、登录次数。"
+      },
+      {
+        "role": "assistant",
+        "content": "好。你开始写吧，我先看看你之前项目的代码风格，保持一致。"
+      },
+      {
+        "role": "user",
+        "content": "行，那就先这样，有进展再讨论。对了，我们团队明天standup我会提一下这个架构，让大家对齐。"
+      }
+    ],
+    "golden_facts": [
+      "Tech stack: Python 3.11, FastAPI, PostgreSQL 15, Redis 7, Celery, Docker, Kubernetes (EKS)",
+      "User prefers TypeScript for frontend, especially with React and Next.js",
+      "Architecture: microservices with API gateway (Kong), service mesh (Istio) planned for later",
+      "Database design: use PostgreSQL with UUID primary keys and JSONB for flexible attributes",
+      "Background tasks: Celery with Redis as broker, result backend also Redis",
+      "Deployment: AWS EKS, Helm charts, ArgoCD for GitOps",
+      "API design: RESTful with OpenAPI/Swagger, versioning via URL prefix /v1/",
+      "Authentication: JWT with refresh tokens, OAuth2 integration with Google",
+      "Testing: pytest, pytest-asyncio, coverage must be >80%, integration tests with testcontainers",
+      "CI/CD: GitHub Actions, linting with Ruff, formatting with Black",
+      "Code review: two approvals required, use squash merge",
+      "Daily standup at 10am CST",
+      "User prefers async/await patterns over threading for concurrency",
+      "Project name: NovaCart - an e-commerce platform",
+      "First milestone: deploy to staging by end of week 3",
+      "Second milestone: integrate Stripe payment by week 6",
+      "User dislikes using ORM (SQLAlchemy) prefer raw SQL with asyncpg for performance",
+      "Logging: structured JSON logging with structlog and sent to CloudWatch",
+      "Monitoring: Prometheus + Grafana, custom metrics for business KPIs",
+      "Error handling: centralized error handler with custom exception classes, return RFC 7807 problem details"
+    ],
+    "queries": [
+      [
+        "NovaCart项目的技术栈包括哪些？",
+        [
+          "Python",
+          "FastAPI",
+          "PostgreSQL",
+          "Redis",
+          "Celery",
+          "Docker",
+          "Kubernetes",
+          "EKS"
+        ]
+      ],
+      [
+        "前端开发用什么语言和框架？",
+        [
+          "TypeScript",
+          "React",
+          "Next.js"
+        ]
+      ],
+      [
+        "API网关用的是哪个？以后考虑什么服务网格？",
+        [
+          "Kong",
+          "Istio"
+        ]
+      ],
+      [
+        "数据库主键类型和灵活字段用什么？",
+        [
+          "UUID",
+          "JSONB"
+        ]
+      ],
+      [
+        "后台任务用什么工具？broker和result backend是什么？",
+        [
+          "Celery",
+          "Redis"
+        ]
+      ],
+      [
+        "部署到Kubernetes用什么工具管理？CI/CD用什么？",
+        [
+          "EKS",
+          "Helm",
+          "ArgoCD",
+          "GitHub Actions"
+        ]
+      ],
+      [
+        "代码测试要求是什么？测试工具和覆盖率？",
+        [
+          "pytest",
+          "pytest-asyncio",
+          "testcontainers",
+          "coverage",
+          "80%"
+        ]
+      ],
+      [
+        "代码审查需要几个approval？合并策略是什么？",
+        [
+          "two approvals",
+          "squash merge"
+        ]
+      ],
+      [
+        "项目的重要里程碑有哪些？",
+        [
+          "week 3",
+          "staging",
+          "week 6",
+          "Stripe"
+        ]
+      ],
+      [
+        "错误处理返回什么格式？",
+        [
+          "RFC 7807",
+          "problem details"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "very-long",
+      "domain": "work-software",
+      "n_messages": 79,
+      "total_chars": 4631,
+      "n_golden": 20,
+      "n_queries": 10
+    }
+  },
+  {
+    "name": "[short][work-software] Architecture migration planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "We're thinking about breaking our monolith into microservices. We've been using Python but hitting performance limits."
+      },
+      {
+        "role": "assistant",
+        "content": "Go is great for high-concurrency microservices, especially with gRPC for inter-service communication. Kubernetes works well for orchestration."
+      },
+      {
+        "role": "user",
+        "content": "Go sounds promising. We're still on VMs though — is migrating to Kubernetes too complex?"
+      },
+      {
+        "role": "assistant",
+        "content": "Start with non-critical services as a pilot. Use Kubernetes Deployments and Services to gradually replace. What IDE does your team use?"
+      },
+      {
+        "role": "user",
+        "content": "Most of us use VS Code. Let's start with the user service and order service in Go+gRPC, targeting test environment by end of next month."
+      }
+    ],
+    "golden_facts": [
+      "Team decided to use Go and gRPC for microservice architecture",
+      "Deployment target is Kubernetes",
+      "Team prefers VS Code as their IDE"
+    ],
+    "queries": [
+      [
+        "What language and framework did the team choose?",
+        [
+          "Go",
+          "gRPC"
+        ]
+      ],
+      [
+        "Where do they plan to deploy?",
+        [
+          "Kubernetes"
+        ]
+      ],
+      [
+        "What IDE does the team use?",
+        [
+          "VS Code"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "work-software",
+      "n_messages": 5,
+      "total_chars": 619,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-travel] Kyoto travel planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "I want to plan a trip to Kyoto, mainly visiting temples and shrines. Budget is around $800."
+      },
+      {
+        "role": "assistant",
+        "content": "Kiyomizu-dera and Kinkaku-ji are must-sees. Do you have a preference for accommodation — modern hotel or traditional ryokan?"
+      },
+      {
+        "role": "user",
+        "content": "I'd prefer a traditional ryokan with tatami and onsen. Also, I'm vegetarian, so I need a place that serves vegetarian meals."
+      },
+      {
+        "role": "assistant",
+        "content": "Many ryokans in Kyoto offer shojin ryori (Buddhist vegetarian cuisine). Besides temples, any other activities interest you?"
+      },
+      {
+        "role": "user",
+        "content": "I'd like to try a tea ceremony and maybe a geisha district walking tour. Can you fit all this into a 4-day itinerary?"
+      }
+    ],
+    "golden_facts": [
+      "User wants to visit Kyoto temples and shrines with $800 budget",
+      "User prefers traditional ryokan with tatami and onsen",
+      "User is vegetarian and needs vegetarian meal options"
+    ],
+    "queries": [
+      [
+        "What type of accommodation does the user want?",
+        [
+          "ryokan",
+          "tatami",
+          "onsen"
+        ]
+      ],
+      [
+        "What dietary restriction does the user have?",
+        [
+          "vegetarian"
+        ]
+      ],
+      [
+        "What activities does the user want besides temples?",
+        [
+          "tea ceremony",
+          "geisha"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-travel",
+      "n_messages": 5,
+      "total_chars": 579,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-health] Weight loss and health consultation",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "I want to lose about 10 kilograms. I'm 175cm tall and weigh 85kg right now."
+      },
+      {
+        "role": "assistant",
+        "content": "A healthy target would be around 70-75kg. Do you have any existing health conditions or food allergies?"
+      },
+      {
+        "role": "user",
+        "content": "I have mild high blood pressure and I'm lactose intolerant. My doctor told me to reduce sodium intake."
+      },
+      {
+        "role": "assistant",
+        "content": "That's important. I'd recommend a low-sodium, dairy-free diet with regular cardio exercise. How many hours can you dedicate to exercise per week?"
+      },
+      {
+        "role": "user",
+        "content": "About 4-5 hours. I enjoy swimming and jogging. Can you suggest a weekly plan?"
+      }
+    ],
+    "golden_facts": [
+      "User wants to lose 10kg, currently 85kg at 175cm",
+      "User has mild high blood pressure and needs low-sodium diet",
+      "User is lactose intolerant"
+    ],
+    "queries": [
+      [
+        "What is the user's current weight and target?",
+        [
+          "85kg",
+          "10"
+        ]
+      ],
+      [
+        "What health conditions does the user have?",
+        [
+          "high blood pressure",
+          "lactose"
+        ]
+      ],
+      [
+        "What exercise does the user enjoy?",
+        [
+          "swimming",
+          "jogging"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-health",
+      "n_messages": 5,
+      "total_chars": 502,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-entertainment] Hobby and entertainment chat",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "I'm looking for new hobbies to pick up. I currently play guitar and watch a lot of anime."
+      },
+      {
+        "role": "assistant",
+        "content": "Those are great interests! Since you play guitar, have you tried learning music production or songwriting?"
+      },
+      {
+        "role": "user",
+        "content": "I've thought about it but don't know where to start. I also enjoy hiking on weekends and recently got into board games."
+      },
+      {
+        "role": "assistant",
+        "content": "For music production, GarageBand is free and beginner-friendly. What kind of board games do you like — strategy or party games?"
+      },
+      {
+        "role": "user",
+        "content": "Mostly strategy games like Catan and Ticket to Ride. I'm also a big fan of Studio Ghibli films."
+      }
+    ],
+    "golden_facts": [
+      "User plays guitar and watches anime",
+      "User enjoys hiking on weekends and playing board games",
+      "User likes strategy board games and Studio Ghibli films"
+    ],
+    "queries": [
+      [
+        "What musical instrument does the user play?",
+        [
+          "guitar"
+        ]
+      ],
+      [
+        "What outdoor activity does the user enjoy?",
+        [
+          "hiking"
+        ]
+      ],
+      [
+        "What kind of movies does the user like?",
+        [
+          "Studio Ghibli"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-entertainment",
+      "n_messages": 5,
+      "total_chars": 536,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[short][life-home] Weekend family plans and pets",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "We're planning our weekend with the kids. We have a 5-year-old daughter and a 3-year-old son."
+      },
+      {
+        "role": "assistant",
+        "content": "Fun! What kind of activities are you considering? Outdoor or indoor?"
+      },
+      {
+        "role": "user",
+        "content": "We want to take them to the aquarium on Saturday. Sunday we might do a picnic at the park. We also have a labrador named Cooper who needs a walk."
+      },
+      {
+        "role": "assistant",
+        "content": "The aquarium sounds perfect for that age. Does Cooper get along well with kids?"
+      },
+      {
+        "role": "user",
+        "content": "Yes, Cooper is very gentle with them. The kids love feeding him treats. My wife wants to check out a new bakery near the aquarium too."
+      }
+    ],
+    "golden_facts": [
+      "User has a 5-year-old daughter and 3-year-old son",
+      "Family has a labrador named Cooper",
+      "Planned activities: aquarium Saturday, picnic Sunday"
+    ],
+    "queries": [
+      [
+        "How old are the user's children?",
+        [
+          "5",
+          "3"
+        ]
+      ],
+      [
+        "What pet does the family have?",
+        [
+          "labrador",
+          "Cooper"
+        ]
+      ],
+      [
+        "What are the weekend plans?",
+        [
+          "aquarium",
+          "picnic"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-home",
+      "n_messages": 5,
+      "total_chars": 519,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  },
+  {
+    "name": "[medium][life-travel] European vacation planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "My wife and I are planning a 2-week trip to Europe next summer. We've never been before."
+      },
+      {
+        "role": "assistant",
+        "content": "Exciting! Which countries are you considering? Europe has so much variety."
+      },
+      {
+        "role": "user",
+        "content": "We're thinking Paris, Rome, and Barcelona. We want a mix of culture, food, and some beach time."
+      },
+      {
+        "role": "assistant",
+        "content": "Great choices! How do you feel about budget? That'll help determine accommodation style and dining options."
+      },
+      {
+        "role": "user",
+        "content": "We're budgeting around $5000 total for both of us, excluding flights. We prefer mid-range hotels but don't mind splurging on one or two nice dinners."
+      },
+      {
+        "role": "assistant",
+        "content": "That's doable. For Paris, I'd suggest 4 nights. The Louvre and Eiffel Tower are essentials. Do either of you have dietary restrictions?"
+      },
+      {
+        "role": "user",
+        "content": "My wife is gluten-free due to celiac disease. I'm fine with everything. She's also a big art lover, especially impressionist paintings."
+      },
+      {
+        "role": "assistant",
+        "content": "Noted. The Musée d'Orsay would be perfect for impressionist art. For Rome, 4 nights as well — Colosseum, Vatican, and Trastevere for food. What about Barcelona?"
+      },
+      {
+        "role": "user",
+        "content": "Barcelona should be about 5 days. We want to see Sagrada Familia and spend time at Barceloneta beach. My wife wants to take a cooking class there."
+      },
+      {
+        "role": "assistant",
+        "content": "Barcelona has excellent gluten-free options too, especially around the Born neighborhood. The cooking class idea is wonderful — several schools offer paella classes."
+      },
+      {
+        "role": "user",
+        "content": "Perfect. We also want to take the high-speed train between cities instead of flying. Is that practical?"
+      },
+      {
+        "role": "assistant",
+        "content": "Absolutely. TGV from Paris to Barcelona is about 6.5 hours and very comfortable. For Rome to Paris you'd fly — the train takes too long. Do you need visa information?"
+      },
+      {
+        "role": "user",
+        "content": "We're US passport holders, so Schengen visa isn't an issue. What's the best time to go for good weather but fewer crowds?"
+      },
+      {
+        "role": "assistant",
+        "content": "Late May or early September would be ideal — warm weather, fewer tourists than peak July-August. Book the Sagrada Familia and Louvre tickets well in advance."
+      },
+      {
+        "role": "user",
+        "content": "Thanks! One more thing — my wife collects vinyl records. Are there good record shops in any of these cities?"
+      }
+    ],
+    "golden_facts": [
+      "User and wife are planning a 2-week Europe trip next summer",
+      "Destinations: Paris (4 nights), Rome (4 nights), Barcelona (5 days)",
+      "Budget is $5000 total excluding flights, mid-range hotels",
+      "Wife has celiac disease and needs gluten-free food",
+      "Wife loves impressionist art, especially at Musée d'Orsay",
+      "Wife wants to take a cooking class in Barcelona",
+      "Taking high-speed train between cities where possible",
+      "Wife collects vinyl records"
+    ],
+    "queries": [
+      [
+        "Which cities are they visiting and for how long?",
+        [
+          "Paris",
+          "Rome",
+          "Barcelona"
+        ]
+      ],
+      [
+        "What dietary restriction does the wife have?",
+        [
+          "gluten-free",
+          "celiac"
+        ]
+      ],
+      [
+        "What is their total budget?",
+        [
+          "$5000"
+        ]
+      ],
+      [
+        "What does the wife want to do in Barcelona?",
+        [
+          "cooking class"
+        ]
+      ],
+      [
+        "What art style does the wife prefer?",
+        [
+          "impressionist"
+        ]
+      ],
+      [
+        "How will they travel between cities?",
+        [
+          "train",
+          "TGV"
+        ]
+      ],
+      [
+        "What does the wife collect?",
+        [
+          "vinyl",
+          "records"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "life-travel",
+      "n_messages": 15,
+      "total_chars": 1909,
+      "n_golden": 8,
+      "n_queries": 7
+    }
+  },
+  {
+    "name": "[medium][work-software] SaaS platform architecture review",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "We're reviewing the architecture for our new SaaS platform. We expect around 100K daily active users at launch."
+      },
+      {
+        "role": "assistant",
+        "content": "That's a solid user base. What's your current tech stack and team size?"
+      },
+      {
+        "role": "user",
+        "content": "Team of 6 engineers. Frontend is React, backend is Node.js with Express. We're using MongoDB currently but thinking about switching."
+      },
+      {
+        "role": "assistant",
+        "content": "MongoDB can work for 100K DAU but you might hit scaling issues. Have you considered PostgreSQL or Aurora?"
+      },
+      {
+        "role": "user",
+        "content": "We're leaning towards PostgreSQL. The main issue is our billing system — we need reliable ACID transactions for payments."
+      },
+      {
+        "role": "assistant",
+        "content": "PostgreSQL is the right call for transactional billing. For payments, are you integrating Stripe or building custom?"
+      },
+      {
+        "role": "user",
+        "content": "Stripe. We also need real-time notifications — chat messages and alerts. Currently using WebSockets but it's getting complex."
+      },
+      {
+        "role": "assistant",
+        "content": "For real-time at your scale, consider Pusher or Ably as managed services. Or if you want to self-host, NATS is lightweight and fast."
+      },
+      {
+        "role": "user",
+        "content": "We'd prefer managed services to reduce ops burden. Our DevOps engineer left last month so we're thin there."
+      },
+      {
+        "role": "assistant",
+        "content": "Makes sense. Pusher has a generous free tier. For deployment, are you on AWS or GCP?"
+      },
+      {
+        "role": "user",
+        "content": "AWS. We use ECS for containers right now. Our CI/CD is GitHub Actions. We're also looking at adding monitoring."
+      },
+      {
+        "role": "assistant",
+        "content": "Good foundation. For monitoring, Datadog is comprehensive but pricey. Grafana + Prometheus is a solid open-source alternative. What about error tracking?"
+      },
+      {
+        "role": "user",
+        "content": "We're using Sentry for error tracking. The main pain point now is that our monolith is getting hard to maintain. We want to extract the billing and notification services first."
+      },
+      {
+        "role": "assistant",
+        "content": "Smart approach — extract billing and notifications as separate services. Use the Strangler Fig pattern. Start with billing since it needs the strongest data guarantees."
+      },
+      {
+        "role": "user",
+        "content": "That's exactly what we were thinking. Our sprint planning is every two weeks, starting next Monday. We want the billing service extraction done in 3 sprints."
+      }
+    ],
+    "golden_facts": [
+      "SaaS platform expects 100K daily active users",
+      "Team of 6 engineers using React, Node.js/Express, migrating from MongoDB to PostgreSQL",
+      "Using Stripe for payments, needs reliable ACID transactions",
+      "Switching from self-hosted WebSockets to Pusher for real-time notifications",
+      "Deploying on AWS ECS with GitHub Actions CI/CD",
+      "Using Sentry for error tracking",
+      "Planning to extract billing and notification services using Strangler Fig pattern",
+      "Billing service extraction targeted for 3 sprints"
+    ],
+    "queries": [
+      [
+        "What tech stack does the team use?",
+        [
+          "React",
+          "Node.js",
+          "PostgreSQL"
+        ]
+      ],
+      [
+        "What payment processor are they integrating?",
+        [
+          "Stripe"
+        ]
+      ],
+      [
+        "What real-time service are they switching to?",
+        [
+          "Pusher"
+        ]
+      ],
+      [
+        "What cloud provider and container service?",
+        [
+          "AWS",
+          "ECS"
+        ]
+      ],
+      [
+        "What error tracking tool?",
+        [
+          "Sentry"
+        ]
+      ],
+      [
+        "What pattern are they using to extract services?",
+        [
+          "Strangler"
+        ]
+      ],
+      [
+        "How long is the billing extraction timeline?",
+        [
+          "3 sprints"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "work-software",
+      "n_messages": 15,
+      "total_chars": 1869,
+      "n_golden": 8,
+      "n_queries": 7
+    }
+  },
+  {
+    "name": "[medium][life-health] Fitness and nutrition coaching",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "I want to train for a marathon. I've never run more than 5K before. Is it realistic to aim for a full marathon in 6 months?"
+      },
+      {
+        "role": "assistant",
+        "content": "It's ambitious but achievable with consistent training. What's your current fitness level?"
+      },
+      {
+        "role": "user",
+        "content": "I'm 30 years old, about 78kg, 180cm. I go to the gym 3 times a week — mostly weight training. I run about 5K twice a week."
+      },
+      {
+        "role": "assistant",
+        "content": "Good base to work from. We'll need to gradually increase your running volume. Do you have any injuries or joint issues?"
+      },
+      {
+        "role": "user",
+        "content": "I had a minor knee sprain last year but it's fully recovered. Also, I recently discovered I have low iron levels."
+      },
+      {
+        "role": "assistant",
+        "content": "Low iron can significantly impact endurance performance. You should work with your doctor on supplementation. For training, I'd suggest a 16-week progressive plan."
+      },
+      {
+        "role": "user",
+        "content": "That sounds good. I'm also vegetarian, which might make the iron issue trickier. How should I adjust my diet?"
+      },
+      {
+        "role": "assistant",
+        "content": "Combine iron-rich plant foods like spinach and lentils with vitamin C to boost absorption. Your protein intake needs to increase for muscle recovery — aim for 1.6g per kg."
+      },
+      {
+        "role": "user",
+        "content": "Got it. I typically wake up at 6am. When's the best time to do my long runs? I work from home most days."
+      },
+      {
+        "role": "assistant",
+        "content": "Morning runs on an empty stomach are great for endurance building. Since you work from home, try doing long runs Saturday mornings and easy recovery runs Wednesday evenings."
+      },
+      {
+        "role": "user",
+        "content": "My partner wants to join me for some runs too, but she's more of a beginner — she can barely run 1K right now."
+      },
+      {
+        "role": "assistant",
+        "content": "That's wonderful! For her, a Couch to 5K program would be perfect. You can do the shorter runs together as easy-paced social jogs."
+      },
+      {
+        "role": "user",
+        "content": "We also have a dog — a border collie named Max. He'd probably love to join our runs."
+      },
+      {
+        "role": "assistant",
+        "content": "Border collies are perfect running companions — high energy and great stamina! Just ease him into longer distances too. Build up gradually over a few weeks."
+      },
+      {
+        "role": "user",
+        "content": "This is all great. Can you lay out a sample week plan for me including meals?"
+      }
+    ],
+    "golden_facts": [
+      "User wants to train for a full marathon in 6 months, current max is 5K",
+      "User is 30 years old, 78kg, 180cm, does gym 3x/week and runs 5K 2x/week",
+      "User had a knee sprain last year (recovered) and has low iron levels",
+      "User is vegetarian, needs iron-rich diet with vitamin C for absorption",
+      "User wakes up at 6am, works from home most days",
+      "User's partner is a beginner runner, can barely run 1K",
+      "User has a border collie named Max who could join runs",
+      "Recommended training: 16-week progressive plan, long runs Saturday AM"
+    ],
+    "queries": [
+      [
+        "What is the user's fitness goal?",
+        [
+          "marathon"
+        ]
+      ],
+      [
+        "What health issues does the user have?",
+        [
+          "low iron",
+          "knee"
+        ]
+      ],
+      [
+        "What is the user's dietary restriction?",
+        [
+          "vegetarian"
+        ]
+      ],
+      [
+        "When does the user prefer to run?",
+        [
+          "morning",
+          "6am"
+        ]
+      ],
+      [
+        "What is the user's partner's running level?",
+        [
+          "beginner",
+          "1K"
+        ]
+      ],
+      [
+        "What pet does the user have?",
+        [
+          "border collie",
+          "Max"
+        ]
+      ],
+      [
+        "How long is the recommended training plan?",
+        [
+          "16 weeks"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "life-health",
+      "n_messages": 15,
+      "total_chars": 1844,
+      "n_golden": 8,
+      "n_queries": 7
+    }
+  },
+  {
+    "name": "[long][work-software] Payment service migration planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "We need to migrate our payment processing from a monolithic Ruby on Rails app to a dedicated microservice. This is critical — we're losing about 2% of transactions due to timeouts."
+      },
+      {
+        "role": "assistant",
+        "content": "That's a significant loss. Let's start by understanding the current architecture. What database are you using for payments?"
+      },
+      {
+        "role": "user",
+        "content": "PostgreSQL 14 on AWS RDS. The payment tables have about 50 million rows. We use Stripe for card processing and also support PayPal."
+      },
+      {
+        "role": "assistant",
+        "content": "Good. For the migration, I'd recommend a Strangler Fig approach — build the new service alongside, route a small percentage of traffic, then gradually shift. What language are you considering?"
+      },
+      {
+        "role": "user",
+        "content": "Our team knows Go and Rust well. The backend team lead prefers Go for its simplicity. We also have two senior engineers who want to use Rust for performance."
+      },
+      {
+        "role": "assistant",
+        "content": "Go is a solid choice for payment services — fast, simple concurrency, great AWS SDK. Rust would give you memory safety guarantees but has a steeper learning curve for the team. I'd lean Go."
+      },
+      {
+        "role": "user",
+        "content": "Agreed, Go it is. What about the database layer? We need strong ACID guarantees for financial transactions."
+      },
+      {
+        "role": "assistant",
+        "content": "Stick with PostgreSQL for the new service. Use database transactions for all payment operations. Consider using pgx driver for better performance than database/sql."
+      },
+      {
+        "role": "user",
+        "content": "Makes sense. How should we handle the data migration? We can't afford downtime."
+      },
+      {
+        "role": "assistant",
+        "content": "Zero-downtime migration: 1) Set up Change Data Capture (CDC) from the old database, 2) Sync to new service's database, 3) Shadow-read from both to verify, 4) Switch traffic. Use Debezium for CDC."
+      },
+      {
+        "role": "user",
+        "content": "We've heard about Debezium. Our DevOps team is small — just two people. Is the operational overhead manageable?"
+      },
+      {
+        "role": "assistant",
+        "content": "Debezium on Kafka Connect is well-documented. If Kafka is too heavy, consider AWS DMS (Database Migration Service) which is fully managed and simpler."
+      },
+      {
+        "role": "user",
+        "content": "AWS DMS sounds better for our team size. What about the API contract between the monolith and the new payment service?"
+      },
+      {
+        "role": "assistant",
+        "content": "Define a gRPC proto for internal communication — it's strongly typed and fast. Expose a REST API for any external consumers. Version your APIs from day one."
+      },
+      {
+        "role": "user",
+        "content": "We also need idempotency. Sometimes our current system processes the same payment twice due to retries."
+      },
+      {
+        "role": "assistant",
+        "content": "Critical for payments. Use idempotency keys on every payment request. Store them in Redis with a 24-hour TTL. Return the cached result if the same key comes in again."
+      },
+      {
+        "role": "user",
+        "content": "We currently use Redis for session storage. Should we use the same cluster or separate?"
+      },
+      {
+        "role": "assistant",
+        "content": "Separate cluster for payment idempotency. You don't want payment failures caused by session storage issues. Use ElastiCache for both but different instances."
+      },
+      {
+        "role": "user",
+        "content": "What about observability? We need to track every payment for audit purposes."
+      },
+      {
+        "role": "assistant",
+        "content": "Structured logging with trace IDs that span the entire request. Use OpenTelemetry for distributed tracing. Store audit logs in a separate append-only table — never delete payment audit records."
+      },
+      {
+        "role": "user",
+        "content": "Our current logging is just CloudWatch logs. That's not enough for compliance. What's your recommendation?"
+      },
+      {
+        "role": "assistant",
+        "content": "For compliance-grade logging: write to both CloudWatch (for real-time alerts) and S3 (for long-term audit). Use a Lambda to archive. Consider CloudTrail for API-level auditing."
+      },
+      {
+        "role": "user",
+        "content": "Let's talk testing. We currently have very few tests on the payment code — that's one reason we're afraid to change anything."
+      },
+      {
+        "role": "assistant",
+        "content": "Start with contract tests between the monolith and new service. Then add integration tests against a real PostgreSQL instance. Finally, add chaos testing for failure scenarios."
+      },
+      {
+        "role": "user",
+        "content": "We use pytest for Python tests. For Go, should we use the standard testing package?"
+      },
+      {
+        "role": "assistant",
+        "content": "Standard testing package plus testify for assertions. Use go-mock for mocking Stripe and PayPal clients. Run tests in CI with go test -race to catch concurrency bugs."
+      },
+      {
+        "role": "user",
+        "content": "What's the deployment strategy? We use ECS with rolling deployments currently."
+      },
+      {
+        "role": "assistant",
+        "content": "Keep ECS but add canary deployments. Start routing 1% of payment traffic to the new service, monitor error rates and latency for 24 hours, then gradually increase."
+      },
+      {
+        "role": "user",
+        "content": "Our current SLA for payments is 99.9% uptime. What circuit breaker pattern should we implement?"
+      },
+      {
+        "role": "assistant",
+        "content": "Use a circuit breaker with three states: closed (normal), open (all requests fail fast), half-open (test with a few requests). Set the failure threshold to 5 consecutive errors with a 30-second cooldown."
+      },
+      {
+        "role": "user",
+        "content": "We need to handle refunds too. Currently refunds are processed manually by the finance team through an admin panel."
+      },
+      {
+        "role": "assistant",
+        "content": "Build a refund API into the new service. Use a saga pattern — the refund orchestrator coordinates with Stripe/PayPal APIs and updates the database atomically."
+      },
+      {
+        "role": "user",
+        "content": "The finance team wants a dashboard to see real-time payment metrics. They currently export CSVs from the admin panel manually."
+      },
+      {
+        "role": "assistant",
+        "content": "Expose payment metrics through a Grafana dashboard fed by Prometheus. Key metrics: transaction success rate, average processing time, failure reasons. Give the finance team read-only access."
+      },
+      {
+        "role": "user",
+        "content": "We're also worried about PCI compliance. The new service will handle card data directly."
+      },
+      {
+        "role": "assistant",
+        "content": "Minimize PCI scope by using Stripe Elements for card input (card data never touches your servers). For stored card references, encrypt at rest with AWS KMS. Network isolation with a dedicated VPC subnet."
+      },
+      {
+        "role": "user",
+        "content": "Good point about Stripe Elements. We currently store the last 4 digits and card brand for display. Should we keep doing that?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes, that's fine — last 4 digits and brand aren't considered sensitive under PCI. Just don't store full card numbers or CVVs. Use Stripe's Customer object as the source of truth."
+      },
+      {
+        "role": "user",
+        "content": "Timeline-wise, the CEO wants this done in 3 months. We have 6 engineers. Is that realistic?"
+      },
+      {
+        "role": "assistant",
+        "content": "Tight but doable if you scope carefully. Phase 1 (weeks 1-4): core payment service with Stripe integration. Phase 2 (weeks 5-8): data migration and shadow reads. Phase 3 (weeks 9-12): traffic migration and monitoring."
+      },
+      {
+        "role": "user",
+        "content": "One concern — we have a quarterly board meeting in month 2. The CEO wants a live demo of the new system working."
+      },
+      {
+        "role": "assistant",
+        "content": "Schedule the demo after Phase 1 completion. Show a payment going through the new service in staging. Demo the idempotency and error handling. Keep the demo in staging — don't rush production for the demo."
+      },
+      {
+        "role": "user",
+        "content": "Last question — our team uses Jira for project management and Slack for communication. Any tools we should add?"
+      },
+      {
+        "role": "assistant",
+        "content": "Add Linear or keep Jira for tracking. Use Slack with PagerDuty integration for production alerts. Set up a #payments-migration channel for async updates. Document architecture decisions in an ADR repo on GitHub."
+      },
+      {
+        "role": "user",
+        "content": "Perfect. Let me summarize the plan: Go service, PostgreSQL, AWS DMS for migration, gRPC internal API, idempotency via Redis, OpenTelemetry for tracing, canary deployments on ECS. The team lead Alice will be the tech lead, Bob handles DevOps, and Charlie joins from the payments team."
+      },
+      {
+        "role": "assistant",
+        "content": "That's a solid summary. I'd add: get the PCI review started in week 1 with your security team, and set up the Grafana dashboards in week 2 so you have visibility from day one of the shadow read phase."
+      }
+    ],
+    "golden_facts": [
+      "Payment processing migrating from monolithic Rails app to Go microservice",
+      "Current system loses 2% of transactions due to timeouts",
+      "Database is PostgreSQL 14 on AWS RDS with 50M payment rows",
+      "Uses Stripe for card processing and PayPal as secondary",
+      "Migration approach: Strangler Fig with AWS DMS for zero-downtime",
+      "Internal API: gRPC, external: REST with versioning",
+      "Idempotency via Redis with 24-hour TTL on separate cluster",
+      "Observability: OpenTelemetry tracing, CloudWatch + S3 for audit logs",
+      "Testing: contract tests, integration tests, race detection",
+      "Deployment: canary on ECS, starting at 1% traffic",
+      "Circuit breaker: 5 failures → open, 30-second cooldown",
+      "PCI compliance: Stripe Elements, KMS encryption, VPC isolation",
+      "3-month timeline in 3 phases with 6 engineers",
+      "Team: Alice (tech lead), Bob (DevOps), Charlie (payments domain)"
+    ],
+    "queries": [
+      [
+        "What language and framework for the new payment service?",
+        [
+          "Go",
+          "gRPC"
+        ]
+      ],
+      [
+        "How will they migrate data without downtime?",
+        [
+          "AWS DMS",
+          "zero-downtime"
+        ]
+      ],
+      [
+        "How do they prevent duplicate payment processing?",
+        [
+          "idempotency",
+          "Redis"
+        ]
+      ],
+      [
+        "What observability tools are they using?",
+        [
+          "OpenTelemetry",
+          "Grafana"
+        ]
+      ],
+      [
+        "What is the deployment strategy?",
+        [
+          "canary",
+          "1%"
+        ]
+      ],
+      [
+        "How are they handling PCI compliance?",
+        [
+          "Stripe Elements",
+          "KMS"
+        ]
+      ],
+      [
+        "What is the project timeline and phases?",
+        [
+          "3 months",
+          "3 phases"
+        ]
+      ],
+      [
+        "Who are the key team members?",
+        [
+          "Alice",
+          "Bob",
+          "Charlie"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "long",
+      "domain": "work-software",
+      "n_messages": 46,
+      "total_chars": 6817,
+      "n_golden": 14,
+      "n_queries": 8
+    }
+  },
+  {
+    "name": "[very-long][work-software] Platform migration planning session",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "Hey, I need to talk through our plans for the next quarter. We've got a bunch of stuff to figure out."
+      },
+      {
+        "role": "assistant",
+        "content": "Sure, I'm all ears. What's on your plate?"
+      },
+      {
+        "role": "user",
+        "content": "The big one is migrating our monolithic Django app to microservices. We've been running into scaling issues — the main app server regularly hits 90% CPU during peak hours, around 6-8pm EST. We have about 2 million monthly active users now, up from 800K a year ago."
+      },
+      {
+        "role": "assistant",
+        "content": "That's significant growth. What does your current infrastructure look like?"
+      },
+      {
+        "role": "user",
+        "content": "We're on AWS — 4 EC2 instances (m6i.2xlarge) behind an ALB, PostgreSQL 15 on RDS (db.r6g.xlarge), Redis ElastiCache for caching, and S3 for media storage. Our CDN is CloudFront. Team is 8 engineers total, but 2 are junior and still ramping up. We use Django 4.2 with Celery + RabbitMQ for async tasks, and nginx as reverse proxy."
+      },
+      {
+        "role": "assistant",
+        "content": "Solid foundation. What are the main pain points driving the migration?"
+      },
+      {
+        "role": "user",
+        "content": "Three things mainly. First, the monolith deployment takes about 45 minutes end-to-end and we can't deploy individual features independently. Every deploy is a full rebuild of the Docker image, running the entire test suite, and rolling restart across all 4 instances. We average about 2 deploys per week but we want to get to daily."
+      },
+      {
+        "role": "assistant",
+        "content": "45 minutes is painful. What's the bottleneck — tests, build, or restart?"
+      },
+      {
+        "role": "user",
+        "content": "Mostly tests, about 25 minutes. The Docker build is 10 minutes, rolling restart another 5, and the rest is manual verification steps that Sarah insists on. She doesn't trust our test coverage fully, which is fair — we're at 78% but the critical billing paths probably have gaps."
+      },
+      {
+        "role": "user",
+        "content": "Second pain point is the billing module. We handle subscriptions (monthly and annual), one-time payments, and enterprise invoicing with NET-30 terms. It keeps breaking when we touch unrelated code because the billing models are entangled with everything else. Last month a change to the notification preferences broke the subscription upgrade flow."
+      },
+      {
+        "role": "assistant",
+        "content": "How did that happen? Notification preferences shouldn't affect billing."
+      },
+      {
+        "role": "user",
+        "content": "The notification preferences model had a foreign key to the User model, and the User model had a signal that recalculated billing display fields on every save. So changing notification preferences triggered the billing recalculation, which had a bug in the proration logic that nobody had touched in months. Took us 3 days to find."
+      },
+      {
+        "role": "assistant",
+        "content": "That's a classic monolith coupling problem. What's the third pain point?"
+      },
+      {
+        "role": "user",
+        "content": "Our notification system — email via SendGrid, push via Firebase, in-app via a custom WebSocket server. It's all in a single Celery task queue and if one notification type gets backed up, everything slows down. Last week a SendGrid rate limit caused 200K push notifications to be delayed by 6 hours."
+      },
+      {
+        "role": "assistant",
+        "content": "Makes sense. For decomposition, I'd suggest starting with three extracted services: billing, notifications, and a shared user/auth service. The Django monolith continues serving the core product while you build these alongside. What's your team's strongest language?"
+      },
+      {
+        "role": "user",
+        "content": "Most people know Python well. Two senior engineers — Wei and Kenji — came from a Go shop, and our newest hire Alex has Rust experience from his previous job at Cloudflare. Our tech lead Sarah prefers Python for everything and has been pushing back on any language diversification."
+      },
+      {
+        "role": "assistant",
+        "content": "For billing, I'd recommend Python with FastAPI — it matches your team's core skills and FastAPI has excellent async support for handling Stripe webhooks. The Go engineers could lead the notification service where throughput matters more."
+      },
+      {
+        "role": "user",
+        "content": "That's what I was leaning towards. Sarah wants to keep everything in Python but the Go guys are pushing hard for Go on the notification service since it needs to handle about 50K push notifications per minute during peak evening hours. Wei calculated that Python with asyncio would need about 12 Celery workers to match what a single Go process can handle."
+      },
+      {
+        "role": "user",
+        "content": "Let's dig into the billing service first. We currently have about 180K active subscriptions, with about 5K new signups per month and roughly 2K churns. Payment processing goes through Stripe for cards, and we also handle wire transfers for about 200 enterprise clients. We need to support prorated upgrades, downgrades, pause/resume, and annual billing with early termination penalties."
+      },
+      {
+        "role": "assistant",
+        "content": "Complex billing logic. How are you handling subscription state transitions currently?"
+      },
+      {
+        "role": "user",
+        "content": "It's honestly a mess. We have a Subscription model with about 40 fields. State transitions are handled by a giant switch statement in a single management command — it's about 2000 lines of code in one file called manage_subscription.py. When a customer upgrades, we calculate the prorated amount, issue a credit for unused time on the old plan, then charge for the new plan. It works for the common cases but edge cases like mid-cycle downgrades with annual plans are barely tested."
+      },
+      {
+        "role": "assistant",
+        "content": "A state machine pattern would help a lot here. Consider using the `transitions` library in Python or building a finite state machine for subscription lifecycle. Each transition should be an atomic operation with proper audit logging. What states does a subscription go through?"
+      },
+      {
+        "role": "user",
+        "content": "Active, past_due, paused, canceled, and we have a special state called trial_expired that's separate from canceled. Enterprise subscriptions also have a pending_activation state because they go through manual onboarding."
+      },
+      {
+        "role": "assistant",
+        "content": "Six states is manageable. Map out every valid transition and its side effects. For example: active → past_due happens on payment failure, which should trigger the dunning workflow. past_due → canceled happens after 4 failed retries. Active → paused should auto-resume after 90 days. Write these as explicit transition rules, not buried in a switch statement."
+      },
+      {
+        "role": "user",
+        "content": "Good point about dunning. Currently we just log failed payments and our ops team manually follows up with emails. It's completely unsustainable at our scale. We need automated retry with exponential backoff and customer notifications."
+      },
+      {
+        "role": "assistant",
+        "content": "Implement a dunning workflow: retry at day 1, day 3, day 7, day 14. Send emails at each stage with escalating urgency. After 4 consecutive failures, downgrade to a read-only free tier and flag for manual review. Every attempt and notification should be logged in an audit table with timestamps."
+      },
+      {
+        "role": "user",
+        "content": "What about grace periods? Some customers have legitimate payment delays — their company credit card expired and they're waiting for a new one. We don't want to immediately cut them off."
+      },
+      {
+        "role": "assistant",
+        "content": "Add a grace_period_days config per plan tier. During grace period, the service remains fully functional but a banner shows in the UI. Send a 'payment updated' reminder at day 0, 3, 7. Only start service restrictions after grace_period + dunning_retries. For enterprise clients, extend the grace period to 30 days and notify the account manager."
+      },
+      {
+        "role": "user",
+        "content": "What about data migration? We have 3 years of billing history — invoices, payment attempts, subscription changes, credit memos. About 12 million records in the invoices table alone, and another 8 million in payment_attempts."
+      },
+      {
+        "role": "assistant",
+        "content": "Don't migrate historical data all at once. Use a dual-write approach: write to both old and new databases during the transition period. Historical data can be migrated in batches during off-peak hours. Keep a reference mapping table linking old and new IDs for traceability."
+      },
+      {
+        "role": "user",
+        "content": "Our DBA Mei flagged that the invoices table doesn't have proper indexes for the query patterns the new service will need. She wants to add composite indexes on (customer_id, status, created_at) and (subscription_id, invoice_date) but we're worried about lock time on 12M rows."
+      },
+      {
+        "role": "assistant",
+        "content": "Use CREATE INDEX CONCURRENTLY to avoid table locks. On PostgreSQL 15 this is reliable. Still do it during a maintenance window. Mei should also consider partitioning the invoices table by month — it'll make the migration batches much faster and improve query performance for recent data."
+      },
+      {
+        "role": "user",
+        "content": "Mei also asked about read replicas. She wants to set up a read replica specifically for the new billing service so it doesn't compete with the monolith for read capacity. Is that worth the extra cost?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes, definitely worth it during migration. A db.r6g.large replica costs about $150/month and gives you a dedicated read endpoint. The billing service can read from the replica while writes go to primary. After full migration you can evaluate whether to keep it."
+      },
+      {
+        "role": "user",
+        "content": "OK let's switch to the notification service. We currently use Celery tasks that directly call Firebase for push, SendGrid for email, and a custom WebSocket server for in-app notifications. The WebSocket server is written in Node.js using socket.io."
+      },
+      {
+        "role": "assistant",
+        "content": "How many concurrent WebSocket connections do you typically have?"
+      },
+      {
+        "role": "user",
+        "content": "Around 30K during peak hours. We've had serious issues with memory leaks in the Node.js process — it regularly consumes 4GB+ after a few days and we have to restart it. Our DevOps engineer Chen set up a cron job to restart it every 12 hours as a workaround."
+      },
+      {
+        "role": "assistant",
+        "content": "That's a band-aid, not a fix. For the new Go notification service, use gorilla/websocket or nhooyr.io/websocket. Go handles 30K connections easily. Set read/write deadlines on each connection and implement ping/pong heartbeats to detect dead connections. That should prevent the memory leak issue entirely."
+      },
+      {
+        "role": "user",
+        "content": "Our CTO James wants us to use WebSockets for everything — including email delivery status updates and push notification receipts. He envisions a real-time dashboard where customers can see the status of every notification they've ever received. I think that's overengineering it. What do you think?"
+      },
+      {
+        "role": "assistant",
+        "content": "James is right about wanting delivery status, but wrong about the transport. WebSocket is great for real-time in-app delivery, but email and push delivery confirmations should use webhooks from SendGrid/Firebase back to your service. Don't push status updates through WebSocket unless the user is actively looking at a notification history page. A polling endpoint or Server-Sent Events would be simpler for that use case."
+      },
+      {
+        "role": "user",
+        "content": "What about deployment infrastructure? We're currently using a single ECS cluster for everything. Sarah is worried about the operational overhead of managing multiple services — she's never worked with microservices before."
+      },
+      {
+        "role": "assistant",
+        "content": "Start with a single ECS cluster but separate task definitions and services. Use AWS Cloud Map or Service Connect for service discovery. You don't need Kubernetes yet — ECS with Fargate for the new services gives you isolation without the ops complexity. Each service gets its own CloudWatch log group and auto-scaling policy."
+      },
+      {
+        "role": "user",
+        "content": "Sarah also mentioned she wants to try AWS App Runner for the billing service since it auto-scales automatically. Have you used it?"
+      },
+      {
+        "role": "assistant",
+        "content": "App Runner is fine for simple HTTP services but it has limitations: no support for background workers (which you'll need for subscription renewal cron jobs and dunning retries), limited VPC access for connecting to RDS, and cold start issues. Stick with ECS Fargate for billing — you need the flexibility. App Runner might work for a lightweight internal API later."
+      },
+      {
+        "role": "user",
+        "content": "Our CI/CD is GitHub Actions. We run pytest with about 800 tests, plus a coverage check at 80%. Total CI time is about 12 minutes. Alex mentioned he wants to add integration tests with a real PostgreSQL database but Sarah thinks that'll slow CI too much."
+      },
+      {
+        "role": "assistant",
+        "content": "Split the test suite: unit tests (fast, no DB) run on every PR, integration tests (with PostgreSQL container) run only on merge to main. Use pytest markers to separate them. For the new services, contract tests between services are more important than end-to-end integration tests early on."
+      },
+      {
+        "role": "user",
+        "content": "We also need to think about feature flags. Right now we use environment variables and manual config changes. We want to be able to roll out the new billing service gradually — maybe 5% of traffic first, then 25%, then 100%."
+      },
+      {
+        "role": "assistant",
+        "content": "AWS AppConfig with feature flags would integrate cleanly with your existing stack. Or use LaunchDarkly if you want a UI for non-engineers. For the billing migration specifically, implement a routing layer that can direct traffic based on customer ID hash — this gives you deterministic routing so a customer always hits the same backend during the transition."
+      },
+      {
+        "role": "user",
+        "content": "We need to set up proper monitoring. Currently we just use CloudWatch basic metrics and a few custom Grafana dashboards that Chen set up. James wants Datadog but they quoted us $15K/month for our usage."
+      },
+      {
+        "role": "assistant",
+        "content": "$15K is steep for your scale. Grafana Cloud has a generous free tier that covers your needs — 10K metrics, 50GB logs, 50GB traces per month. Use Prometheus for metrics, Loki for logs, and Tempo for traces. Total cost would be under $500/month on the Pro tier. If James insists on Datadog, start with just APM for the billing service — that's where you need visibility most."
+      },
+      {
+        "role": "user",
+        "content": "Chen set up a Prometheus instance on a t3.medium EC2 box about 6 months ago. It's been working but he's worried about scaling it. Can we just use that as our Prometheus and connect Grafana Cloud to it?"
+      },
+      {
+        "role": "assistant",
+        "content": "Yes, that works. Install the Grafana Cloud agent on the EC2 instance — it'll remote-write your existing Prometheus metrics to Grafana Cloud. You keep the local Prometheus for short-term queries and get long-term storage plus dashboards in the cloud. Chen should also set up alerting rules in Grafana for the key metrics: API error rate, p99 latency, database connection pool usage."
+      },
+      {
+        "role": "user",
+        "content": "We're SOC 2 Type II compliant and need to stay that way. Our auditor Karen mentioned during our last review that splitting into microservices means each service needs its own access controls and audit logging. She flagged this as a potential compliance gap if we don't address it before the split."
+      },
+      {
+        "role": "assistant",
+        "content": "Karen is right. Implement service-to-service authentication using JWT tokens signed by a shared secret. Every API call between services should carry a service identity claim. For audit logging, use a centralized audit service that all services write to via an async queue — don't scatter audit logs across different service databases."
+      },
+      {
+        "role": "user",
+        "content": "Our security engineer Tom wants to implement a zero-trust network. He's been reading about SPIFFE/SPIRE for service identity and mTLS everywhere. He submitted a proposal last week for a 3-week SPIRE implementation project."
+      },
+      {
+        "role": "assistant",
+        "content": "SPIFFE is excellent but overkill for 3 services. Start with JWT-based service auth using a shared signing key with automatic rotation every 30 days. Move to mTLS when you have 5+ services. Tom can set up a simple JWT issuer as an ECS sidecar or use API Gateway for auth validation. Save SPIRE for next year when the service mesh grows."
+      },
+      {
+        "role": "user",
+        "content": "Tom is going to push back on that. He's really excited about SPIRE. How do I convince him to wait?"
+      },
+      {
+        "role": "assistant",
+        "content": "Show him the operational cost: SPIRE server, SPIRE agents on every node, workload attestation configuration for each service. For 3 services, the JWT approach takes 2 days to implement vs 3 weeks for SPIRE. Offer him a concrete compromise: implement JWT now, schedule SPIRE evaluation for Q3 when you'll have 5+ services and the investment makes sense."
+      },
+      {
+        "role": "user",
+        "content": "Let's talk timeline. We need to have at least the billing service live by end of Q2. That gives us about 4 months from now. But we also have a product launch in March that'll keep 3 engineers busy for 3 weeks."
+      },
+      {
+        "role": "assistant",
+        "content": "So effectively 3.5 months with 5 engineers on the migration during March. Billing service phases: Month 1 (Feb) — API design, data model, proto definitions. Month 2 (March, reduced team) — core subscription management and Stripe integration. Month 3 (April) — dunning, data migration, shadow reads. Month 4 (May) — traffic cutover and monitoring."
+      },
+      {
+        "role": "user",
+        "content": "The product launch in March is our new enterprise tier — it adds SSO via SAML, custom branding, a REST API for enterprise clients, and role-based access control. Alex and two juniors will be on that. So we really have Sarah, me, Kenji, and Chen for the billing migration in March."
+      },
+      {
+        "role": "assistant",
+        "content": "That's tight but doable if you front-load the design work. I'd suggest getting the billing API design, database schema, and gRPC proto definitions completely locked down in February before the team splits. Kenji can start the Go notification service prototype in parallel. That way March is pure implementation with no design ambiguity."
+      },
+      {
+        "role": "user",
+        "content": "One concern — Sarah is the only one who deeply understands the billing business logic. If she gets pulled into the enterprise launch (which James keeps hinting at), we're in trouble."
+      },
+      {
+        "role": "assistant",
+        "content": "Document the billing business rules this month, before anything else. Create a decision table: for each subscription state + event combination, what should happen. This becomes both the spec for the new service AND the compliance documentation Karen needs. Even a 10-page document is better than having the logic only in Sarah's head."
+      },
+      {
+        "role": "user",
+        "content": "One more technical decision — for inter-service communication, Sarah wants to use REST everywhere since it's simpler to debug. The Go engineers want gRPC for performance. I'm somewhere in the middle."
+      },
+      {
+        "role": "assistant",
+        "content": "Use a hybrid approach: REST for external-facing APIs (enterprise API clients, Stripe webhook handlers) and gRPC for internal service-to-service calls. gRPC gives you type safety through proto definitions, binary serialization for performance, and streaming support for real-time notifications. REST is easier to debug and document for external consumers. You can expose both on the same service."
+      },
+      {
+        "role": "user",
+        "content": "OK I think we have a solid plan. Let me summarize: Billing service in Python/FastAPI, notification service in Go, both on ECS Fargate. NATS for messaging between services. Grafana Cloud for observability. REST for external APIs, gRPC internally. Phase the billing migration over 4 months with a design-first approach in February. Does that sound right?"
+      },
+      {
+        "role": "assistant",
+        "content": "That's a strong plan. I'd add these action items: 1) Set up Grafana Cloud and alerting rules in week 1, before writing service code. 2) Write gRPC proto definitions as the very first engineering task — it forces clarity on API contracts. 3) Get Karen and Tom involved in week 2 to review the architecture for SOC 2 compliance. 4) Budget 2 weeks of buffer for the March enterprise launch impact. 5) Sarah documents billing business rules this month."
+      },
+      {
+        "role": "user",
+        "content": "Great. I'll set up a meeting with the whole team for Monday to walk through this plan. One last question — should we create a separate GitHub organization for the new services, or keep them in the same repo as a monorepo?"
+      },
+      {
+        "role": "assistant",
+        "content": "Monorepo with a clear directory structure: services/billing/, services/notifications/, shared/proto/, shared/libs/. You get shared CI workflows, easier code reviews, and atomic commits across services. Use CODEOWNERS to control who can modify each service. Split to separate repos only if the team grows past 15 engineers."
+      },
+      {
+        "role": "user",
+        "content": "Perfect. Thanks for walking through all of this with me. I feel much more confident about the plan now. I'll ping you after Monday's meeting to update you on any changes."
+      },
+      {
+        "role": "assistant",
+        "content": "Sounds good! Good luck with the meeting. Remember — the key to making this work is keeping the monolith running smoothly while you build alongside. Don't try to migrate the core product logic, just extract the three problem areas. And start those documentation tasks immediately — they're on the critical path."
+      }
+    ],
+    "golden_facts": [
+      "Django monolith migration to microservices, 2M MAU, 8 engineers (2 junior ramping)",
+      "Infrastructure: 4x m6i.2xlarge EC2, PostgreSQL 15 RDS, Redis ElastiCache, S3, CloudFront",
+      "Django 4.2 + Celery + RabbitMQ, nginx reverse proxy, deploys take 45min (25min tests)",
+      "Three pain points: slow deploys, billing coupling, notification system reliability",
+      "Billing: 180K active subs, 5K new/mo, 2K churn, Stripe + wire transfers for 200 enterprise clients",
+      "Subscription states: active, past_due, paused, canceled, trial_expired, pending_activation",
+      "Dunning workflow: retry at 1d/3d/7d/14d, auto-downgrade after 4 failures, grace period per tier",
+      "12M invoice records + 8M payment_attempts, dual-write migration, CREATE INDEX CONCURRENTLY",
+      "DBA Mei: composite indexes + monthly partitioning + read replica ($150/mo) for billing service",
+      "Notifications: 50K push/min peak, 30K WebSocket connections, Node.js memory leak (4GB+)",
+      "CTO James wants WS for everything — disagreement on notification status approach",
+      "ECS Fargate chosen (not App Runner — no background worker support), single cluster + Service Connect",
+      "CI: GitHub Actions, 800 pytest tests, 78% coverage, 12min CI, split unit/integration tests",
+      "Feature flags: AppConfig or LaunchDarkly, customer-ID-hash routing for gradual rollout",
+      "Monitoring: Grafana Cloud (Prometheus+Loki+Tempo) < $500/mo vs Datadog $15K/mo quote",
+      "Existing Prometheus on t3.medium, connect to Grafana Cloud via remote-write agent",
+      "SOC 2 Type II compliance, JWT service auth (not SPIRE — too early for 3 services)",
+      "Team: Sarah (lead, billing expertise), Wei+Kenji (Go), Alex (Rust, enterprise launch), Chen (DevOps), Mei (DBA), Tom (security), James (CTO), Karen (auditor)",
+      "Timeline: 4 months, billing service by end Q2, enterprise launch in March reduces team to 4",
+      "Front-load design in Feb before team splits, document billing business rules immediately",
+      "REST external + gRPC internal, NATS messaging bus, monorepo with CODEOWNERS"
+    ],
+    "queries": [
+      [
+        "How many monthly active users and team size?",
+        [
+          "2 million",
+          "8"
+        ]
+      ],
+      [
+        "What's the current AWS infrastructure?",
+        [
+          "EC2",
+          "PostgreSQL",
+          "Redis"
+        ]
+      ],
+      [
+        "Why is deployment slow?",
+        [
+          "45 minutes",
+          "tests"
+        ]
+      ],
+      [
+        "What are the three main pain points?",
+        [
+          "deploy",
+          "billing",
+          "notification"
+        ]
+      ],
+      [
+        "What language and framework for the billing service?",
+        [
+          "Python",
+          "FastAPI"
+        ]
+      ],
+      [
+        "What language for the notification service?",
+        [
+          "Go",
+          "50K"
+        ]
+      ],
+      [
+        "How many active subscriptions?",
+        [
+          "180K"
+        ]
+      ],
+      [
+        "What subscription states exist?",
+        [
+          "active",
+          "past_due",
+          "paused"
+        ]
+      ],
+      [
+        "How many invoice records for migration?",
+        [
+          "12 million"
+        ]
+      ],
+      [
+        "What does the DBA Mei recommend for the database?",
+        [
+          "indexes",
+          "partition"
+        ]
+      ],
+      [
+        "How many WebSocket connections and what's the issue?",
+        [
+          "30K",
+          "memory"
+        ]
+      ],
+      [
+        "What messaging bus is recommended?",
+        [
+          "NATS"
+        ]
+      ],
+      [
+        "What deployment platform and why not App Runner?",
+        [
+          "ECS",
+          "Fargate"
+        ]
+      ],
+      [
+        "What observability stack and why not Datadog?",
+        [
+          "Grafana",
+          "15K"
+        ]
+      ],
+      [
+        "What compliance standard and how to handle service auth?",
+        [
+          "SOC 2",
+          "JWT"
+        ]
+      ],
+      [
+        "What's the project timeline and team allocation?",
+        [
+          "4 months",
+          "March"
+        ]
+      ],
+      [
+        "What are the key personnel roles?",
+        [
+          "Sarah",
+          "Wei",
+          "Kenji",
+          "Alex",
+          "Chen",
+          "Mei",
+          "Tom",
+          "James",
+          "Karen"
+        ]
+      ],
+      [
+        "REST vs gRPC decision?",
+        [
+          "REST",
+          "gRPC"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "very-long",
+      "domain": "work-software",
+      "n_messages": 72,
+      "total_chars": 18869,
+      "n_golden": 21,
+      "n_queries": 18
+    }
+  }
+]

@@ -27,7 +27,7 @@ import tempfile
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -172,6 +172,154 @@ SCENARIOS = [
             ("用户以前在哪个公司？", ["微软"]),
             ("用户用什么编程语言？", ["Go", "Rust"]),
             ("用户现在做什么方向？", ["TikTok", "推荐系统"]),
+        ],
+    },
+    # ── English counterparts ──────────────────────────────────────
+    {
+        "name": "User Preferences - Language Preference Shift",
+        "conversation": [
+            {"role": "user", "content": "I've been learning Rust lately, and it feels much faster than Python"},
+            {"role": "assistant", "content": "Rust is known for its performance. What language were you using before?"},
+            {"role": "user", "content": "I used to write backend services in Python, but I switched to Rust last month"},
+        ],
+        "golden_facts": [
+            "User previously used Python for backend development",
+            "User switched from Python to Rust last month",
+            "User thinks Rust is faster than Python",
+        ],
+        "queries": [
+            ("What language did the user write backend in before?", ["Python"]),
+            ("What language does the user use now?", ["Rust"]),
+            ("Why did the user switch languages?", ["fast"]),
+        ],
+    },
+    {
+        "name": "User Info - Work and Location",
+        "conversation": [
+            {"role": "user", "content": "I just moved to Tokyo and started a new job at Google"},
+            {"role": "assistant", "content": "Congratulations! Tokyo is a great city. Does Google have an office there?"},
+            {"role": "user", "content": "Yes, I work in the Shibuya office, the team mainly works on search"},
+        ],
+        "golden_facts": [
+            "User moved to Tokyo, Japan",
+            "User works at Google's Tokyo office",
+            "User's team works on search in Shibuya",
+        ],
+        "queries": [
+            ("What city does the user live in?", ["Tokyo"]),
+            ("What company does the user work at?", ["Google"]),
+            ("What does the user's team work on?", ["search"]),
+        ],
+    },
+    {
+        "name": "Project Info - Tech Stack",
+        "conversation": [
+            {"role": "user", "content": "We're building the new project with a FastAPI backend and React frontend"},
+            {"role": "assistant", "content": "Good tech choices. What database are you using?"},
+            {"role": "user", "content": "PostgreSQL, deployed on AWS with Docker"},
+            {"role": "assistant", "content": "Are you using Kubernetes?"},
+            {"role": "user", "content": "Not yet, just ECS for now, might migrate later"},
+        ],
+        "golden_facts": [
+            "New project backend uses FastAPI framework",
+            "New project frontend uses React",
+            "Project uses PostgreSQL database",
+            "Project is deployed on AWS with Docker",
+        ],
+        "queries": [
+            ("What framework does the project backend use?", ["FastAPI"]),
+            ("What database does the project use?", ["PostgreSQL"]),
+            ("Where is the project deployed?", ["AWS"]),
+        ],
+    },
+    {
+        "name": "Multi-turn - Preference Accumulation",
+        "conversation": [
+            {"role": "user", "content": "I adopted an orange tabby cat, she's adorable"},
+            {"role": "assistant", "content": "Orange tabbies are so friendly! What's her name?"},
+            {"role": "user", "content": "Her name is Mochi, she's three years old and loves eating fish"},
+            {"role": "assistant", "content": "Mochi sounds cute! Do you have any other pets?"},
+            {"role": "user", "content": "Yes, a golden retriever named Biscuit, they get along really well"},
+        ],
+        "golden_facts": [
+            "User has a three-year-old orange tabby cat named Mochi",
+            "User also has a golden retriever named Biscuit",
+            "Mochi loves eating fish",
+        ],
+        "queries": [
+            ("What pets does the user have?", ["tabby", "golden retriever"]),
+            ("What is the cat's name?", ["Mochi"]),
+            ("What is the dog's name?", ["Biscuit"]),
+        ],
+    },
+    {
+        "name": "Cross-session - Job Change",
+        "sessions": [
+            {
+                "conversation": [
+                    {"role": "user", "content": "I currently work at Microsoft, doing Azure development"},
+                    {"role": "assistant", "content": "Azure is a huge platform, what part do you work on?"},
+                    {"role": "user", "content": "Mostly Kubernetes-related services"},
+                ],
+            },
+            {
+                "conversation": [
+                    {"role": "user", "content": "I just switched to Meta, now working on Instagram recommendation systems"},
+                    {"role": "assistant", "content": "That's quite a shift from Azure to recommendations"},
+                    {"role": "user", "content": "Yes, but the tech stack still uses Go and Rust"},
+                ],
+            },
+        ],
+        "golden_facts": [
+            "User worked at Microsoft on Azure",
+            "User mainly handled Kubernetes-related services",
+            "User switched to Meta working on Instagram recommendation systems",
+            "User's tech stack includes Go and Rust",
+        ],
+        "queries": [
+            ("Where does the user work now?", ["Meta"]),
+            ("Where did the user work before?", ["Microsoft"]),
+            ("What programming languages does the user use?", ["Go", "Rust"]),
+            ("What does the user work on now?", ["Instagram", "recommendation"]),
+        ],
+    },
+    {
+        "name": "Health and Dietary Constraints",
+        "conversation": [
+            {"role": "user", "content": "I have a severe nut allergy, so I have to be really careful when eating out"},
+            {"role": "assistant", "content": "That must be challenging. Are there other dietary restrictions?"},
+            {"role": "user", "content": "I'm also lactose intolerant, but I can take lactase pills"},
+            {"role": "user", "content": "My doctor said my vitamin D levels are low, so I take supplements daily"},
+        ],
+        "golden_facts": [
+            "User has a severe nut allergy",
+            "User is lactose intolerant",
+            "User takes vitamin D supplements daily",
+        ],
+        "queries": [
+            ("What food allergies does the user have?", ["nut"]),
+            ("Can the user eat dairy?", ["lactose"]),
+            ("What supplements does the user take?", ["vitamin D"]),
+        ],
+    },
+    {
+        "name": "Weekly Schedule and Habits",
+        "conversation": [
+            {"role": "user", "content": "I work from home on Mondays and Fridays, in-office the rest of the week"},
+            {"role": "assistant", "content": "That's a nice hybrid setup. What does your typical morning look like?"},
+            {"role": "user", "content": "I usually run 5k before work, then have a protein smoothie"},
+            {"role": "user", "content": "On weekends I do long hikes in the mountains with my partner"},
+        ],
+        "golden_facts": [
+            "User works from home on Mondays and Fridays",
+            "User runs 5k every morning before work",
+            "User drinks a protein smoothie after running",
+            "User goes hiking in the mountains on weekends",
+        ],
+        "queries": [
+            ("When does the user work remotely?", ["Monday", "Friday"]),
+            ("What exercise does the user do in the morning?", ["run"]),
+            ("What does the user do on weekends?", ["hike"]),
         ],
     },
 ]

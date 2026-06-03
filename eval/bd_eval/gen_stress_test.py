@@ -17,7 +17,7 @@ import random
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 # 模板生成源
 NAMES = ["用户", "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace"]

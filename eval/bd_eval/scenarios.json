@@ -7352,5 +7352,2616 @@
         ]
       }
     ]
+  },
+  {
+    "name": "English Retrieval - User Preferences",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User enjoys drinking coffee and coding",
+        "tags": "preference,beverage",
+        "category": "user_pref",
+        "importance": 6,
+        "is_persistent": true
+      },
+      {
+        "action": "add_fact",
+        "content": "User drinks a cup of black coffee every morning before writing code",
+        "tags": "habit",
+        "category": "user_pref",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User knows Python and Rust programming languages",
+        "tags": "skills",
+        "category": "user_pref",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User develops exclusively on macOS",
+        "tags": "environment",
+        "category": "tool",
+        "importance": 6
+      }
+    ],
+    "queries": [
+      {
+        "query": "What kind of coffee does the user drink?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "enjoys drinking coffee",
+          "black coffee every morning"
+        ],
+        "unexpected": [
+          "Python and Rust",
+          "macOS"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "What programming languages does the user know?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Python and Rust"
+        ],
+        "unexpected": [
+          "coffee",
+          "macOS"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Entity Probe - Retrieve All Facts",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "Alice works at Google as a senior engineer",
+        "importance": 7,
+        "tags": "work",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice lives in San Francisco",
+        "importance": 6,
+        "tags": "location",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice runs marathons on weekends",
+        "importance": 4,
+        "tags": "hobby",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice prefers dark chocolate over milk chocolate",
+        "importance": 3,
+        "tags": "food",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob studies at MIT",
+        "importance": 5,
+        "tags": "education",
+        "category": "user_pref",
+        "entities": [
+          "Bob"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "Alice",
+        "type": "probe",
+        "params": {},
+        "expected": [
+          "Google",
+          "San Francisco",
+          "marathons",
+          "dark chocolate"
+        ],
+        "unexpected": [
+          "MIT",
+          "Bob"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Timeline - Entity Changes (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User started with IntelliJ IDEA for Java development",
+        "importance": 5,
+        "tags": "editor",
+        "category": "tool",
+        "entities": [
+          "editor_history"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User switched to VS Code for better TypeScript support",
+        "importance": 6,
+        "tags": "editor,change",
+        "category": "tool",
+        "entities": [
+          "editor_history"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User recently moved to Neovim for terminal-based workflow",
+        "importance": 7,
+        "tags": "editor,change",
+        "category": "tool",
+        "entities": [
+          "editor_history"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "editor_history",
+        "type": "timeline",
+        "params": {},
+        "expected": [
+          "IntelliJ IDEA",
+          "VS Code",
+          "Neovim"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Cross-source Dedup - Similar Content Skipped",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User prefers using Docker for containerization",
+        "importance": 6,
+        "tags": "tools",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User likes Docker for container deployments",
+        "importance": 6,
+        "tags": "tools",
+        "category": "user_pref",
+        "dedup_threshold": 0.6
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses GitHub Actions for CI/CD pipelines",
+        "importance": 5,
+        "tags": "devops",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {
+          "expected_count": 2
+        },
+        "expected": {
+          "exact_count": 2
+        },
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "Persistent Tag Filtering (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's permanent email is alice@company.com",
+        "is_persistent": true,
+        "importance": 7,
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is currently debugging the login timeout bug",
+        "is_persistent": false,
+        "importance": 4,
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's home address is 123 Main Street, Portland",
+        "is_persistent": true,
+        "importance": 8,
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "Sprint review meeting is scheduled for Friday",
+        "is_persistent": false,
+        "importance": 3,
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "User's permanent information",
+        "type": "search",
+        "params": {
+          "persistent_only": true
+        },
+        "expected": [
+          "alice@company.com",
+          "123 Main Street"
+        ],
+        "unexpected": [
+          "login timeout",
+          "Sprint review"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Importance Ranking - High Priority First (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User is severely allergic to peanuts",
+        "importance": 10,
+        "tags": "health",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's favorite food is sushi",
+        "importance": 4,
+        "tags": "food",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User occasionally eats pizza on Fridays",
+        "importance": 2,
+        "tags": "food",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "User's food preferences and health",
+        "type": "search",
+        "params": {
+          "scenario": "longterm"
+        },
+        "expected": [
+          "severely allergic to peanuts",
+          "favorite food is sushi"
+        ],
+        "unexpected": [
+          "pizza on Fridays"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Contradiction Detection (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User believes React is the best frontend framework",
+        "importance": 6,
+        "tags": "technology",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User thinks Vue is easier to learn than React",
+        "importance": 5,
+        "tags": "technology",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses Svelte for personal projects",
+        "importance": 4,
+        "tags": "technology",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": [
+          "React",
+          "Vue"
+        ],
+        "unexpected": [
+          "Svelte"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Associative Memory - Cue to Target (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's life motto is 'Stay hungry, stay foolish'",
+        "importance": 5,
+        "tags": "motto",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's favorite author is Haruki Murakami",
+        "importance": 6,
+        "tags": "reading",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's favorite film director is Christopher Nolan",
+        "importance": 6,
+        "tags": "film",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's favorite singer is Taylor Swift",
+        "importance": 5,
+        "tags": "music",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User admires Elon Musk",
+        "importance": 5,
+        "tags": "person",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User supports Manchester United",
+        "importance": 4,
+        "tags": "sports",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "User's life motto",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Stay hungry"
+        ],
+        "unexpected": [
+          "Murakami",
+          "Nolan",
+          "Manchester"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "User's favorite author",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Murakami"
+        ],
+        "unexpected": [
+          "Nolan",
+          "Taylor",
+          "Musk"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "User's favorite director",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Nolan"
+        ],
+        "unexpected": [
+          "Murakami",
+          "Manchester",
+          "foolish"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "User's favorite singer",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Taylor Swift"
+        ],
+        "unexpected": [
+          "Nolan",
+          "Murakami",
+          "Manchester"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Memory Edit - Information Update (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's phone is iPhone 14",
+        "importance": 5,
+        "tags": "device",
+        "category": "user_pref",
+        "entities": [
+          "phone"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User's laptop is MacBook Pro",
+        "importance": 5,
+        "tags": "device",
+        "category": "tool",
+        "entities": [
+          "laptop"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "What phone does the user have?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "iPhone 14"
+        ],
+        "unexpected": [
+          "MacBook"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "What new phone did the user get?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "iPhone 15"
+        ],
+        "unexpected": [
+          "iPhone 14",
+          "MacBook"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ],
+        "extra_setup": [
+          {
+            "action": "add_fact",
+            "content": "User upgraded to iPhone 15",
+            "importance": 6,
+            "tags": "device,update",
+            "category": "user_pref",
+            "entities": [
+              "phone"
+            ]
+          }
+        ]
+      },
+      {
+        "query": "Did the user change laptops?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "MacBook Pro"
+        ],
+        "unexpected": [
+          "iPhone 15",
+          "iPhone 14"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Cross-session Staged Information (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User plans to build a portfolio website",
+        "importance": 6,
+        "tags": "project",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Portfolio site uses React and Next.js",
+        "importance": 6,
+        "tags": "technology",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What tech stack for the portfolio site?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "React",
+          "Next.js"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "What database for the portfolio site?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "PostgreSQL"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ],
+        "extra_setup": [
+          {
+            "action": "add_fact",
+            "content": "Portfolio database uses PostgreSQL",
+            "importance": 6,
+            "tags": "technology,update",
+            "category": "project"
+          }
+        ]
+      },
+      {
+        "query": "Where is the portfolio site deployed?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Vercel"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ],
+        "extra_setup": [
+          {
+            "action": "add_fact",
+            "content": "Portfolio site deployed on Vercel",
+            "importance": 6,
+            "tags": "deployment",
+            "category": "project"
+          },
+          {
+            "action": "add_fact",
+            "content": "User purchased the domain portfolio.dev",
+            "importance": 5,
+            "tags": "domain",
+            "category": "project"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Multi-hop Reasoning - Composite Fact Derivation (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User works at Google",
+        "importance": 8,
+        "tags": "work",
+        "category": "user_pref",
+        "entities": [
+          "Google"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Google headquarters is in Mountain View, California",
+        "importance": 6,
+        "tags": "geography",
+        "category": "general",
+        "entities": [
+          "Google",
+          "Mountain View"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Mountain View is in the San Francisco Bay Area",
+        "importance": 5,
+        "tags": "geography",
+        "category": "general",
+        "entities": [
+          "Mountain View",
+          "Bay Area"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User recently moved to Seattle",
+        "importance": 7,
+        "tags": "life",
+        "category": "user_pref",
+        "entities": [
+          "Seattle"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "What state is the user's company headquarters in?",
+        "type": "search",
+        "params": {
+          "scenario": "qa"
+        },
+        "expected": [
+          "California",
+          "Mountain View"
+        ],
+        "unexpected": [
+          "Seattle",
+          "Google"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "What city does the user currently live in?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Seattle"
+        ],
+        "unexpected": [
+          "Mountain View",
+          "California"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Temporal Ordering - Event Sequence (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "Project Alpha kicked off in January",
+        "importance": 6,
+        "tags": "project",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Alpha entered development in March",
+        "importance": 6,
+        "tags": "project",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Alpha started testing in June",
+        "importance": 6,
+        "tags": "project",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Alpha launched in September",
+        "importance": 8,
+        "tags": "project",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What happened in the first half of the year for Project Alpha?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "kicked off in January",
+          "development in March"
+        ],
+        "unexpected": [
+          "testing in June",
+          "launched in September"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "When did Project Alpha launch?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "launched in September"
+        ],
+        "unexpected": [
+          "kicked off",
+          "development"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Adversarial Similar - Nearly Identical Fact Dedup (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User reads Python documentation regularly",
+        "importance": 5,
+        "tags": "reading",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User never reads Java documentation",
+        "importance": 5,
+        "tags": "reading,evaluation",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User has read the Rust official documentation",
+        "importance": 5,
+        "tags": "reading",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is currently reading the Go language documentation",
+        "importance": 5,
+        "tags": "reading",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User plans to read TypeScript documentation",
+        "importance": 4,
+        "tags": "reading,plan",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Which language docs does the user read?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Python",
+          "Rust",
+          "Go"
+        ],
+        "unexpected": [
+          "never reads Java",
+          "plans to read TypeScript"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "Which docs does the user avoid?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "never reads Java"
+        ],
+        "unexpected": [
+          "Python",
+          "Rust"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Update Isolation - Modify One Without Affecting Others (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User lives in Boston, Massachusetts",
+        "importance": 7,
+        "tags": "address",
+        "category": "user_pref",
+        "entities": [
+          "address"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User's office is in New York City",
+        "importance": 6,
+        "tags": "address",
+        "category": "user_pref",
+        "entities": [
+          "address"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User's birthday is March 15, 1992",
+        "importance": 8,
+        "tags": "personal",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's blood type is O positive",
+        "importance": 4,
+        "tags": "personal",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Where does the user live?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Boston"
+        ],
+        "unexpected": [
+          "New York",
+          "birthday",
+          "blood type"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "The user moved to a new city",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Chicago"
+        ],
+        "unexpected": [
+          "Boston",
+          "New York",
+          "birthday"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ],
+        "extra_setup": [
+          {
+            "action": "add_fact",
+            "content": "User moved to Chicago, Illinois",
+            "importance": 8,
+            "tags": "address,update",
+            "category": "user_pref",
+            "entities": [
+              "address"
+            ]
+          }
+        ]
+      },
+      {
+        "query": "Where is the user's office?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "New York City"
+        ],
+        "unexpected": [
+          "Chicago",
+          "Boston",
+          "birthday"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "When is the user's birthday?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "March 15, 1992"
+        ],
+        "unexpected": [
+          "Chicago",
+          "New York",
+          "blood type"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Aggregate Retrieval - Work Environment (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User uses Ubuntu 22.04 as daily driver",
+        "importance": 6,
+        "tags": "os",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User has two 27-inch monitors",
+        "importance": 4,
+        "tags": "hardware",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses a Logitech MX Master mouse",
+        "importance": 3,
+        "tags": "hardware",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User types on a split mechanical keyboard",
+        "importance": 4,
+        "tags": "hardware",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User connects to work VPN every morning",
+        "importance": 5,
+        "tags": "network",
+        "category": "tool"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What hardware does the user have?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "27-inch monitors",
+          "Logitech MX Master",
+          "split mechanical keyboard"
+        ],
+        "unexpected": [
+          "Ubuntu",
+          "VPN"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Aggregate Retrieval - Tech Stack (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's main backend framework is FastAPI",
+        "importance": 7,
+        "tags": "backend",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses SQLAlchemy ORM with PostgreSQL",
+        "importance": 7,
+        "tags": "database",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User deploys with Docker Compose",
+        "importance": 6,
+        "tags": "devops",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses Redis for caching layer",
+        "importance": 5,
+        "tags": "caching",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What is the project's tech stack?",
+        "type": "search",
+        "params": {
+          "scenario": "technical"
+        },
+        "expected": [
+          "FastAPI",
+          "SQLAlchemy",
+          "PostgreSQL",
+          "Docker"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Distractor Robustness - Editor Preference (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User uses VS Code as primary editor",
+        "importance": 7,
+        "tags": "editor",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User has tried Sublime Text but found it lacking",
+        "importance": 4,
+        "tags": "editor",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User has heard good things about Zed editor",
+        "importance": 3,
+        "tags": "editor",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's colleague uses Vim exclusively",
+        "importance": 3,
+        "tags": "editor",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User recommends VS Code to new team members",
+        "importance": 6,
+        "tags": "editor",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What editor does the user actually use?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "VS Code as primary editor"
+        ],
+        "unexpected": [
+          "Sublime",
+          "Zed",
+          "Vim"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Distractor Robustness - Pet Info (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User has a golden retriever named Buddy",
+        "importance": 7,
+        "tags": "pet",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's neighbor has a Persian cat",
+        "importance": 2,
+        "tags": "pet",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's friend is allergic to cats",
+        "importance": 3,
+        "tags": "health",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User once pet-sat a hamster for a week",
+        "importance": 2,
+        "tags": "pet",
+        "category": "general"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What pet does the user have?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "golden retriever",
+          "Buddy"
+        ],
+        "unexpected": [
+          "Persian cat",
+          "hamster"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Temporal Priority - Editor Evolution (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User started coding with Notepad++ in college",
+        "importance": 4,
+        "tags": "editor",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User switched to Sublime Text after graduation",
+        "importance": 5,
+        "tags": "editor,change",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User moved to VS Code two years ago",
+        "importance": 6,
+        "tags": "editor,change",
+        "category": "tool"
+      },
+      {
+        "action": "add_fact",
+        "content": "User now uses Neovim for everything",
+        "importance": 8,
+        "tags": "editor,current",
+        "category": "tool"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What editor does the user currently use?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Neovim"
+        ],
+        "unexpected": [
+          "Notepad++",
+          "Sublime Text",
+          "VS Code"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Temporal Priority - Job Changes (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User worked as an intern at a startup in 2018",
+        "importance": 4,
+        "tags": "work",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User became a junior developer at Amazon in 2019",
+        "importance": 5,
+        "tags": "work,change",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User got promoted to senior engineer at Amazon in 2022",
+        "importance": 7,
+        "tags": "work,change",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is now a tech lead at Stripe",
+        "importance": 8,
+        "tags": "work,current",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Where does the user work now?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Stripe"
+        ],
+        "unexpected": [
+          "startup",
+          "Amazon"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Temporal Priority - Phone Preference (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User had a Samsung Galaxy S10",
+        "importance": 4,
+        "tags": "device",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User switched to iPhone 13 Pro",
+        "importance": 5,
+        "tags": "device,change",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User upgraded to iPhone 15 Pro Max",
+        "importance": 7,
+        "tags": "device,current",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What phone does the user have now?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "iPhone 15 Pro Max"
+        ],
+        "unexpected": [
+          "Galaxy S10",
+          "iPhone 13 Pro"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Large-scale Stress - 50 Facts Retrieval (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User is a senior backend engineer specializing in distributed systems",
+        "importance": 9,
+        "tags": "identity",
+        "category": "user_pref",
+        "is_persistent": true
+      },
+      {
+        "action": "add_fact",
+        "content": "User is proficient in Go and Python",
+        "importance": 7,
+        "tags": "skills",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User once visited Paris for vacation",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User likes Italian food",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User's favorite color is blue",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User reads sci-fi novels",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User plays chess on weekends",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a gym membership",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User drinks green tea",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers window seats on planes",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User collects vintage vinyl records",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User speaks basic French",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers dark mode",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses a standing desk",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a smart home setup",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User listens to podcasts daily",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User runs a small blog about technology",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has traveled to 12 countries",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User drives a Honda Civic",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User practices yoga twice a week",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User is learning to play guitar",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User has two siblings",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User grew up in Ohio",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User studied computer science at college",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a cat named Whiskers",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User enjoys board games",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses a mechanical keyboard",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers dark roast coffee",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has been to Japan twice",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User practices mindfulness meditation",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User volunteers at a local shelter",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a subscription to Netflix",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers reading physical books",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a Fitbit tracker",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User enjoys rock climbing",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User has traveled across the US by train",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User speaks conversational Spanish",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a personal website",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers organic food",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User plays badminton",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User has attended three tech conferences",
+        "importance": 3
+      },
+      {
+        "action": "add_fact",
+        "content": "User likes hiking in national parks",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a subscription to The Economist",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User practices calligraphy",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User has been coding for 10 years",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers VS Code themes",
+        "importance": 6
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a standing desk converter",
+        "importance": 5
+      },
+      {
+        "action": "add_fact",
+        "content": "User enjoys cooking Italian dishes",
+        "importance": 7
+      },
+      {
+        "action": "add_fact",
+        "content": "User has a shelf of programming books",
+        "importance": 4
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers morning workouts",
+        "importance": 3
+      }
+    ],
+    "queries": [
+      {
+        "query": "What is the user's profession?",
+        "type": "search",
+        "params": {
+          "scenario": "longterm"
+        },
+        "expected": [
+          "senior backend engineer",
+          "distributed systems"
+        ],
+        "unexpected": [
+          "Paris",
+          "guitar",
+          "yoga"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      },
+      {
+        "query": "What programming languages does the user know?",
+        "type": "search",
+        "params": {
+          "scenario": "technical"
+        },
+        "expected": [
+          "Go and Python"
+        ],
+        "unexpected": [
+          "Paris",
+          "French",
+          "guitar"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Paraphrase Robustness - English Variants",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User prefers to work from home on Mondays and Fridays",
+        "importance": 6,
+        "tags": "schedule",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User likes to attend office standup meetings in person",
+        "importance": 5,
+        "tags": "schedule",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses Slack for team communication",
+        "importance": 5,
+        "tags": "tools",
+        "category": "tool"
+      }
+    ],
+    "queries": [
+      {
+        "query": "When does the user work remotely?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Mondays and Fridays"
+        ],
+        "unexpected": [
+          "Slack",
+          "standup"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "Does the user like going to the office?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "attend office standup meetings in person"
+        ],
+        "unexpected": [
+          "work from home",
+          "Slack"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "How does the user communicate with the team?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Slack"
+        ],
+        "unexpected": [
+          "work from home",
+          "Mondays"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Memory Edit - Batch Verification Isolation (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User lives in Austin, Texas",
+        "importance": 7,
+        "tags": "address",
+        "category": "user_pref",
+        "entities": [
+          "home_address"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User's office is in downtown Dallas",
+        "importance": 6,
+        "tags": "address",
+        "category": "user_pref",
+        "entities": [
+          "office_address"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User was born on July 4, 1990",
+        "importance": 8,
+        "tags": "personal",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's blood type is A positive",
+        "importance": 4,
+        "tags": "personal",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's emergency contact phone is 555-0123",
+        "importance": 7,
+        "tags": "contact",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Where does the user live?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Austin, Texas"
+        ],
+        "unexpected": [
+          "Dallas",
+          "July 4",
+          "blood type",
+          "555"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "The user relocated to a new city",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "Denver, Colorado"
+        ],
+        "unexpected": [
+          "Austin",
+          "Dallas",
+          "July 4"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ],
+        "extra_setup": [
+          {
+            "action": "add_fact",
+            "content": "User relocated to Denver, Colorado",
+            "importance": 8,
+            "tags": "address,update",
+            "category": "user_pref",
+            "entities": [
+              "home_address"
+            ]
+          }
+        ]
+      },
+      {
+        "query": "Where is the user's office?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "downtown Dallas"
+        ],
+        "unexpected": [
+          "Denver",
+          "Austin",
+          "July 4"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "When was the user born?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "July 4, 1990"
+        ],
+        "unexpected": [
+          "Denver",
+          "Dallas",
+          "blood type"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "Who is the user's emergency contact?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "555-0123"
+        ],
+        "unexpected": [
+          "Denver",
+          "Dallas",
+          "blood type"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Contradiction Detection - Dietary Conflict (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User is strictly vegan",
+        "importance": 7,
+        "tags": "diet",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User enjoys BBQ ribs on summer weekends",
+        "importance": 5,
+        "tags": "food",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is allergic to peanuts",
+        "importance": 8,
+        "tags": "health",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": [
+          "strictly vegan",
+          "BBQ ribs"
+        ],
+        "unexpected": [
+          "peanuts"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Contradiction Detection - Workplace Conflict (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User works fully remote from home",
+        "importance": 6,
+        "tags": "work",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User commutes to the office three days a week",
+        "importance": 6,
+        "tags": "work",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User prefers a hybrid work arrangement",
+        "importance": 5,
+        "tags": "work",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "contradict",
+        "params": {},
+        "expected": [
+          "fully remote",
+          "commutes to the office"
+        ],
+        "unexpected": [
+          "hybrid"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Adversarial Similar - Same Name Different Person (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's colleague Mike works on the frontend team",
+        "importance": 5,
+        "tags": "colleague",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's friend Mike is a professional photographer",
+        "importance": 5,
+        "tags": "friend",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's brother Mike is still in college",
+        "importance": 6,
+        "tags": "family",
+        "category": "general"
+      },
+      {
+        "action": "add_fact",
+        "content": "User met Mike at a photography workshop last year",
+        "importance": 4,
+        "tags": "event",
+        "category": "general"
+      }
+    ],
+    "queries": [
+      {
+        "query": "Which Mike is the user's brother?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "still in college"
+        ],
+        "unexpected": [
+          "frontend team",
+          "photographer"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "Which Mike does the user work with?",
+        "type": "search",
+        "params": {
+          "scenario": "chat"
+        },
+        "expected": [
+          "frontend team"
+        ],
+        "unexpected": [
+          "college",
+          "photography workshop"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Adversarial Similar - Similar Project Confusion (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "Project Atlas uses React for frontend",
+        "importance": 6,
+        "tags": "project",
+        "category": "project",
+        "entities": [
+          "Project Atlas"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Atlas backend is built with Python Django",
+        "importance": 7,
+        "tags": "project",
+        "category": "project",
+        "entities": [
+          "Project Atlas"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Apollo uses React for frontend",
+        "importance": 6,
+        "tags": "project",
+        "category": "project",
+        "entities": [
+          "Project Apollo"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Project Apollo backend is built with Node.js Express",
+        "importance": 7,
+        "tags": "project",
+        "category": "project",
+        "entities": [
+          "Project Apollo"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Both projects share the same CI/CD pipeline",
+        "importance": 5,
+        "tags": "devops",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What backend does Project Atlas use?",
+        "type": "search",
+        "params": {
+          "scenario": "technical"
+        },
+        "expected": [
+          "Python Django"
+        ],
+        "unexpected": [
+          "Node.js Express"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      },
+      {
+        "query": "What backend does Project Apollo use?",
+        "type": "search",
+        "params": {
+          "scenario": "technical"
+        },
+        "expected": [
+          "Node.js Express"
+        ],
+        "unexpected": [
+          "Python Django"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Entity Probe - Multi-attribute Entity (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "Alice is a software engineer at Meta",
+        "importance": 7,
+        "tags": "work",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice graduated from Stanford University",
+        "importance": 6,
+        "tags": "education",
+        "category": "general",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice enjoys rock climbing",
+        "importance": 4,
+        "tags": "hobby",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice has a golden retriever named Luna",
+        "importance": 5,
+        "tags": "pet",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Alice drives a Tesla Model 3",
+        "importance": 4,
+        "tags": "vehicle",
+        "category": "user_pref",
+        "entities": [
+          "Alice"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "Bob works at Apple",
+        "importance": 5,
+        "tags": "work",
+        "category": "user_pref",
+        "entities": [
+          "Bob"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "Alice",
+        "type": "probe",
+        "params": {},
+        "expected": [
+          "Meta",
+          "Stanford",
+          "rock climbing",
+          "Luna",
+          "Tesla"
+        ],
+        "unexpected": [
+          "Apple",
+          "Bob"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Timeline - Tech Stack Evolution (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User started with LAMP stack in 2015",
+        "importance": 5,
+        "tags": "tech",
+        "category": "project",
+        "entities": [
+          "tech_evolution"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User migrated to MERN stack in 2018",
+        "importance": 6,
+        "tags": "tech,change",
+        "category": "project",
+        "entities": [
+          "tech_evolution"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User adopted Go microservices in 2021",
+        "importance": 7,
+        "tags": "tech,change",
+        "category": "project",
+        "entities": [
+          "tech_evolution"
+        ]
+      },
+      {
+        "action": "add_fact",
+        "content": "User is now using Rust for performance-critical services",
+        "importance": 8,
+        "tags": "tech,current",
+        "category": "project",
+        "entities": [
+          "tech_evolution"
+        ]
+      }
+    ],
+    "queries": [
+      {
+        "query": "tech_evolution",
+        "type": "timeline",
+        "params": {},
+        "expected": [
+          "LAMP stack",
+          "MERN stack",
+          "Go microservices",
+          "Rust"
+        ],
+        "recall_at_k": [
+          1,
+          3,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Dedup - Same Fact Different Wording (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User prefers dark mode in all applications",
+        "importance": 6,
+        "tags": "preference",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User likes dark themes everywhere",
+        "importance": 6,
+        "tags": "preference",
+        "category": "user_pref",
+        "dedup_threshold": 0.7
+      },
+      {
+        "action": "add_fact",
+        "content": "User is a night owl who codes late",
+        "importance": 4,
+        "tags": "habit",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {
+          "expected_count": 2
+        },
+        "expected": {
+          "exact_count": 2
+        },
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "Dedup - Similar But Different Facts (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User uses Python for data analysis",
+        "importance": 6,
+        "tags": "skills",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses Python for web scraping",
+        "importance": 5,
+        "tags": "skills",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses Python for machine learning",
+        "importance": 7,
+        "tags": "skills",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "",
+        "type": "dedup_check",
+        "params": {
+          "expected_count": 3
+        },
+        "expected": {
+          "exact_count": 3
+        },
+        "unexpected": [],
+        "recall_at_k": []
+      }
+    ]
+  },
+  {
+    "name": "Persistent Tags - Tech Stack vs Temporary State (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User's primary language is TypeScript",
+        "is_persistent": true,
+        "importance": 7,
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is currently evaluating Deno runtime",
+        "is_persistent": false,
+        "importance": 4,
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User's preferred cloud provider is AWS",
+        "is_persistent": true,
+        "importance": 6,
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User is testing a new Terraform workflow",
+        "is_persistent": false,
+        "importance": 3,
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "User's stable tech preferences",
+        "type": "search",
+        "params": {
+          "persistent_only": true
+        },
+        "expected": [
+          "TypeScript",
+          "AWS"
+        ],
+        "unexpected": [
+          "Deno",
+          "Terraform"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Importance Ranking - Security vs Convenience (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "User always enables two-factor authentication",
+        "importance": 9,
+        "tags": "security",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User uses a password manager",
+        "importance": 8,
+        "tags": "security",
+        "category": "user_pref"
+      },
+      {
+        "action": "add_fact",
+        "content": "User sometimes uses public WiFi without VPN",
+        "importance": 3,
+        "tags": "security,risk",
+        "category": "user_pref"
+      }
+    ],
+    "queries": [
+      {
+        "query": "User's security practices",
+        "type": "search",
+        "params": {
+          "scenario": "longterm"
+        },
+        "expected": [
+          "two-factor authentication",
+          "password manager"
+        ],
+        "unexpected": [
+          "public WiFi without VPN"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Importance Ranking - Architecture vs Details (English)",
+    "setup": [
+      {
+        "action": "add_fact",
+        "content": "System uses event-driven architecture",
+        "importance": 9,
+        "tags": "architecture",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "System uses Kafka for message queuing",
+        "importance": 7,
+        "tags": "infrastructure",
+        "category": "project"
+      },
+      {
+        "action": "add_fact",
+        "content": "User changed the log level from INFO to DEBUG",
+        "importance": 2,
+        "tags": "config",
+        "category": "project"
+      }
+    ],
+    "queries": [
+      {
+        "query": "What is the system architecture?",
+        "type": "search",
+        "params": {
+          "scenario": "technical"
+        },
+        "expected": [
+          "event-driven architecture",
+          "Kafka"
+        ],
+        "unexpected": [
+          "log level",
+          "DEBUG"
+        ],
+        "recall_at_k": [
+          1,
+          3
+        ]
+      }
+    ]
   }
 ]

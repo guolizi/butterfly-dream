@@ -1,0 +1,60 @@
+[
+  {
+    "name": "[short][life-entertainment] 娱乐爱好交流",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近我迷上了科幻片，Netflix上好多新片都看不过来了。"
+      },
+      {
+        "role": "assistant",
+        "content": "太好了！科幻片确实很精彩。你平时除了看电影还有别的爱好吗？"
+      },
+      {
+        "role": "user",
+        "content": "我还会弹吉他，不过只是业余水平。最近在练习一首新曲子。"
+      },
+      {
+        "role": "assistant",
+        "content": "吉他也很酷！那你平时喜欢看科幻小说吗？还是只看电影？"
+      },
+      {
+        "role": "user",
+        "content": "其实我更喜欢看电影，不过偶尔也看一些科幻小说。Netflix上的原创科幻剧集真的很棒。"
+      }
+    ],
+    "golden_facts": [
+      "用户喜欢科幻片",
+      "用户订阅了Netflix",
+      "用户会弹吉他"
+    ],
+    "queries": [
+      [
+        "用户喜欢什么类型的电影？",
+        [
+          "科幻"
+        ]
+      ],
+      [
+        "用户有什么视频平台订阅？",
+        [
+          "Netflix"
+        ]
+      ],
+      [
+        "用户有什么音乐相关的爱好？",
+        [
+          "吉他"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "life-entertainment",
+      "n_messages": 5,
+      "total_chars": 154,
+      "n_golden": 3,
+      "n_queries": 3
+    }
+  }
+]

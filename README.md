@@ -179,24 +179,24 @@ await agent.tools.fact_feedback(action="helpful", fact_id=1)
 ## 🧪 评测集
 
 评测包含 **检索** 和 **提取** 两个维度，覆盖中英文、多长度多领域场景。详见 [`eval/README.md`](eval/README.md)。
+评测包含 **检索** 和 **提取** 两个维度，覆盖中英文、多长度多领域场景。详见 [`eval/README.md`](eval/README.md)。
 
 | 类型 | 场景数 | 查询数 | 说明 |
-|:-----|:------:|:------:|:-----|
-| 🔍 检索评测 | 77 | 151 | 预置事实 → 自然语言查询，测试 FTS5 + HRR + Jaccard + 重要性三维评分 |
-| 🗣️ 提取评测 | 20 | 95 | 真实 LLM 端到端：对话 → 提取 → 存储 → 查询，含中英文场景 |
-| 🔤 原版 Holographic 对比 | — | 16 | 同事实集，英文 0/8→**5/8**，中文 0/8→**8/8**（根因见下方） |
+|:----:|:------:|:------:|:-----|
+| 检索 | 77 | 151 | 黑盒端到端 |
+| 提取 | 20 | 95 | LLM 提取+检索 |
 
-### 核心结论
+### 基线结果
 
 - **检索 R@1**：**0.670**（77 场景，151 查询，黑盒端到端）
 - **提取通过率**：**~62%**（20 场景，95 查询，LLM 非确定性 ±5-15%）
-- **与原版 Holographic 对比**：FTS5 AND 语义 + 停用词全灭 → Butterfly Dream 的 **OR 展开 + 前缀匹配 + jieba 分词** 解决。完整对比见 `eval/README.md` 和 `eval/en_compare.py`
+- **与原版 Holographic 对比**：FTS5 AND 语义 + 停用词全灭 → Butterfly Dream 的 **OR 展开 + 前缀匹配 + jieba 分词** 解决。完整对比见 `eval/README.md` 和 `eval/bd_eval/en_compare.py`
 
 ```bash
 # 快速运行
-python3 eval/run_eval.py              # 检索评测
-python3 eval/test_extraction.py        # 提取评测
-python3 eval/en_compare.py             # 与原版 Holographic 对比
+python3 eval/bd_eval/run_eval.py              # 检索评测
+python3 eval/bd_eval/test_extraction.py        # 提取评测
+python3 eval/bd_eval/en_compare.py             # 与原版 Holographic 对比
 ```
 
 ## 📄 许可证

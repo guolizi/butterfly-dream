@@ -42,3 +42,8 @@ htmlcov/
 
 # Code review docs (internal only)
 CODE_REVIEW*.md
+
+# LongMemEval large datasets
+eval/longmemeval/data/
+eval/longmemeval/results_*.jsonl
+eval/bd_eval/__pycache__/

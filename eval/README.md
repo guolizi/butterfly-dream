@@ -1,162 +1,98 @@
-# 🧪 Butterfly Dream 综合记忆评测
+# 🧪 Butterfly Dream 评测
 
-> 公平、全面、不迁就被测系统的记忆系统评测框架。
+公平、全面的记忆系统评测框架。
 
-## 设计原则
-
-1. **公平公正** — 查询使用自然语言问句，不迁就被测系统的检索策略
-2. **全面覆盖** — 测试检索、提取、推理、时序、跨语言、压力等多维度能力
-3. **可复现** — 场景文件固定（LLM 一次性生成后固化），仅 LLM 提取有非确定性方差
-
-## 文件结构
+## 目录结构
 
 ```
 eval/
 ├── README.md                       ← 本文档
-├── run_eval.py                     ← 检索评测运行器
-├── test_extraction.py              ← 提取评测运行器（真实 LLM 调用）
-├── gen_long_scenarios.py           ← 多长度多领域场景生成器
-├── en_compare.py                   ← 中英文自然语言查询对比脚本
 │
-├── scenarios.json                  ← 检索评测场景集 (46 场景, 114 查询)
-├── baseline.json                   ← 检索评测基线
-├── scenarios_all_en.json           ← 提取评测场景集 (20 场景, 95 查询)
-├── baseline_extraction.json        ← 提取评测基线
+├── bd_eval/                             ← Butterfly Dream 自有评测
+│   ├── run_eval.py                 ← 检索评测运行器
+│   ├── test_extraction.py          ← 提取评测运行器（真实 LLM 调用）
+│   ├── en_compare.py               ← 中英文自然语言查询对比脚本
+│   ├── gen_long_scenarios.py       ← 多长度多领域场景生成器
+│   ├── gen_stress_test.py          ← 大规模压力测试生成器
+│   ├── scenarios.json              ← 检索评测场景集 (77 场景, 151 查询)
+│   ├── baseline.json               ← 检索评测基线
+│   ├── scenarios_all_en.json       ← 提取评测场景集 (20 场景, 95 查询)
+│   ├── baseline_extraction.json    ← 提取评测基线
+│   └── ...                         ← 各长度/领域子集 JSON
 │
-├── en_short_work.json              ← 英文短场景
-├── en_med_work.json                ← 英文中场景
-└── gen_stress_test.py              ← 大规模压力测试生成器
+└── longmemeval/                    ← LongMemEval 外部基准 (ICLR 2025)
+    ├── run_longmemeval.py          ← Butterfly Dream × LongMemEval 适配器
+    ├── debug_one.py                ← 单题诊断脚本
+    ├── data/
+    │   ├── longmemeval_oracle.json ← 500 题 Oracle 版
+    │   └── longmemeval_s.json      ← 500 题 S 版
+    └── results_*.jsonl             ← 评测结果
 ```
 
-## 检索评测 (黑盒端到端)
-
-检索评测测试 **存储→检索** 管道的端到端表现：预置固定事实，用自然语言查询验证检索质量。
-
-| 维度 | 场景数 | 查询数 | 来源基准 |
-|:-----|:------:|:------:|:---------|
-| 🔍 基础检索 (EN/ZH/混合) | 5 | 11 | 通用 |
-| 🧬 实体探针 | 4 | 5 | MEMOBENCH |
-| 🕰️ 时间线查询 | 4 | 5 | LoCoMo |
-| 🌀 遗忘曲线 (渐进式干扰) | 2 | 8 | LongMemEval, MEMOBENCH |
-| 🔗 联想记忆 (线索→目标) | 2 | 10 | MEMOBENCH |
-| ✏️ 记忆编辑/更新 | 5 | 16 | MemoryBench, MemGPT |
-| 🔄 同义改写鲁棒性 | 2 | 8 | MemoryBench |
-| 🔗 跨会话检索 (分阶段信息) | 3 | 9 | LoCoMo, LoTa-Bench |
-| 📊 大规模压力 (50 事实) | 1 | 5 | LongMemEval |
-| 📊 多事实聚合检索 | 7 | 8 | RULER Multi-Key, HELMET Aggregation |
-| 🛡️ 干扰鲁棒性 | 6 | 8 | RULER Multi-NIAH, LoCoMo 对抗 |
-| ⏰ 事实时效优先级 | 7 | 9 | RULER Variable Tracking, LongMemEval |
-| 🧩 多跳推理 | 3 | 8 | LoCoMo |
-| 🕰️ 时序比较 | 2 | 5 | MEMOBENCH |
-| 🎯 对抗相似 | 4 | 8 | MemoryBench |
-| 🌐 跨语言检索 | 3 | 9 | — |
-| 🎯 矛盾检测 | 5 | 6 | LongMemEval |
-| 🗑️ 跨源去重 | 4 | 4 | — |
-| 🔒 持久标记过滤 | 3 | 3 | — |
-| ⭐ 重要性排序 | 4 | 4 | — |
-| **检索总计** | **77** | **151** | — |
-
-### 快速运行
+## 快速运行
 
 ```bash
-# 标准检索评测 (46 场景)
-python3 eval/run_eval.py
+# ── Butterfly Dream 自有评测 ──
 
-# JSON 输出 (用于对比历史基线)
-python3 eval/run_eval.py --json
+# 检索评测 (77 场景, 151 查询)
+python3 eval/bd_eval/run_eval.py
+python3 eval/bd_eval/run_eval.py --json              # JSON 输出
+python3 eval/bd_eval/run_eval.py --name "中文"        # 只跑名字含"中文"的场景
 
-# 大规模压力测试 (500 事实)
-python3 eval/gen_stress_test.py --count 500
-python3 eval/run_eval.py --name "500" --extra-scenarios eval/stress_test.json
+# 提取评测 (20 场景, 95 查询)
+python3 eval/bd_eval/test_extraction.py
+python3 eval/bd_eval/test_extraction.py --compare     # 对比多个模型
+
+# 压力测试
+python3 eval/bd_eval/gen_stress_test.py --count 500
+python3 eval/bd_eval/run_eval.py --extra-scenarios eval/bd_eval/stress_test.json
+
+# ── LongMemEval 外部基准 ──
+
+# 12 题采样测试
+python3 eval/longmemeval/run_longmemeval.py --data eval/longmemeval/data/longmemeval_sample12.json
+
+# 500 题全量 (预计 ~5h)
+python3 eval/longmemeval/run_longmemeval.py --subset oracle
 ```
 
-### 基线结果
+## 评测维度概览
 
-| 指标 | 值 | 说明 |
-|:-----|:--:|:-----|
-| 场景数 | 77 | 含 3 个新维度 + 全维度补充 |
-| 查询数 | 151 | |
-| **R@1** | **0.670** | 首条命中率 |
-| R@3 | 0.856 | 前三命中率 |
-| 精确率 | 0.401 | OR 宽召回带来的噪声 |
-| 平均延迟 | 6.9ms | 含完整三维评分 |
+### 检索评测 (bd_eval/run_eval.py)
 
-## 提取评测 (真实 LLM 端到端)
+| 维度 | 场景数 | 查询数 |
+|:-----|:------:|:------:|
+| 🔍 基础检索 (EN/ZH/混合) | 5 | 11 |
+| 🧬 实体探针 | 4 | 5 |
+| 🕰️ 时间线查询 | 4 | 5 |
+| 🌀 遗忘曲线 | 2 | 8 |
+| 🔗 联想记忆 / 跨会话 | 5 | 19 |
+| ✏️ 记忆编辑/更新 | 5 | 16 |
+| 🔄 同义改写鲁棒性 | 2 | 8 |
+| 📊 大规模压力 / 多事实聚合 | 8 | 13 |
+| 🛡️ 干扰鲁棒性 | 6 | 8 |
+| ⏰ 事实时效优先级 | 7 | 9 |
+| 🧩 多跳推理 / 时序比较 | 5 | 13 |
+| 🎯 对抗相似 / 矛盾检测 | 9 | 14 |
+| 🌐 跨语言 / 去重 / 持久标记 / 重要性 | 14 | 14 |
+| **总计** | **77** | **151** |
 
-提取评测使用 **真实 LLM 调用**，从自然对话中自动提取事实并存储，再用自然语言查询验证。`test_extraction.py` 支持 `--model`/`--provider`/`--compare` 参数自由切换模型。
-
-**评测流程**：对话 → 真实 LLM 提取 → 存储 → 自然语言查询 → 验证
+### 提取评测 (bd_eval/test_extraction.py)
 
 | 维度 | 场景数 | 查询数 | 语言 |
 |:-----|:------:|:------:|:----:|
-| 🀄 中文场景 (内置) | 5 | 16 | 纯中文 |
-| 🀄 中文场景 (自动生成) | 13 | 71 | 中文(混英文术语) |
-| 🔤 英文场景 (自动生成) | 2 | 8 | 纯英文 |
-| **提取总计** | **20** | **95** | — |
+| 中文场景 (内置 + 自动生成) | 18 | 87 | 中文 |
+| 英文场景 (自动生成) | 2 | 8 | 英文 |
+| **总计** | **20** | **95** | — |
 
-### 快速运行
+### LongMemEval (longmemeval/run_longmemeval.py)
 
-```bash
-# 全量提取评测 (20 场景, 95 查询)
-python3 eval/test_extraction.py
-
-# 仅跑英文场景
-python3 eval/test_extraction.py --scenarios eval/en_short_work.json
-python3 eval/test_extraction.py --scenarios eval/en_med_work.json
-
-# 加载外部场景 (自动生成长度覆盖场景)
-python3 eval/gen_long_scenarios.py --output eval/scenarios_gen.json
-python3 eval/test_extraction.py --scenarios eval/scenarios_gen.json
-
-# 模型对比
-python3 eval/test_extraction.py --compare
-python3 eval/test_extraction.py --model gpt-4o-mini --provider openai
-python3 eval/test_extraction.py --model deepseek-v4-flash --json > baseline_extraction.json
-```
-
-### 基线结果 (deepseek-v4-flash)
-
-| 指标 | 值 | 说明 |
-|:-----|:--:|:-----|
-| 场景数 | 20 | 5 内置 + 13 自动生成中文 + 2 自动生成英文 |
-| 查询数 | 95 | 混合长度和领域 |
-| **通过率** | **~62%** | 端到端 LLM 提取+检索通吃 (每次运行 ±5-15%) |
-| 提取延迟 | ~6.8s/轮 | deepseek-v4-flash |
-| 平均提取事实 | 6.1 条/场景 | LLM 自动判断 |
-
-## 与原版 Holographic 对比
-
-使用同 9 条事实（3 EN + 3 ZH + 3 mixed），分别用英文和中文自然语言问句测试：
-
-| 场景 | 原版 Holographic | Butterfly Dream | 原因 |
-|:----|:---------------:|:--------------:|:-----|
-| 🔤 英文自然语言查询 (8 条) | **0/8 (0%)** | **5/8 (62.5%)** | FTS5 AND vs OR |
-| 🀄 中文自然语言查询 (8 条) | **0/8 (0%)** | **8/8 (100%)** | FTS5 AND vs OR |
-
-**根因**：原版 Holographic 使用 FTS5 默认 AND 语义 → 自然语言问句要求**所有词**出现在索引中 → 停用词（what/are/the/的/了/吗）导致全灭。Butterfly Dream 的 **OR 展开 + 前缀匹配 + jieba 分词** 让任意词匹配即可召回候选，再由三维评分精排。
-
-```bash
-python3 eval/en_compare.py  # 复现对比
-```
-
-## 指标说明
-
-| 指标 | 计算方式 |
-|:-----|:---------|
-| **R@k** | 前 k 条结果中，包含所有预期子串的比例 |
-| **精确率** | 前 10 条结果中，相关结果(匹配预期且非预期排除)的比例 |
-| **F1** | R@5 与精确率的调和平均 |
-| **延迟** | 每次查询/提取的 wall-clock 时间 (ms) |
-| **提取通过率** | 查询的全部预期关键词在检索结果中被找到的比例 |
-
-## 扩展指南
-
-### 添加检索场景
-1. 在 `scenarios.json` 中添加 JSON 对象（含 `name`、`setup`、`queries`）
-2. 查询可使用 `extra_setup` 在查询间添加额外事实
-3. 运行 `python3 eval/run_eval.py --json > eval/baseline.json` 更新基线
-
-### 添加提取场景
-1. 生成或手写 JSON 场景文件（含 `conversation`、`golden_facts`、`queries`）
-2. 运行 `python3 eval/test_extraction.py --scenarios your_scenarios.json`
-3. 结果保存到 `baseline_extraction.json`
+| 维度 | 题数 |
+|:-----|:----:|
+| temporal-reasoning | 133 |
+| multi-session | 133 |
+| knowledge-update | 78 |
+| single-session-user | 70 |
+| single-session-assistant | 56 |
+| single-session-preference | 30 |
+| **总计** | **500** |

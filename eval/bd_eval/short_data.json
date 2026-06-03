@@ -1,0 +1,61 @@
+[
+  {
+    "name": "[short][work-data] customer_churn_ml_project",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "最近在做一个customer churn预测的项目，用的数据集是从Kaggle上找的，大概有10万条记录。"
+      },
+      {
+        "role": "assistant",
+        "content": "听起来不错！你打算用什么模型来建模？有没有什么特别考虑？"
+      },
+      {
+        "role": "user",
+        "content": "我试了几种，最后选了XGBoost，调了一下超参数之后效果提升挺明显的。"
+      },
+      {
+        "role": "assistant",
+        "content": "评估指标用了什么？我猜不是单纯的accuracy吧？"
+      },
+      {
+        "role": "user",
+        "content": "对，主要看F1 score，因为churn类别不太平衡。另外部署在AWS SageMaker上，方便做A/B测试。"
+      }
+    ],
+    "golden_facts": [
+      "User is using a customer churn dataset from Kaggle.",
+      "User chose XGBoost model.",
+      "User deployed the model on AWS SageMaker.",
+      "User uses F1 score as evaluation metric."
+    ],
+    "queries": [
+      [
+        "这个项目用的数据集是从哪里来的？",
+        [
+          "Kaggle"
+        ]
+      ],
+      [
+        "用户最终选了什么模型？",
+        [
+          "XGBoost"
+        ]
+      ],
+      [
+        "模型部署在什么平台上？",
+        [
+          "SageMaker"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "short",
+      "domain": "work-data",
+      "n_messages": 5,
+      "total_chars": 200,
+      "n_golden": 4,
+      "n_queries": 3
+    }
+  }
+]

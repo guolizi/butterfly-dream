@@ -30,7 +30,7 @@ import tempfile
 from pathlib import Path
 
 # 确保能找到插件
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from butterfly_dream.store import MemoryStore
 from butterfly_dream.retrieval import ThreeDimRetriever

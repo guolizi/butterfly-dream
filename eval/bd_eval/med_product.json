@@ -1,0 +1,129 @@
+[
+  {
+    "name": "[medium][work-product] fitness_app_product_planning",
+    "conversation": [
+      {
+        "role": "user",
+        "content": "刚做完新一轮user research，发现我们的用户画像其实可以细化成两个主要persona。一个是刚入门的新手，一个是已经有一定基础的进阶用户。"
+      },
+      {
+        "role": "assistant",
+        "content": "哦？具体说说这两个persona的特点？这样我们后续做feature planning会更有方向。"
+      },
+      {
+        "role": "user",
+        "content": "新手这边我们叫他们“健身小白”，他们需要guided workouts，最好每个动作都有video demonstrations。进阶用户更关心训练数据的自定义和进阶计划。"
+      },
+      {
+        "role": "assistant",
+        "content": "明白，那这些persona的需求在目前的roadmap里有体现吗？上次stakeholder meeting的结果怎么样？"
+      },
+      {
+        "role": "user",
+        "content": "stakeholder meeting刚刚开完，CEO和CTO意见有点不一样。CEO特别强调要加gamification，比如badges和leaderboards，他觉得能提高用户粘性。但CTO坚持要先优化performance，把crash rate降下来再说新功能。"
+      },
+      {
+        "role": "assistant",
+        "content": "那最后怎么平衡的？时间线上有commitment吗？"
+      },
+      {
+        "role": "user",
+        "content": "我们最后达成了一致：先把核心的workout tracking功能在Q3底前发掉，这已经是之前承诺的deadline了。然后Q4集中做social sharing，包括跟Strava的integration，同时把gamification作为Q4的secondary priority。不过CTO那边要求performance优化贯穿整个Q3和Q4，不能停。"
+      },
+      {
+        "role": "assistant",
+        "content": "那这次sprint retrospective你们有没有复盘之前的问题？比如个人化训练计划那个feature之前讨论过，后来怎么处理的？"
+      },
+      {
+        "role": "user",
+        "content": "对，retro上大家也聊到这个了。其实上次stakeholder meeting的结果之一就是同意把“个人化训练计划”作为下一个big feature，但不在今年Q4之前启动。我们现在先聚焦手头这些。"
+      },
+      {
+        "role": "assistant",
+        "content": "那这个personalized training plan的具体设计有初步想法了吗？比如是针对小白还是进阶用户？"
+      },
+      {
+        "role": "user",
+        "content": "目前偏向于同时覆盖，但MVP会先从健身小白做起，因为他们的churn rate更高。我们会用AI根据用户数据和偏好动态生成计划。不过这是明年Q1的事了，现在先不展开。"
+      },
+      {
+        "role": "assistant",
+        "content": "听起来很合理。那social sharing feature你们打算怎么跟strava集成？是只导出数据还是双向同步？"
+      },
+      {
+        "role": "user",
+        "content": "初步计划是单向导出，用户可以把workout记录分享到Strava，后续再看要不要做双向。先快速验证用户需求。"
+      },
+      {
+        "role": "assistant",
+        "content": "好的，那这次的roadmap文档能分享给我一份吗？我帮你整理一下feature priority matrix。"
+      },
+      {
+        "role": "user",
+        "content": "可以，我把notion链接发你。另外还有个事，CEO那边希望Q4的gamification里加入team challenge功能，但CTO担心会增加backend复杂度，我打算下周一再约个会协调一下。"
+      }
+    ],
+    "golden_facts": [
+      "用户研究发现了两个主要persona：健身小白和进阶用户",
+      "CEO强烈主张加入gamification，包括badges和leaderboards",
+      "CTO坚持优先优化性能，降低crash rate",
+      "核心workout tracking功能承诺在Q3底前发布",
+      "Q4计划推出social sharing功能，包括与Strava的integration",
+      "健身小白需要guided workouts和video demonstrations",
+      "stakeholder meeting同意将个人化训练计划作为下一个big feature"
+    ],
+    "queries": [
+      [
+        "用户研究发现了哪些主要用户画像？",
+        [
+          "健身小白",
+          "进阶用户"
+        ]
+      ],
+      [
+        "CEO在产品上最想要什么类型的元素？",
+        [
+          "gamification",
+          "badges",
+          "leaderboards"
+        ]
+      ],
+      [
+        "CTO对技术优化的首要要求是什么？",
+        [
+          "性能",
+          "crash rate"
+        ]
+      ],
+      [
+        "核心workout tracking功能计划在什么时候发布？",
+        [
+          "Q3底",
+          "Q3"
+        ]
+      ],
+      [
+        "Q4计划推出什么新功能？",
+        [
+          "social sharing",
+          "Strava"
+        ]
+      ],
+      [
+        "下一个big feature被同意是什么？",
+        [
+          "个人化训练计划",
+          "personalized training plans"
+        ]
+      ]
+    ],
+    "_meta": {
+      "length": "medium",
+      "domain": "work-product",
+      "n_messages": 15,
+      "total_chars": 1188,
+      "n_golden": 7,
+      "n_queries": 6
+    }
+  }
+]
