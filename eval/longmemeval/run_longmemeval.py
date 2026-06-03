@@ -70,7 +70,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> st
     from butterfly_dream.retrieval import ThreeDimRetriever
     
     retriever = ThreeDimRetriever(provider._store)
-    results = retriever.search(query=question, scenario="chat", limit=5)
+    results = retriever.search(query=question, scenario="chat", limit=15)
     
     if not results:
         return "I don't have enough information to answer this question."
@@ -91,15 +91,16 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> st
 def _generate_answer(question: str, context: str) -> str:
     """Use LLM to generate an answer based on retrieved context (via eval_utils.call_llm)."""
     prompt = f"""Based on the following memory context, answer the user's question.
+Use ALL relevant facts. Be specific — include names, dates, locations, and details.
+If multiple facts relate to the question, combine them into a complete answer.
 If the context does not contain enough information to answer, say "I don't have enough information."
-Be concise and direct.
 
 Memory context:
 {context}
 
 Question: {question}
 
-Answer:"""
+Answer (be specific and complete):"""
     
     messages = [
         {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context."},

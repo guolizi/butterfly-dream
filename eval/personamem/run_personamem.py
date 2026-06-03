@@ -98,7 +98,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str, optio
     from butterfly_dream.retrieval import ThreeDimRetriever
 
     retriever = ThreeDimRetriever(provider._store)
-    results = retriever.search(query=question, scenario="chat", limit=5)
+    results = retriever.search(query=question, scenario="chat", limit=15)
 
     if not results:
         # No context found, pick first option as default

@@ -58,19 +58,22 @@ def judge_answer(question, answer, hypothesis):
 def answer_question(provider, question):
     from butterfly_dream.retrieval import ThreeDimRetriever
     retriever = ThreeDimRetriever(provider._store)
-    results = retriever.search(query=question, scenario='chat', limit=5)
+    results = retriever.search(query=question, scenario='chat', limit=15)
     context = '\n'.join(r.get('content', '') for r in results)
     prompt = (
-        f'Based on the following memory context, answer the question. '
-        f'If not enough info, say "I don\'t have enough information."\n\n'
-        f'Context:\n{context}\n\nQuestion: {question}\nAnswer:'
+        f'You are answering questions about a long conversation between two people. '
+        f'Use ALL relevant facts from the context below. Be specific — include names, '
+        f'dates, locations, and details. If multiple facts relate to the question, '
+        f'combine them into a complete answer.\n\n'
+        f'Context:\n{context}\n\n'
+        f'Question: {question}\n\n'
+        f'Answer (be specific and complete):'
     )
     messages = [
-        {'role': 'system', 'content': 'Answer based only on the memory context.'},
+        {'role': 'system', 'content': 'Answer based on the memory context. Be specific with names, dates, and details. Combine multiple relevant facts into a complete answer.'},
         {'role': 'user', 'content': prompt}]
     result = call_llm('answer', messages=messages)
     return result if result else 'Error: no API key configured'
-
 
 cat_scores = {1: [], 2: [], 3: [], 4: [], 5: []}
 cat_correct = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
