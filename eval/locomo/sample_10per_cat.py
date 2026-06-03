@@ -72,7 +72,7 @@ def answer_question(provider, question):
     messages = [
         {'role': 'system', 'content': 'Answer based on the memory context. Be specific with names, dates, and details. Combine multiple relevant facts into a complete answer.'},
         {'role': 'user', 'content': prompt}]
-    result = call_llm('answer', messages=messages)
+    result = call_llm('answer', messages=messages, max_tokens=1024)
     return result if result else 'Error: no API key configured'
 
 cat_scores = {1: [], 2: [], 3: [], 4: [], 5: []}

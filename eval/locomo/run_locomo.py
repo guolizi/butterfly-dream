@@ -140,7 +140,7 @@ Answer:"""
         {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context. Be concise."},
         {"role": "user", "content": prompt},
     ]
-    result = call_llm("answer", messages=messages)
+    result = call_llm("answer", messages=messages, max_tokens=1024)
     return result if result else "Unable to generate answer."
 
 

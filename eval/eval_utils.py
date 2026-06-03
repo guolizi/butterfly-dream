@@ -118,7 +118,7 @@ def call_llm(
     messages: list[dict],
     *,
     temperature: float = 0.1,
-    max_tokens: int = 500,
+    max_tokens: int = 1024,
     timeout: int = 60,
     provider_override: str | None = None,
     model_override: str | None = None,
