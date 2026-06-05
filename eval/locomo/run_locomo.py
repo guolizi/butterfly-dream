@@ -16,6 +16,7 @@ LoCoMo: 10 个长对话，1986 道开放式问答，5 个类别。
 
 import argparse
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -31,6 +32,31 @@ from butterfly_dream import ButterflyDreamMemoryProvider
 from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env, get_db_path, set_run_dir, _RUNS_DIR
 
 _load_hermes_env()
+
+# ── Logging ──────────────────────────────────────────────────────────
+_extraction_logger = logging.getLogger("locomo_extraction")
+_extraction_logger.setLevel(logging.DEBUG)
+
+
+
+def _setup_extraction_log(run_dir: Path):
+    """Create a file handler for extraction progress logs."""
+    handler = logging.FileHandler(run_dir / "extraction.log", encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter(
+        "[%(asctime)s] %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    _extraction_logger.handlers.clear()
+    _extraction_logger.addHandler(handler)
+    return handler
+
+
+def _log(msg: str, level: str = "info"):
+    """Log to both extraction.log and console."""
+    getattr(_extraction_logger, level, _extraction_logger.info)(msg)
+    print(f"  {msg}")
+
 
 
 CAT_NAMES = {
@@ -98,13 +124,25 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
     Each session is fed separately to on_session_end so the extraction LLM
     processes manageable chunks and preserves session boundaries.
     Retries on 429 / empty extraction with exponential backoff.
+    Logs success/failure per session to extraction.log.
     """
     session_names = get_session_names(conv)
-    for sname in session_names:
+    total = len(session_names)
+    succeeded = 0
+    failed_sessions = []
+
+    _log(f"Processing {total} sessions ...")
+
+    for idx, sname in enumerate(session_names):
         session_msgs = flatten_session(conv, sname)
         if not session_msgs:
+            _log(f"  [{idx+1}/{total}] {sname}: empty session, skipped", "warning")
             continue
+
         before = provider._store.count_facts() if provider._store else 0
+        n_turns = len(session_msgs)
+        session_ok = False
+
         # Retry loop for rate-limited extractions
         for attempt in range(4):
             provider._last_extracted_idx = 0
@@ -115,12 +153,26 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
                 if provider._store and provider._store.count_facts() > before:
                     break
             if provider._store and provider._store.count_facts() > before:
+                new_facts = provider._store.count_facts() - before
+                _log(f"[{idx+1}/{total}] {sname}: ✅ extracted {new_facts} facts ({n_turns} turns, attempt {attempt+1})")
+                session_ok = True
                 break  # extraction succeeded
             # Back off before retry
             wait = 5 * (attempt + 1)
-            print(f"    ⏳ Retrying {sname} in {wait}s (attempt {attempt+1}/4)")
+            _log(f"[{idx+1}/{total}] {sname}: ⏳ no new facts, retry in {wait}s (attempt {attempt+1}/4)", "warning")
             time.sleep(wait)
+
+        if session_ok:
+            succeeded += 1
+        else:
+            failed_sessions.append(sname)
+            _log(f"[{idx+1}/{total}] {sname}: ❌ FAILED after 4 attempts", "error")
+
         time.sleep(3.0)  # rate limit between sessions
+
+    _log(f"Extraction done: {succeeded}/{total} sessions succeeded")
+    if failed_sessions:
+        _log(f"Failed sessions: {', '.join(failed_sessions)}", "error")
 
 
 def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tuple:
@@ -138,11 +190,9 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
     context = "\n".join(context_parts)
     # Log all top 20 retrieved facts
     retrieved_facts = [{"rank": i+1, "score": round(r["score"], 4), "content": r["content"]} for i, r in enumerate(results)]
-    # Debug: log what's passed to the model
-    import sys
-    print(f"    [DEBUG] Retrieved {len(results)} facts, using top {len(context_parts)} for answer: {question[:50]}...", file=sys.stderr)
-    for i, c in enumerate(context_parts):
-        print(f"      [{i+1}] {c[:80]}", file=sys.stderr)
+    _log(f"Retrieved {len(results)} facts for Q: {question[:80]}...")
+    for rf in retrieved_facts[:10]:
+        _log(f"  [{rf['rank']}] score={rf['score']:.4f} | {rf['content'][:100]}")
     return (_generate_answer(question, context), len(context_parts), retrieved_facts)
 
 
@@ -288,6 +338,8 @@ def main():
     # Create run directory
     run_dir = _create_run_dir("locomo", args.tag)
     set_run_dir(run_dir)
+    _setup_extraction_log(run_dir)
+    _log(f"Run started: {run_dir.name}")
     print(f"📁 Run dir: {run_dir}")
 
     data_path = Path(__file__).resolve().parent / "data" / "locomo10.json"

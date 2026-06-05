@@ -133,7 +133,7 @@ Extract facts about:
 1. **Events & milestones** — job changes, moves, trips, purchases, achievements, incidents (with dates/times when mentioned)
 2. **People & relationships** — names, roles, connections between people, family, friends, colleagues
 3. **Preferences & habits** — likes, dislikes, routines, hobbies, tastes, lifestyle choices
-4. **Plans & intentions** — goals, upcoming events, things they want to do, decisions made
+4. **Plans & intentions** — goals, upcoming events, things they want to do, decisions made, tentative plans discussed. Include future plans even if uncertain ("thinking about", "maybe", "considering"). These are valuable for answering predictive questions.
 5. **Work & career** — jobs, projects, businesses, skills, education, professional activities
 6. **Health & wellbeing** — physical health, mental state, exercise, medical events
 7. **Facts & opinions** — beliefs, views, experiences, knowledge shared
@@ -144,15 +144,31 @@ Rules:
 - Include dates, names, locations, and specific details whenever mentioned.
 - If nothing worth extracting, return an empty array.
 - Deduplicate: don't extract the same fact multiple times.
+- **CONSOLIDATE related facts from the same session:** If the conversation mentions multiple details about the same topic (e.g. multiple mentions of camping preferences, past trips, and future plans), merge them into fewer, richer facts rather than many fragmented ones. For example, instead of extracting 5 separate facts ("Melanie loves camping", "Melanie's family went camping", "Melanie's family is thinking about camping next month", "Melanie's family has annual camping trips", "Melanie enjoys campfire stories"), consolidate into 2-3 facts that capture the full picture:
+  1. {"content": "Melanie's family has annual summer camping trips and loves camping at the beach together", "category": "activity"}
+  2. {"content": "Melanie's family is planning a camping trip next month (around June 2023)", "category": "goal"}  
+  3. {"content": "Melanie's family enjoys campfire stories, roasting marshmallows, and nature during camping trips", "category": "preference"}
+
+  Consolidation guidelines:
+  - Combine past events + preferences about the same activity → at most 2-3 broader facts per topic per session
+  - Keep facts that have specific timing (dates, months) separate from general preference/activity facts
+  - Don't merge facts about different people or different activities
+  - Prioritize completeness: a consolidated fact with specific timing is worth more than 5 fragmented facts without dates
 - Output in the SAME language as the conversation.
 - **TEMPORAL: Always include dates when mentioned.** Preserve the original date format. "Got married on June 15, 2023" not just "Got married".
 
 **Importance scoring (1-10):**
 - 9-10: Major life events, identity-defining facts, irreversible decisions
-- 7-8: Important relationships, significant choices, key milestones
-- 5-6: Useful context, notable preferences, relevant details
+- 7-8: Important relationships, significant choices, key milestones, concrete future plans with specific timing
+- 5-6: Useful context, notable preferences, relevant details, tentative plans/ideas, recurring activities
 - 3-4: Minor details, temporary states, easily forgotten info
 - 1-2: Trivial details, likely to change, not worth remembering
+
+**IMPORTANT — event vs goal importance:**
+- A concrete plan with specific timing (e.g. "thinking about going camping next month (June 2023)") → 6-7, NOT 4. Even though it's tentative, the specific timing makes it retrievable.
+- A past event with specific date → 5-7 depending on significance
+- A recurring activity without specific timing → 5-6
+- A vague preference without specifics → 4-5
 
 **Persistence judgment (is_persistent):**
 Set is_persistent=true for facts likely useful across many future sessions:
@@ -174,11 +190,11 @@ Return a JSON array of objects, each with:
   - place: locations, origins, destinations ("is from Sweden", "went to beach")
   - time: dates, durations ("on July 2", "for 4 years")
   - person: relationships, social connections ("has children", "friend Melanie")
-  - event: one-time occurrences with clear boundaries ("gave a school talk", "passed interviews")
+  - event: one-time occurrences with clear boundaries, already happened ("gave a school talk", "passed interviews", "went camping last weekend"). Past tense = event.
   - activity: recurring behaviors, schedules, routines ("goes camping every summer", "exercises daily"). Preserve frequency words (often, every week, daily).
   - preference: attitudes, likes/dislikes, emotional expressions ("loves nature", "hates running", "finds camping peaceful"). When emotional words (喜欢/love/讨厌/hate/最爱/prefer) appear, classify as preference even if frequency is mentioned.
   - identity: roles, traits, long-term characteristics ("is transgender", "is a designer", "is vegetarian")
-  - goal: plans, aspirations, intentions ("wants to pursue counseling", "plans to adopt")
+  - goal: plans, aspirations, intentions, future proposals, tentative ideas ("wants to pursue counseling", "plans to adopt", "is thinking about going camping next month"). Future tense / planning verbs / conditional = goal. NOT event.
   - project: technical project facts ("uses FastAPI with SQLAlchemy")
   - tool: tool/stack preferences ("uses vim", "prefers pytest")
   - possession: ownership with personal significance ("has a blue car", "owns a house", "has two cats"). Must be personal/family ownership with clear attributes or value. Exclude abstract concepts or trivial items.
@@ -239,7 +255,15 @@ Examples:
   {"content": "User really loves swimming", "category": "preference", "tags": "swimming,emotion", "importance": 6, "is_persistent": true, "content_date": null},
   {"content": "User has a blue Tesla Model 3", "category": "possession", "tags": "car,Tesla", "importance": 5, "is_persistent": true, "content_date": null},
   {"content": "User's computer is broken", "category": "state", "tags": "computer,issue", "importance": 4, "is_persistent": false, "content_date": null}
-]"""
+]
+
+IMPORTANT -- JSON validity check before responding:
+- Output ONLY the JSON array, no extra text before or after.
+- Every string value must have properly escaped quotes inside.
+- No trailing commas after the last item in any array or object.
+- No unescaped control characters (newlines, tabs) inside string values.
+- Double-check: your response must be parseable by a strict JSON parser.
+- If unsure, simplify: shorter content strings, fewer facts, but valid JSON."""
 
 
 # ---------------------------------------------------------------------------
@@ -639,6 +663,11 @@ def _call_extraction_llm(
         content_date = item.get("content_date")
         if content_date is not None:
             content_date = str(content_date).strip() or None
+        # Extract entities from LLM output (if provided)
+        entities = item.get("entities")
+        if entities is not None and not isinstance(entities, list):
+            entities = None  # ignore malformed
+
         facts.append({
             "content": content,
             "category": category,
@@ -646,6 +675,7 @@ def _call_extraction_llm(
             "importance": importance,
             "is_persistent": is_persistent,
             "content_date": content_date,
+            "entities": entities,
         })
 
     return facts

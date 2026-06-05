@@ -1130,6 +1130,22 @@ class MemoryStore:
             ).fetchall()
             return [{key: r[key] for key in r.keys()} for r in rows]
 
+    def get_fact_ids_for_entities(self, entity_names: list[str]) -> set[int]:
+        """Return set of fact_ids linked to any of the given entity names."""
+        if not entity_names:
+            return set()
+        placeholders = ",".join("?" for _ in entity_names)
+        try:
+            rows = self._conn.execute(
+                f"""SELECT DISTINCT fe.fact_id FROM fact_entities fe
+                    JOIN entities e ON fe.entity_id = e.entity_id
+                    WHERE e.name IN ({placeholders})""",
+                entity_names,
+            ).fetchall()
+            return {r[0] for r in rows}
+        except Exception:
+            return set()
+
     def get_entity_timeline(self, entity_name: str, limit: int = 20,
                             min_importance: float = 0.0) -> list[dict]:
         """Get all facts linked to an entity, sorted chronologically (oldest first).

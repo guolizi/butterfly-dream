@@ -179,7 +179,26 @@ class ThreeDimRetriever:
         scored = []
 
         # Semantic category boost: facts matching detected categories get a relevance bump
-        _CAT_BOOST = 0.25  # boost for matching semantic category
+        _CAT_BOOST = 0.15  # boost for matching semantic category
+
+        # Entity boost: find entities mentioned in the query
+        _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
+        entity_fact_ids: set[int] = set()
+        try:
+            # Get all known entity names
+            entity_rows = self.store.execute_query(
+                "SELECT name FROM entities"
+            )
+            if entity_rows:
+                q_lower = query.lower()
+                matched_entities = [
+                    row["name"] for row in entity_rows
+                    if row["name"].lower() in q_lower
+                ]
+                if matched_entities:
+                    entity_fact_ids = self.store.get_fact_ids_for_entities(matched_entities)
+        except Exception:
+            pass  # entity boost is best-effort
 
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
@@ -210,6 +229,10 @@ class ThreeDimRetriever:
             # Boost relevance if fact's category matches query intent
             if semantic_cats and fact.get("category") in semantic_cats:
                 relevance = min(1.0, relevance + _CAT_BOOST)
+
+            # Boost relevance if fact is linked to an entity mentioned in the query
+            if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
+                relevance = min(1.0, relevance + _ENTITY_BOOST)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
@@ -518,9 +541,14 @@ class ThreeDimRetriever:
         # jieba may segment the same text differently in queries vs indexed content
         # (e.g. "橘猫" is one token in index but "橘" + "猫叫" in query "橘猫叫什么名字").
         # Prefix matching ensures partial jieba tokens still produce candidates.
+        # NOTE: Only prefix-match tokens with length >= 3 to avoid short prefixes
+        # like "go*" accidentally matching "goal" or "to*" matching "today".
         op = ' AND ' if fts_mode == 'and' else ' OR '
         if len(tokens_clean) > 1:
-            return op.join(t + '*' for t in tokens_clean)
+            return op.join(
+                t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
+                for t in tokens_clean
+            )
         # Single token: use prefix match only if CJK (jieba may over-split)
         if re.search(r'[\u4e00-\u9fff]', safe):
             return tokens_clean[0] + '*' if tokens_clean else ''
