@@ -199,10 +199,14 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
 def _generate_answer(question: str, context: str) -> str:
     """Use LLM to generate an answer via eval_utils.call_llm()."""
     prompt = f"""Based on the following memory context about a conversation between two people, answer the question.
-You may make reasonable inferences based on the context:
+
+Guidelines:
 - **Positive inference**: if the context says someone "collects classic children's books", you can infer they likely have Dr. Seuss books.
-- **Negative inference**: if the context says someone "wants to be a counselor" and nothing mentions writing, you can infer they would likely NOT pursue writing as a career.
-Be concise and direct. If the context doesn't contain enough information even after reasonable inference, say "I don't have enough information."
+- **Negative inference (career)**: if the context says someone "wants to be a counselor" and nothing mentions writing, you can infer they would likely NOT pursue writing as a career.
+- **Negative inference (identity/membership)**: if a question asks whether someone belongs to a group/community, and the context never indicates they identify as a member — even though they know people in that community — answer "No" or "Likely no" (they are likely an ally/supporter, not a member). This is a valid inference.
+
+Important: answering "No" based on absence of evidence is valid and preferred over "I don't have enough information" in these cases.
+Only say "I don't have enough information" if the context contains NOTHING relevant — not even about related people or activities.
 
 Memory context:
 {context}
