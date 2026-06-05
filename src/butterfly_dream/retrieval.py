@@ -36,6 +36,24 @@ SCENARIO_WEIGHTS = {
     "balanced":  {"relevance": 0.4, "recency": 0.3, "importance": 0.3},
 }
 
+# Map query semantic categories → fact categories that should be boosted.
+# When a user asks about time, boost event/activity facts; when they ask
+# about preferences, boost preference/goal facts; etc.
+SEMANTIC_CAT_BOOST_MAP: dict[str, tuple[str, ...]] = {
+    "time":        ("event", "activity"),
+    "place":       ("place", "event", "activity"),
+    "person":      ("person", "identity"),
+    "event":       ("event", "activity"),
+    "activity":    ("activity", "event"),
+    "identity":    ("identity", "person"),
+    "preference":  ("preference", "goal"),
+    "goal":        ("goal", "preference"),
+    "project":     ("project", "tool"),
+    "tool":        ("tool", "project"),
+    "possession":  ("possession",),
+    "state":       ("state", "preference"),
+}
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -245,8 +263,14 @@ class ThreeDimRetriever:
             )
 
             # Boost relevance if fact's category matches query intent
-            if semantic_cats and fact.get("category") in semantic_cats:
-                relevance = min(1.0, relevance + _CAT_BOOST)
+            # Uses SEMANTIC_CAT_BOOST_MAP to map query categories → boosted fact categories,
+            # e.g. "time" query → boost event/activity facts, not exact "time" category.
+            if semantic_cats:
+                boost_cats = set()
+                for sc in semantic_cats:
+                    boost_cats.update(SEMANTIC_CAT_BOOST_MAP.get(sc, ()))
+                if boost_cats and fact.get("category") in boost_cats:
+                    relevance = min(1.0, relevance + _CAT_BOOST)
 
             # Boost relevance if fact is linked to an entity mentioned in the query
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
