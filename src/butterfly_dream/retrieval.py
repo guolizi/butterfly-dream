@@ -155,17 +155,19 @@ class ThreeDimRetriever:
             weights["importance"] = importance_weight
 
         # ── Dynamic weight adjustment based on query type ──
-        # Fact-finding queries need low importance weight so specific details
-        # (imp=5-6) aren't drowned out by high-importance identity facts (imp=8-10).
-        # Opinion/assessment queries keep default weights.
+        # When a user asks a specific question (detected as 'fact' or 'opinion'),
+        # importance is harmful: high-imp identity facts (trans, adoption, imp=8-10)
+        # drown out specific low-imp details (sunset, pet names, imp=5) that are
+        # actually the answer. FTS5 relevance alone handles fact ranking correctly.
+        #
+        # Only for undetected (vague/open-ended) queries does importance help
+        # guide recall toward meaningful facts.
         query_type = self._detect_query_type(query)
-        if query_type == 'fact':
-            _FACT_IMPORTANCE_CAP = 0.05  # cap importance at 5% for fact queries
-            if weights.get("importance", 0.3) > _FACT_IMPORTANCE_CAP:
-                excess = weights["importance"] - _FACT_IMPORTANCE_CAP
-                # Shift excess from importance → relevance
-                weights["relevance"] = weights.get("relevance", 0.4) + excess
-                weights["importance"] = _FACT_IMPORTANCE_CAP
+        if query_type is not None:
+            # Move all importance weight → relevance
+            imp = weights.get("importance", 0.3)
+            weights["relevance"] = weights.get("relevance", 0.4) + imp
+            weights["importance"] = 0.0
 
         # Stage 1: Get FTS5 candidates
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
@@ -517,7 +519,8 @@ class ThreeDimRetriever:
             r'\bwhat\s+(subject|name|type|kind|sort|color|size|shape|'
             r'date|time|day|month|year|age|address|phone|price|cost|'
             r'brand|model|version|language|genre|style|title|nickname|'
-            r'flavor|material|pattern|direction|route)\b',
+            r'flavor|material|pattern|direction|route'
+            r')\b',
             # "what is/are/was/were the [name/date/subject/title]"
             r'\bwhat (are|is|were|was)\s+(the\s+)?(name|date|time|subject|title)s?\b',
             # "what are [person]/[possessive] [attribute]" — e.g. "what are Melanie pets names"
@@ -538,6 +541,30 @@ class ThreeDimRetriever:
         ]
         for pat in fact_patterns:
             if re.search(pat, q):
+                return 'fact'
+
+        # "what [concrete-noun]" — match the noun after "what", singularize it,
+        # and check against a set of base-form concrete nouns (symbol, event,
+        # hobby, food, book, place, song, etc.). Avoids maintaining regex
+        # variants for every singular/plural/irregular form.
+        m = re.match(r'\bwhat\s+(\w+)\b', q)
+        if m:
+            noun = m.group(1).lower()
+            # Simple singularization
+            if noun.endswith('ies'):
+                noun_sing = noun[:-3] + 'y'
+            elif noun.endswith('s') and not noun.endswith('ss'):
+                noun_sing = noun[:-1]
+            else:
+                noun_sing = noun
+            _CONCRETE_NOUNS = {
+                'symbol', 'event', 'activity', 'hobby',
+                'food', 'drink', 'book', 'movie', 'song',
+                'music', 'game', 'sport', 'place', 'city',
+                'country', 'store', 'restaurant', 'store',
+                'item', 'object', 'gift', 'present',
+            }
+            if noun_sing in _CONCRETE_NOUNS:
                 return 'fact'
 
         # "what has/have/did [words] [action-verb]" — extract all 3+ letter words
