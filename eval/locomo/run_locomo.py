@@ -202,11 +202,8 @@ def _generate_answer(question: str, context: str) -> str:
 
 Guidelines:
 - **Positive inference**: if the context says someone "collects classic children's books", you can infer they likely have Dr. Seuss books.
-- **Negative inference (career)**: if the context says someone "wants to be a counselor" and nothing mentions writing, you can infer they would likely NOT pursue writing as a career.
-- **Negative inference (identity/membership)**: if a question asks whether someone belongs to a group/community, and the context never indicates they identify as a member — even though they know people in that community — answer "No" or "Likely no" (they are likely an ally/supporter, not a member). This is a valid inference.
-
-Important: answering "No" based on absence of evidence is valid and preferred over "I don't have enough information" in these cases.
-Only say "I don't have enough information" if the context contains NOTHING relevant — not even about related people or activities.
+- **Negative inference**: if the context has information about related topics/people but **never mentions the specific thing the question asks about**, you can infer it likely doesn't apply. For example: if someone talks about wanting to be a counselor and nothing mentions writing, they'd likely NOT pursue writing; if someone is friends with LGBTQ community members but never identifies as one, they are likely NOT a member.
+Important: answering "No" or "Likely no" based on absence of evidence is valid and preferred over "I don't have enough information" in these cases.
 
 Memory context:
 {context}
