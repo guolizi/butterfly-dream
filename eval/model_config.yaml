@@ -3,15 +3,15 @@
 
 extraction:
   provider: openrouter
-  model: owl-alpha
+  model: nvidia/nemotron-3-ultra-550b-a55b:free
 
 answer:
   provider: openrouter
-  model: owl-alpha
+  model: nvidia/nemotron-3-ultra-550b-a55b:free
 
 judge:
   provider: openrouter
-  model: owl-alpha
+  model: nvidia/nemotron-3-ultra-550b-a55b:free
 
 # DeepSeek V4 Flash 备选（reasoning model，judge 需要 max_tokens >= 500）
 # extraction:

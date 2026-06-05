@@ -19,11 +19,19 @@ import csv
 import json
 import os
 import sys
+from collections import defaultdict
 import tempfile
 import time
 from pathlib import Path
 
-from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
+from butterfly_dream import ButterflyDreamMemoryProvider
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env, get_db_path
+from butterfly_dream import ButterflyDreamMemoryProvider
+from eval_utils import set_run_dir, _RUNS_DIR
+
+# Add eval/ to sys.path so eval_utils is importable
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 _load_hermes_env()
 
@@ -93,21 +101,24 @@ def _parse_options(raw: str) -> list:
     # Last resort: split by option prefix
     options = re.findall(r'\([a-d]\)\s*.*?(?=\([a-d]\)|$)', normalized, re.DOTALL)
     return [o.strip() for o in options] if options else [normalized]
-def answer_question(provider: ButterflyDreamMemoryProvider, question: str, options: list) -> str:
-    """Search memory and pick the best option."""
+def answer_question(provider: ButterflyDreamMemoryProvider, question: str, options: list) -> tuple:
+    """Search memory and pick the best option. Returns (answer, retrieved_facts)."""
     from butterfly_dream.retrieval import ThreeDimRetriever
 
     retriever = ThreeDimRetriever(provider._store)
-    results = retriever.search(query=question, scenario="chat", limit=15)
+    results = retriever.search(query=question, scenario="chat", limit=20)
 
     if not results:
         # No context found, pick first option as default
-        return options[0] if options else ""
+        return (options[0] if options else "", [])
 
-    context_parts = [r.get("content", "") for r in results if r.get("content")]
+    # Use top 10 for LLM context (avoid noise from lower-ranked facts)
+    context_parts = [r.get("content", "") for r in results[:10] if r.get("content")]
     context = "\n".join(context_parts)
+    # Log all top 20 retrieved facts
+    retrieved_facts = [{"rank": i+1, "score": round(r["score"], 4), "content": r["content"]} for i, r in enumerate(results)]
 
-    return _generate_answer(question, context, options)
+    return (_generate_answer(question, context, options), retrieved_facts)
 
 
 def _generate_answer(question: str, context: str, options: list) -> str:
@@ -142,21 +153,91 @@ Reply with ONLY the letter prefix of the best option, e.g. "(a)". Do not explain
     return choice
 
 
+def _create_run_dir(benchmark: str, tag: str) -> Path:
+    """Create a timestamped run directory and return it."""
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    name = f"{ts}_{benchmark}_{tag}" if tag else f"{ts}_{benchmark}"
+    run_dir = _RUNS_DIR / name
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def _write_config(run_dir: Path, benchmark: str, args, extra: dict = None):
+    """Write config.json with run metadata."""
+    from datetime import datetime
+    cfg = {
+        "benchmark": benchmark,
+        "timestamp": datetime.now().isoformat(),
+        "args": {k: v for k, v in vars(args).items() if v},
+        "model_config": get_model_config("all"),
+    }
+    if extra:
+        cfg.update(extra)
+    with open(run_dir / "config.json", "w") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def _write_summary(run_dir: Path, benchmark: str, args, all_results: list,
+                   total_time: float, n_items: int):
+    """Write human-readable summary.txt."""
+    from collections import defaultdict
+    total_correct = sum(1 for r in all_results if r["is_correct"])
+    avg_ms = (total_time / n_items) * 1000 if n_items else 0
+
+    by_type = defaultdict(lambda: {"total": 0, "correct": 0})
+    for r in all_results:
+        t = r["question_type"]
+        by_type[t]["total"] += 1
+        if r["is_correct"]:
+            by_type[t]["correct"] += 1
+
+    _ext_cfg = get_model_config("extraction")
+    _eff_model = args.model or f"{_ext_cfg.get('provider','?')}/{_ext_cfg.get('model','?')}"
+    lines = [
+        f"Benchmark: {benchmark}",
+        f"Time: {datetime.now().isoformat()}",
+        f"Model: {_eff_model}",
+        f"Size: {args.size}",
+        f"Sample: {args.sample or 'all'}",
+        f"Type filter: {args.type or 'all'}",
+        f"Topic filter: {args.topic or 'all'}",
+        "",
+        f"Total questions: {len(all_results)}",
+        f"Accuracy: {total_correct}/{len(all_results)} = {total_correct/len(all_results)*100:.1f}%",
+        f"Avg time: {avg_ms:.0f}ms/question",
+        "",
+        "--- Per Question Type ---",
+    ]
+    for t, s in sorted(by_type.items(), key=lambda x: -x[1]["total"]):
+        acc = s["correct"] / s["total"] * 100
+        lines.append(f"  {t[:45]:45s} {s['correct']}/{s['total']} = {acc:.0f}%")
+
+    (run_dir / "summary.txt").write_text("\n".join(lines))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Butterfly Dream × PersonaMem")
     parser.add_argument("--limit", type=int, default=0,
                         help="Max questions to process (0=all)")
+    parser.add_argument("--sample", default="",
+                        help="Uniform sampling: 'N' or 'N-per-type' (e.g. '3-per-type')")
     parser.add_argument("--type", default="",
                         help="Filter by question_type")
     parser.add_argument("--topic", default="",
                         help="Filter by topic")
-    parser.add_argument("--output", default="",
-                        help="Output JSONL path")
-    parser.add_argument("--model", default="glm-4.7-flash",
-                        help="Extraction model")
+    parser.add_argument("--tag", default="",
+                        help="Run tag for folder naming (e.g. 'sample3', 'v2')")
+    parser.add_argument("--model", default="",
+                        help="Extraction model (overrides config)")
     parser.add_argument("--size", default="32k", choices=["32k", "128k", "1M"],
                         help="Context size version")
     args = parser.parse_args()
+
+    # Create run directory
+    run_dir = _create_run_dir("personamem", args.tag)
+    set_run_dir(run_dir)
+    print(f"📁 Run dir: {run_dir}")
 
     data_dir = Path(__file__).resolve().parent / "data"
     csv_path = data_dir / f"questions_{args.size}.csv"
@@ -176,14 +257,26 @@ def main():
     if args.topic:
         questions = [q for q in questions if q["topic"] == args.topic]
         print(f"   Filtered to {len(questions)} questions (topic={args.topic})")
-    if args.limit > 0:
+
+    # Uniform sampling (--sample 3-per-type or --sample 3)
+    if args.sample:
+        import random as _random
+        _random.seed(42)
+        n = int(args.sample.replace("-per-type", ""))
+        by_type = defaultdict(list)
+        for q in questions:
+            by_type[q["question_type"]].append(q)
+        sampled = []
+        for t in sorted(by_type):
+            picked = _random.sample(by_type[t], min(n, len(by_type[t])))
+            sampled.extend(picked)
+        questions = sampled
+        print(f"🎲 Sampled {len(questions)} questions ({n} per type, {len(by_type)} types)")
+    elif args.limit > 0:
         questions = questions[:args.limit]
 
     # Output
-    if not args.output:
-        suffix = f"_{args.type}" if args.type else ""
-        args.output = f"results_personamem{suffix}.jsonl"
-    output_path = Path(__file__).resolve().parent / args.output
+    output_path = run_dir / "results.jsonl"
 
     results = []
     total_time = 0
@@ -204,12 +297,11 @@ def main():
         t0 = time.perf_counter()
 
         # Fresh provider per question
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            q_db = tmp.name
+        q_db = str(get_db_path('personamem', qid))
         q_config = {
             "db_path": q_db,
             "llm_extract": True,
-            "extraction_model": {"provider": "glm", "model": args.model},
+            "extraction_model": get_model_config("extraction") if not args.model else {"provider": "openrouter", "model": args.model},
             "trivial_filter": True,
             "circuit_breaker": {"max_failures": 5, "cooldown_seconds": 120},
             "reflection": False,
@@ -232,17 +324,16 @@ def main():
 
         # Step 2: Answer
         try:
-            hypothesis = answer_question(q_provider, question_text, options)
+            hypothesis, retrieved_facts = answer_question(q_provider, question_text, options)
         except Exception as e:
             hypothesis = options[0] if options else ""
+            retrieved_facts = []
             print(f"  ⚠️  [{i+1}] Answer error: {e}")
 
         # Cleanup
         q_provider.shutdown()
-        try:
-            os.unlink(q_db)
-        except OSError:
-            pass
+        time.sleep(3)
+        print(f"  💾 DB saved: {q_db}")
 
         elapsed = time.perf_counter() - t0
         total_time += elapsed
@@ -258,6 +349,7 @@ def main():
             "hypothesis": hypothesis,
             "correct_answer": gold_letter,
             "is_correct": is_correct,
+            "retrieved_facts": retrieved_facts,
         }
         results.append(result)
 
@@ -272,6 +364,13 @@ def main():
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
+    # Write config.json and summary.txt
+    _write_config(run_dir, "personamem", args, extra={
+        "n_questions": len(questions),
+        "size": args.size,
+    })
+    _write_summary(run_dir, "personamem", args, results, total_time, len(results))
+
     # Summary
     avg_ms = (total_time / len(results)) * 1000 if results else 0
     acc = correct / len(results) * 100 if results else 0
@@ -282,7 +381,7 @@ def main():
     print(f"  📝 Total facts: {total_facts}")
     print(f"  ⏱  Average: {avg_ms:.0f}ms/question")
     print(f"  ❌ Extraction errors: {extraction_errors}")
-    print(f"  📄 Results: {output_path}")
+    print(f"  📁 Run dir: {run_dir}")
     print(f"{'='*60}")
 
     # Per-type breakdown

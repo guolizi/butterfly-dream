@@ -170,18 +170,73 @@ Set is_persistent=false for facts that are:
 
 Return a JSON array of objects, each with:
 - "content": the fact statement (plain text, max 400 chars, INCLUDE dates/names/details)
-- "category": one of "user_pref", "project", "tool", "general"
+- "category": the semantic type of this fact. One of:
+  - place: locations, origins, destinations ("is from Sweden", "went to beach")
+  - time: dates, durations ("on July 2", "for 4 years")
+  - person: relationships, social connections ("has children", "friend Melanie")
+  - event: one-time occurrences with clear boundaries ("gave a school talk", "passed interviews")
+  - activity: recurring behaviors, schedules, routines ("goes camping every summer", "exercises daily"). Preserve frequency words (often, every week, daily).
+  - preference: attitudes, likes/dislikes, emotional expressions ("loves nature", "hates running", "finds camping peaceful"). When emotional words (喜欢/love/讨厌/hate/最爱/prefer) appear, classify as preference even if frequency is mentioned.
+  - identity: roles, traits, long-term characteristics ("is transgender", "is a designer", "is vegetarian")
+  - goal: plans, aspirations, intentions ("wants to pursue counseling", "plans to adopt")
+  - project: technical project facts ("uses FastAPI with SQLAlchemy")
+  - tool: tool/stack preferences ("uses vim", "prefers pytest")
+  - possession: ownership with personal significance ("has a blue car", "owns a house", "has two cats"). Must be personal/family ownership with clear attributes or value. Exclude abstract concepts or trivial items.
+  - state: ongoing conditions with contextual relevance ("computer is broken", "is sick", "on vacation"). Must be a continuing state (no inherent endpoint), not a one-time event. Exclude trivial temporary states ("busy today").
+  - general: none of the above (use sparingly)
+
+**Orthogonality rules for activity vs preference:**
+
+The key question: What is the CORE/MAIN point of the sentence?
+- If the core is describing a BEHAVIOR/HABIT/ROUTINE → activity
+- If the core is expressing an ATTITUDE/LIKE/DISLIKE → preference
+
+Detailed rules:
+1. **Activity (behavior-focused):**
+   - Describes WHAT someone does, HOW OFTEN, or their routine
+   - Even if feelings are mentioned as a side effect, the main point is the behavior
+   - Examples:
+     - "uses painting to express feelings" → activity (core: uses painting)
+     - "goes swimming to relax" → activity (core: goes swimming)
+     - "exercises daily to stay healthy" → activity (core: exercises daily)
+     - "reads books for relaxation" → activity (core: reads books)
+
+2. **Preference (attitude-focused):**
+   - Expresses HOW someone FEELS about something
+   - Has clear emotional words: like/love/hate/dislike/enjoy/prefer/最爱/讨厌/喜欢/享受/宁愿
+   - The main point is the emotional stance, not the behavior
+   - Examples:
+     - "loves painting" → preference (core: loves)
+     - "enjoys swimming" → preference (core: enjoys)
+     - "hates running" → preference (core: hates)
+     - "最喜欢游泳" → preference (core: 最喜欢)
+
+3. **Compound sentences (split into TWO facts):**
+   - When a sentence has BOTH emotional stance AND behavioral details
+   - Example: "I really love swimming, I go every week" →
+     1. {"content": "User really loves swimming", "category": "preference"}
+     2. {"content": "User goes swimming every week", "category": "activity"}
+
+4. **Ambiguous cases - default to activity:**
+   - If unsure whether it's behavior or attitude, classify as activity
+   - Activity is more concrete and easier to verify
+
 - "tags": optional comma-separated tags (people names, topics)
 - "importance": integer 1-10
 - "is_persistent": boolean
-- "content_date": (optional) ISO date (YYYY-MM-DD) if a date is mentioned. null if no date.
+- "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20", use it as the reference timestamp to convert relative expressions ("about a month ago", "last week", "about 4 years") into absolute ISO dates. null ONLY if absolutely no date info exists.
 
 Examples:
 [
-  {"content": "Caroline went to the LGBTQ support group on March 5, 2023", "category": "general", "tags": "Caroline,LGBTQ,support-group", "importance": 6, "is_persistent": false, "content_date": "2023-03-05"},
-  {"content": "Melanie is a freelance graphic designer who specializes in brand identity", "category": "general", "tags": "Melanie,design,career", "importance": 7, "is_persistent": true, "content_date": null},
-  {"content": "Jon lost his job as a banker on 19 January, 2023 and started a dance studio", "category": "general", "tags": "Jon,career,business", "importance": 8, "is_persistent": true, "content_date": "2023-01-19"},
-  {"content": "The project uses FastAPI with SQLAlchemy async", "category": "project", "tags": "backend,stack", "importance": 6, "is_persistent": true, "content_date": null}
+  {"content": "Caroline went to the LGBTQ support group on March 5, 2023", "category": "event", "tags": "Caroline,LGBTQ,support-group", "importance": 6, "is_persistent": false, "content_date": "2023-03-05"},
+  {"content": "Melanie is a freelance graphic designer who specializes in brand identity", "category": "identity", "tags": "Melanie,design,career", "importance": 7, "is_persistent": true, "content_date": null},
+  {"content": "Jon lost his job as a banker on 19 January, 2023 and started a dance studio", "category": "event", "tags": "Jon,career,business", "importance": 8, "is_persistent": true, "content_date": "2023-01-19"},
+  {"content": "The project uses FastAPI with SQLAlchemy async", "category": "project", "tags": "backend,stack", "importance": 6, "is_persistent": true, "content_date": null},
+  {"content": "User goes swimming every Wednesday", "category": "activity", "tags": "swimming,routine", "importance": 5, "is_persistent": true, "content_date": null},
+  {"content": "User uses painting to express feelings and relax", "category": "activity", "tags": "painting,routine", "importance": 5, "is_persistent": true, "content_date": null},
+  {"content": "User really loves swimming", "category": "preference", "tags": "swimming,emotion", "importance": 6, "is_persistent": true, "content_date": null},
+  {"content": "User has a blue Tesla Model 3", "category": "possession", "tags": "car,Tesla", "importance": 5, "is_persistent": true, "content_date": null},
+  {"content": "User's computer is broken", "category": "state", "tags": "computer,issue", "importance": 4, "is_persistent": false, "content_date": null}
 ]"""
 
 
@@ -224,7 +279,7 @@ FACT_STORE_SCHEMA = {
                 "description": "Entity names for 'reason'.",
             },
             "fact_id": {"type": "integer", "description": "Fact ID for 'update'/'remove'."},
-            "category": {"type": "string", "enum": ["user_pref", "project", "tool", "general"]},
+            "category": {"type": "string", "enum": ["place", "time", "person", "event", "activity", "identity", "preference", "goal", "project", "tool", "possession", "state", "general"]},
             "tags": {"type": "string", "description": "Comma-separated tags."},
             "importance": {
                 "type": "integer", "description": "Importance 1-10 (used for 'add').",
@@ -433,6 +488,8 @@ def _call_extraction_llm(
         system_prompt: Optional override for the system prompt.
                        Defaults to _EXTRACTION_SYSTEM_PROMPT.
     """
+    import time as _time
+
     base_url, api_key = _resolve_provider_credentials(provider)
     if not api_key:
         logger.warning("ButterflyDream LLM extract: no API key for '%s'", provider)
@@ -467,36 +524,58 @@ def _call_extraction_llm(
         payload["response_format"] = {"type": "json_object"}
 
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            response_data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
-        logger.warning("ButterflyDream LLM extract request failed: %s", e)
-        return []
+    # Retry logic with exponential backoff
+    max_retries = 4
+    backoff_delays = [5, 10, 15, 20]  # seconds
+    parsed = None
 
-    try:
-        content = response_data["choices"][0]["message"]["content"]
-        # Strip markdown code fences (```json ... ``` or ``` ... ```)
-        content = content.strip()
-        if content.startswith("```"):
-            # Remove first line (```json or ```)
-            first_nl = content.index("\n")
-            content = content[first_nl + 1:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-        parsed = json.loads(content)
-    except (KeyError, IndexError, json.JSONDecodeError, ValueError) as e:
-        logger.warning("ButterflyDream LLM extract: parse failed: %s", e)
+    for attempt in range(max_retries):
+        req = urllib.request.Request(
+            url, data=body,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                response_data = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as e:
+            logger.warning("ButterflyDream LLM extract request failed (attempt %d/%d): %s", attempt + 1, max_retries, e)
+            if attempt < max_retries - 1:
+                delay = backoff_delays[attempt]
+                logger.info("ButterflyDream LLM extract: retrying in %ds...", delay)
+                _time.sleep(delay)
+                continue
+            return []
+
+        try:
+            content = response_data["choices"][0]["message"]["content"]
+            # Strip markdown code fences (```json ... ``` or ``` ... ```)
+            content = content.strip()
+            if content.startswith("```"):
+                # Remove first line (```json or ```)
+                first_nl = content.index("\n")
+                content = content[first_nl + 1:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            parsed = json.loads(content)
+            # Success - break out of retry loop
+            break
+        except (KeyError, IndexError, json.JSONDecodeError, ValueError) as e:
+            logger.warning("ButterflyDream LLM extract: parse failed (attempt %d/%d): %s", attempt + 1, max_retries, e)
+            if attempt < max_retries - 1:
+                delay = backoff_delays[attempt]
+                logger.info("ButterflyDream LLM extract: retrying in %ds...", delay)
+                _time.sleep(delay)
+                continue
+            return []
+
+    if parsed is None:
         return []
 
     if isinstance(parsed, dict):
@@ -539,7 +618,12 @@ def _call_extraction_llm(
             continue
         content = content[:400]
         category = str(item.get("category", "general")).strip()
-        if category not in ("user_pref", "project", "tool", "general"):
+        _VALID_CATEGORIES = {
+            "place", "time", "person", "event", "activity",
+            "identity", "preference", "goal",
+            "project", "tool", "possession", "state", "general",
+        }
+        if category not in _VALID_CATEGORIES:
             category = "general"
         tags = str(item.get("tags", "")).strip()
         importance = int(item.get("importance", 5))
@@ -549,12 +633,17 @@ def _call_extraction_llm(
             is_persistent = raw_persistent.lower() in ("true", "1", "yes")
         else:
             is_persistent = bool(raw_persistent)
+        # Extract content_date (LLM returns ISO date or null)
+        content_date = item.get("content_date")
+        if content_date is not None:
+            content_date = str(content_date).strip() or None
         facts.append({
             "content": content,
             "category": category,
             "tags": tags,
             "importance": importance,
             "is_persistent": is_persistent,
+            "content_date": content_date,
         })
 
     return facts

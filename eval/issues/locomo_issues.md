@@ -1,0 +1,58 @@
+# LoCoMo Benchmark Issues
+
+记录评测中发现的数据集问题和系统问题，方便后续排查和改进。
+
+---
+
+## Q5 (conv-26): Gold 答案标错
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Melanie run a charity race? |
+| Gold | The sunday before 25 May 2023 |
+| 证据 (D2:1) | "I ran a charity race for mental health **last Saturday**" |
+| Session 2 日期 | 2023-05-25 (Thursday) |
+| 推算 | "last Saturday" = 2023-05-20 (Saturday ✅) |
+| 我们的回答 | 2023-05-20 ✅ 正确 |
+| 两次得分 | 2, 2 |
+
+**问题**: 原文说 "Saturday"，gold 标成 "sunday"，是 LoCoMo 数据集标注错误。
+**影响**: 正确答案被 judge 扣分，不可修复（除非修改 gold）。
+
+---
+
+## Q9 (conv-26): 提取共指消解错误
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Caroline meet up with her friends, family, and mentors? |
+| Gold | The week before 9 June 2023 |
+| 证据 (D3:11) | "My friends, family and mentors are my rocks… Here's a pic from when **we** met up last week!" |
+| Session 3 日期 | 2023-06-09 |
+| 提取结果 | "Caroline met up with **Melanie** last week, around June 2, 2023" ❌ |
+| 我们的回答 | I don't have enough information |
+| 两次得分 | 1, 1 |
+
+**问题**: 提取 LLM 把 "we met up" 的 "we" 错误指向对话对象 Melanie，实际指的是上一句的 friends/family/mentors。
+**影响**: 检索时用 "meet up" 搜到的是错误的实体，正确事实根本没被提取。
+**改进方向**: 提取 prompt 增加上下文窗口、多候选实体、speaker-aware 共指消解。
+
+---
+
+## 待归档模板
+
+```
+## Q{题号} (conv-{id}): {简述}
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | {question} |
+| Gold | {gold answer} |
+| 证据 | {evidence} |
+| 我们的回答 | {hypothesis} |
+| 得分 | {scores across runs} |
+
+**问题**: {描述}
+**影响**: {影响}
+**改进方向**: {方向}
+```

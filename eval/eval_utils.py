@@ -23,7 +23,34 @@ from pathlib import Path
 
 _EVAL_DIR = Path(__file__).resolve().parent
 _CONFIG_PATH = _EVAL_DIR / "model_config.yaml"
+_DB_DIR = _EVAL_DIR / "dbs"
+_RUNS_DIR = _EVAL_DIR / "runs"
 _config_cache = None
+_active_run_dir: Path | None = None
+
+
+def set_run_dir(run_dir: Path) -> None:
+    """Set the active run directory. All subsequent get_db_path() calls
+    will store DBs under ``run_dir/dbs/`` instead of the global dbs/ dir."""
+    global _active_run_dir
+    _active_run_dir = run_dir
+    (run_dir / "dbs").mkdir(parents=True, exist_ok=True)
+
+
+def get_run_dir() -> Path | None:
+    """Return the active run directory, or None if not set."""
+    return _active_run_dir
+
+
+def get_db_path(benchmark: str, item_id: str) -> Path:
+    """Get a persistent DB path for an eval run.
+
+    Always stores to ``eval/dbs/{benchmark}/{item_id}.db`` so extraction
+    results survive across runs and can be reused via --db-dir.
+    """
+    db_dir = _DB_DIR / benchmark
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / f"{item_id}.db"
 
 
 def _load_config() -> dict:
@@ -113,6 +140,11 @@ def _load_hermes_env():
 # LLM call helper
 # ---------------------------------------------------------------------------
 
+import time as _time
+_last_llm_call: float = 0.0
+_MIN_CALL_INTERVAL: float = 3.0  # seconds between LLM calls (rate-limit safety)
+
+
 def call_llm(
     role: str,
     messages: list[dict],
@@ -125,6 +157,9 @@ def call_llm(
 ) -> str:
     """Call an LLM using the config for the given role.
 
+    Rate-limited: enforces at least ``_MIN_CALL_INTERVAL`` seconds between calls.
+    Retries up to 4 times on failure with exponential backoff (5/10/15/20s).
+
     Args:
         role: "extraction", "answer", or "judge".
         messages: OpenAI-format messages list.
@@ -132,8 +167,10 @@ def call_llm(
         provider_override, model_override: Bypass config for one-off tests.
 
     Returns:
-        Assistant message content string. Empty string on error.
+        Assistant message content string. Empty string on error after all retries.
     """
+    global _last_llm_call
+
     _load_hermes_env()
     cfg = get_model_config(role)
     provider = provider_override or cfg.get("provider", "openrouter")
@@ -160,13 +197,24 @@ def call_llm(
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"  [LLM error: {e}]", file=sys.stderr)
-        return ""
+    for attempt in range(4):
+        # Rate limit: wait if needed
+        elapsed = _time.monotonic() - _last_llm_call
+        if elapsed < _MIN_CALL_INTERVAL:
+            _time.sleep(_MIN_CALL_INTERVAL - elapsed)
+        _last_llm_call = _time.monotonic()
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"  [LLM error: {e}]", file=sys.stderr)
+            if attempt < 3:
+                wait = 5 * (attempt + 1)
+                print(f"  ⏳ Retrying in {wait}s (attempt {attempt+1}/4)", file=sys.stderr)
+                _time.sleep(wait)
+    return ""
 
 
 # ---------------------------------------------------------------------------

@@ -97,7 +97,7 @@ def _search_query(retriever: ThreeDimRetriever, store: MemoryStore,
             query=query,
             scenario=params.get("scenario", "balanced"),
             persistent_only=params.get("persistent_only", False),
-            limit=10,
+            limit=20,
         )
     elif qtype == "probe":
         return store.get_entity_facts(query)
@@ -200,6 +200,10 @@ def run_scenario(scenario: dict, tmp_db: str) -> dict:
             "n_results": len(raw_results),
             "expected_found": sum(_any_expected_in_results(raw_results, expected)),
             "expected_total": len(expected),
+            "retrieved_facts": [
+                {"rank": i+1, "score": round(r.get("score", 0), 4), "content": r.get("content", "")}
+                for i, r in enumerate(raw_results[:20])
+            ],
         }
 
         # Handle dedup_check specially

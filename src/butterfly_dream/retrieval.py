@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # Default scenario weights
 SCENARIO_WEIGHTS = {
-    "chat":      {"relevance": 0.4, "recency": 0.4, "importance": 0.2},
+    "chat":      {"relevance": 0.5, "recency": 0.3, "importance": 0.2},
     "technical": {"relevance": 0.5, "recency": 0.2, "importance": 0.3},
     "longterm":  {"relevance": 0.3, "recency": 0.1, "importance": 0.6},
     "qa":        {"relevance": 0.6, "recency": 0.3, "importance": 0.1},
@@ -124,6 +124,7 @@ class ThreeDimRetriever:
         relevance_weight: Optional[float] = None,
         importance_weight: Optional[float] = None,
         persistent_only: bool = False,
+        fts_mode: str = "or",
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -154,13 +155,31 @@ class ThreeDimRetriever:
             weights["importance"] = importance_weight
 
         # Stage 1: Get FTS5 candidates
-        candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only)
+        candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
+
+        # Stage 1.5: Also fetch candidates by semantic category if query matches
+        semantic_cats = self._query_to_semantic_categories(query)
+        if semantic_cats:
+            cat_candidates = self._semantic_category_candidates(
+                semantic_cats, category, min_trust, limit * 3, persistent_only
+            )
+            # Merge: add category candidates not already in FTS5 results
+            seen_ids = {c.get("fact_id") for c in candidates}
+            for c in cat_candidates:
+                if c.get("fact_id") not in seen_ids:
+                    c["fts_rank"] = 0.0  # no FTS rank, will rely on other dimensions
+                    candidates.append(c)
+                    seen_ids.add(c["fact_id"])
+
         if not candidates:
             return []
 
         # Stage 2: Score on all three dimensions
         query_tokens = self._tokenize(query)
         scored = []
+
+        # Semantic category boost: facts matching detected categories get a relevance bump
+        _CAT_BOOST = 0.25  # boost for matching semantic category
 
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
@@ -187,6 +206,10 @@ class ThreeDimRetriever:
                 + self.jaccard_weight * jaccard
                 + self.hrr_weight * hrr_sim
             )
+
+            # Boost relevance if fact's category matches query intent
+            if semantic_cats and fact.get("category") in semantic_cats:
+                relevance = min(1.0, relevance + _CAT_BOOST)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
@@ -224,6 +247,7 @@ class ThreeDimRetriever:
         min_trust: float = 0.3,
         limit: int = 30,
         persistent_only: bool = False,
+        fts_mode: str = "or",
     ) -> list[dict]:
         """Stage 1: Fetch candidates from FTS5 full-text search.
 
@@ -232,45 +256,48 @@ class ThreeDimRetriever:
         parent fact and include a 'media' list and '_media_match' flag.
         """
         # Sanitize query for FTS5 special characters
-        safe_query = self._sanitize_fts_query(query)
+        safe_query = self._sanitize_fts_query(query, fts_mode)
         if not safe_query:
             return []
 
         # Query facts_fts — use separate parameterized queries for safety
-        if category:
-            if persistent_only:
-                rows = self.store.execute_query(
-                    """SELECT f.*, rank FROM facts_fts
-                       JOIN facts f ON facts_fts.rowid = f.fact_id
-                       WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ? AND f.is_persistent = 1
-                       ORDER BY rank LIMIT ?""",
-                    (safe_query, category, min_trust, limit),
-                )
+        try:
+            if category:
+                if persistent_only:
+                    rows = self.store.execute_query(
+                        """SELECT f.*, rank FROM facts_fts
+                           JOIN facts f ON facts_fts.rowid = f.fact_id
+                           WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ? AND f.is_persistent = 1
+                           ORDER BY rank LIMIT ?""",
+                        (safe_query, category, min_trust, limit),
+                    )
+                else:
+                    rows = self.store.execute_query(
+                        """SELECT f.*, rank FROM facts_fts
+                           JOIN facts f ON facts_fts.rowid = f.fact_id
+                           WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ?
+                           ORDER BY rank LIMIT ?""",
+                        (safe_query, category, min_trust, limit),
+                    )
             else:
-                rows = self.store.execute_query(
-                    """SELECT f.*, rank FROM facts_fts
-                       JOIN facts f ON facts_fts.rowid = f.fact_id
-                       WHERE facts_fts MATCH ? AND f.category = ? AND f.trust_score >= ?
-                       ORDER BY rank LIMIT ?""",
-                    (safe_query, category, min_trust, limit),
-                )
-        else:
-            if persistent_only:
-                rows = self.store.execute_query(
-                    """SELECT f.*, rank FROM facts_fts
-                       JOIN facts f ON facts_fts.rowid = f.fact_id
-                       WHERE facts_fts MATCH ? AND f.trust_score >= ? AND f.is_persistent = 1
-                       ORDER BY rank LIMIT ?""",
-                    (safe_query, min_trust, limit),
-                )
-            else:
-                rows = self.store.execute_query(
-                    """SELECT f.*, rank FROM facts_fts
-                       JOIN facts f ON facts_fts.rowid = f.fact_id
-                       WHERE facts_fts MATCH ? AND f.trust_score >= ?
-                       ORDER BY rank LIMIT ?""",
-                    (safe_query, min_trust, limit),
-                )
+                if persistent_only:
+                    rows = self.store.execute_query(
+                        """SELECT f.*, rank FROM facts_fts
+                           JOIN facts f ON facts_fts.rowid = f.fact_id
+                           WHERE facts_fts MATCH ? AND f.trust_score >= ? AND f.is_persistent = 1
+                           ORDER BY rank LIMIT ?""",
+                        (safe_query, min_trust, limit),
+                    )
+                else:
+                    rows = self.store.execute_query(
+                        """SELECT f.*, rank FROM facts_fts
+                           JOIN facts f ON facts_fts.rowid = f.fact_id
+                           WHERE facts_fts MATCH ? AND f.trust_score >= ?
+                           ORDER BY rank LIMIT ?""",
+                        (safe_query, min_trust, limit),
+                    )
+        except Exception:
+            rows = []
 
         results = []
         seen_fact_ids = {}
@@ -333,9 +360,107 @@ class ThreeDimRetriever:
         results.sort(key=lambda x: x["fts_rank"], reverse=True)
         return results[:limit]
 
+    # -- Semantic category helpers --------------------------------------------
+
     @staticmethod
-    def _sanitize_fts_query(query: str) -> str:
-        """Remove FTS5 special characters and collapse whitespace."""
+    def _query_to_semantic_categories(query: str) -> list[str]:
+        """Map query keywords to semantic categories. Supports English and Chinese."""
+        q = query.lower()
+        categories = []
+
+        # English mappings
+        EN_MAP = [
+            (["where", "location", "place", "which city", "which country", "which town"], "place"),
+            (["when", "what time", "what date", "how long", "how many years", "how many days",
+              "how old", "since when", "which year", "which month", "which day"], "time"),
+            (["who", "whom", "whose", "which person"], "person"),
+            (["what happened", "what did", "what event", "what events", "what was the"], "event"),
+            (["what activities", "what activity", "what hobbies", "what hobby",
+              "what sports", "what sport", "what pastime", "what pastimes",
+              "what does", "what do", "how do you", "how often"], "activity"),
+            (["what is", "what are", "how would", "describe"], "identity"),
+            (["like", "favorite", "prefer", "enjoy", "love", "hate", "dislike",
+              "taste", "interest"], "preference"),
+            (["want", "plan", "goal", "wish", "hope", "aspire", "intend",
+              "going to", "will do"], "goal"),
+            (["what project", "what projects", "working on", "building",
+              "what tech", "what stack", "what framework"], "project"),
+            (["what tool", "what tools", "what software", "what app", "what apps",
+              "what program", "what programs", "what do you use", "how do you use"], "tool"),
+            (["do you have", "what do you own", "what do you have", "any pets",
+              "any cars", "any property"], "possession"),
+            (["how are you", "how do you feel", "what is your status",
+              "what is your state", "how is it going"], "state"),
+        ]
+        # Chinese mappings
+        ZH_MAP = [
+            (["在哪", "哪里", "什么地方", "何处", "哪个城市", "哪个国家", "来源", "来自",
+              "住在", "家在", "搬去", "搬到", "去哪"], "place"),
+            (["什么时候", "几月", "哪天", "多久", "多长时间", "几年", "何时", "哪一年", "多大",
+              "几号", "哪天", "几点", "多晚"], "time"),
+            (["谁", "哪个人", "什么人", "认识", "朋友", "家人", "同事", "邻居", "亲戚"], "person"),
+            (["发生了什么", "什么事", "什么事件", "什么情况", "怎么了", "出什么事"], "event"),
+            (["做什么", "干什么", "什么活动", "什么爱好", "什么运动", "怎么锻炼", "平时做什么",
+              "经常", "每天", "每周", "总是", "习惯", "一般"], "activity"),
+            (["是什么", "什么样的", "什么身份", "什么职业", "做什么工作", "工作是"], "identity"),
+            (["喜欢", "爱好", "偏好", "爱", "讨厌", "不喜欢", "兴趣", "最爱", "最讨厌",
+              "宁愿", "倾向", "更喜欢"], "preference"),
+            (["想", "计划", "目标", "打算", "希望", "愿望", "想要", "准备", "将来"], "goal"),
+            (["什么项目", "在做什么", "什么技术", "什么框架", "用什么开发", "开发什么",
+              "做什么项目", "技术栈"], "project"),
+            (["什么工具", "什么软件", "用什么", "什么程序", "什么app", "什么应用",
+              "用什么软件", "用什么工具"], "tool"),
+            (["有没有", "拥有", "有什么", "养了什么", "名下", "养了", "有只", "有只猫",
+              "有只狗", "有辆车", "有套房"], "possession"),
+            (["最近怎么样", "状态如何", "什么状态", "什么情况", "还好吗", "怎么样"], "state"),
+        ]
+
+        for keywords, cat in EN_MAP + ZH_MAP:
+            for kw in keywords:
+                if kw in q:
+                    categories.append(cat)
+                    break
+
+        # Deduplicate while preserving order
+        return list(dict.fromkeys(categories))
+
+    def _semantic_category_candidates(
+        self,
+        semantic_cats: list[str],
+        category: Optional[str] = None,
+        min_trust: float = 0.3,
+        limit: int = 30,
+        persistent_only: bool = False,
+    ) -> list[dict]:
+        """Fetch facts by category (semantic classification)."""
+        placeholders = ",".join("?" for _ in semantic_cats)
+        conditions = f"f.category IN ({placeholders}) AND f.trust_score >= ?"
+        params: list = list(semantic_cats) + [min_trust]
+
+        if persistent_only:
+            conditions += " AND f.is_persistent = 1"
+
+        params.append(limit)
+        try:
+            rows = self.store.execute_query(
+                f"SELECT * FROM facts f WHERE {conditions} ORDER BY f.importance DESC, f.created_at DESC LIMIT ?",
+                tuple(params),
+            )
+        except Exception:
+            return []
+
+        results = []
+        for row in rows:
+            d = {key: row[key] for key in row.keys()}
+            d["fts_rank"] = 0.0
+            d["media"] = []
+            d["_media_match"] = False
+            results.append(d)
+        return results
+
+    @staticmethod
+    def _sanitize_fts_query(query: str, fts_mode: str = "or") -> str:
+        """Remove FTS5 special characters, lemmatize English, filter stop words, and collapse whitespace."""
         import re
         # Remove characters that could break FTS5 syntax
         # Keep # (common in C#/F#) — it's safe in FTS5; + is kept for C++/F++
@@ -347,25 +472,59 @@ class ThreeDimRetriever:
                 tokens.extend(jieba.cut(word))
             else:
                 tokens.append(word)
+        # Lemmatize English tokens (reduce verb/noun forms to base form)
+        try:
+            from nltk.stem import WordNetLemmatizer
+            wnl = WordNetLemmatizer()
+            tokens = [
+                wnl.lemmatize(t, 'v') if t.isascii() and t.isalpha() and len(t) > 2 else t
+                for t in tokens
+            ]
+        except ImportError:
+            pass  # NLTK not installed, skip lemmatization
         safe = ' '.join(tokens)
         # Collapse whitespace
         safe = ' '.join(safe.split())
         if len(safe) < 2:
             return ""
-        # Use OR for broader candidate recall — HRR/Jaccard handles precision downstream.
-        # With AND, any query word not in the indexed content kills the entire query,
-        # making natural language queries (含"什么""哪里""Which""What") always return 0.
-        tokens_clean = safe.split()
+        # Filter stop words — these match almost everything in OR mode
+        # and add noise without improving relevance
+        STOP_WORDS = {
+            # English
+            'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+            'should', 'may', 'might', 'can', 'shall', 'must',
+            'i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours',
+            'you', 'your', 'yours', 'he', 'him', 'his', 'she', 'her', 'hers',
+            'it', 'its', 'they', 'them', 'their', 'theirs',
+            'this', 'that', 'these', 'those', 'here', 'there',
+            'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as',
+            'into', 'about', 'between', 'through', 'during', 'before', 'after',
+            'and', 'but', 'or', 'nor', 'not', 'so', 'if', 'then', 'than', 'too',
+            'very', 'also', 'some', 'any', 'all',
+            'no', 'only', 'own', 'same', 'other', 'such',
+            'further', 'once', 'again', 'further', 'even', 'still',
+            # Chinese
+            '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一',
+            '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着',
+            '没有', '看', '好', '自己', '这', '他', '她', '它', '们', '那', '被',
+            '从', '把', '些', '所', '过', '对', '里', '为', '与', '及', '等',
+        }
+        tokens_clean = [t for t in safe.split() if t.lower() not in STOP_WORDS]
+        if not tokens_clean:
+            # Fallback: if all tokens were stop words, keep original
+            tokens_clean = safe.split()
         # Use '*' prefix matching to bridge jieba segmentation gaps.
         # jieba may segment the same text differently in queries vs indexed content
         # (e.g. "橘猫" is one token in index but "橘" + "猫叫" in query "橘猫叫什么名字").
         # Prefix matching ensures partial jieba tokens still produce candidates.
+        op = ' AND ' if fts_mode == 'and' else ' OR '
         if len(tokens_clean) > 1:
-            return ' OR '.join(t + '*' for t in tokens_clean)
-        # Single token: use prefix match only if CJK (jeba may over-split)
+            return op.join(t + '*' for t in tokens_clean)
+        # Single token: use prefix match only if CJK (jieba may over-split)
         if re.search(r'[\u4e00-\u9fff]', safe):
-            return safe + '*'
-        return safe
+            return tokens_clean[0] + '*' if tokens_clean else ''
+        return tokens_clean[0] if tokens_clean else ''
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:

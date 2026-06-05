@@ -52,3 +52,12 @@ eval/personamem/data/shared_contexts_128k.jsonl
 eval/personamem/data/shared_contexts_1M.jsonl
 eval/personamem/results_*.jsonl
 eval/bd_eval/__pycache__/
+
+# Eval DBs (persistent for debugging, never commit)
+eval/dbs/
+
+# Eval run results (large, generated)
+eval/runs/
+
+# Accidental nested repo dir
+butterfly-dream/

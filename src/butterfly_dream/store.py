@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS facts (
-    fact_id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    content         TEXT NOT NULL UNIQUE,
-    category        TEXT DEFAULT 'general',
-    tags            TEXT DEFAULT '',
+    fact_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    content            TEXT NOT NULL UNIQUE,
+    category           TEXT DEFAULT 'general',  -- place/time/person/event/activity/identity/preference/goal/project/tool/possession/state/general
+    tags               TEXT DEFAULT '',
     importance      REAL DEFAULT 5.0,          -- 1.0 ~ 10.0, LLM-assigned
     trust_score     REAL DEFAULT 0.5,
     retrieval_count INTEGER DEFAULT 0,
@@ -250,22 +250,24 @@ class MemoryStore:
         # may write while prefetch reads). busy_timeout prevents SQLITE_BUSY errors.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
 
-        # Migrate existing databases: add is_persistent column if missing
+        # Migrate BEFORE schema: existing DBs may lack columns that indexes reference.
+        # CREATE TABLE IF NOT EXISTS is a no-op for existing tables, so indexes on
+        # new columns would crash if the ALTER TABLE hasn't run yet.
         try:
             self._conn.execute("ALTER TABLE facts ADD COLUMN is_persistent INTEGER DEFAULT 0")
             self._conn.commit()
         except sqlite3.OperationalError:
             pass  # Column already exists
 
-        # Migrate: add content_date column for temporal extraction
         try:
             self._conn.execute("ALTER TABLE facts ADD COLUMN content_date TEXT")
             self._conn.commit()
         except sqlite3.OperationalError:
             pass  # Column already exists
+
+        self._conn.executescript(_SCHEMA)
+        self._conn.commit()
 
         # register jieba_segment SQLite function for FTS5 CJK tokenization
         self._conn.create_function("jieba_segment", 1, _jieba_segment)
@@ -364,7 +366,12 @@ class MemoryStore:
         # Type validation
         if not isinstance(content, str) or not content.strip():
             raise ValueError("content must be a non-empty string")
-        if not isinstance(category, str):
+        _VALID_CATEGORIES = {
+            "place", "time", "person", "event", "activity",
+            "identity", "preference", "goal",
+            "project", "tool", "possession", "state", "general",
+        }
+        if not isinstance(category, str) or category not in _VALID_CATEGORIES:
             category = "general"
         if not isinstance(tags, str):
             tags = str(tags) if tags is not None else ""

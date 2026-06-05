@@ -20,9 +20,15 @@ import os
 import sys
 import tempfile
 import time
+from collections import defaultdict
 from pathlib import Path
 
-from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env
+# Add eval/ to sys.path so eval_utils is importable
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
+
+from butterfly_dream import ButterflyDreamMemoryProvider
+from eval_utils import get_model_config, resolve_credentials, call_llm, _load_hermes_env, get_db_path, set_run_dir, _RUNS_DIR
 
 _load_hermes_env()
 
@@ -91,6 +97,7 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
 
     Each session is fed separately to on_session_end so the extraction LLM
     processes manageable chunks and preserves session boundaries.
+    Retries on 429 / empty extraction with exponential backoff.
     """
     session_names = get_session_names(conv)
     for sname in session_names:
@@ -98,30 +105,45 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
         if not session_msgs:
             continue
         before = provider._store.count_facts() if provider._store else 0
-        # Reset extraction index so each session is processed independently
-        provider._last_extracted_idx = 0
-        provider.on_session_end(session_msgs)
-        time.sleep(1.0)  # rate limit between sessions
-        # Wait for extraction to complete (max 60s per session)
-        for _ in range(120):
-            time.sleep(0.5)
+        # Retry loop for rate-limited extractions
+        for attempt in range(4):
+            provider._last_extracted_idx = 0
+            provider.on_session_end(session_msgs)
+            # Wait for extraction to complete (max 30s per attempt)
+            for _ in range(60):
+                time.sleep(0.5)
+                if provider._store and provider._store.count_facts() > before:
+                    break
             if provider._store and provider._store.count_facts() > before:
-                break
+                break  # extraction succeeded
+            # Back off before retry
+            wait = 5 * (attempt + 1)
+            print(f"    ⏳ Retrying {sname} in {wait}s (attempt {attempt+1}/4)")
+            time.sleep(wait)
+        time.sleep(3.0)  # rate limit between sessions
 
 
-def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> str:
-    """Search memory and generate an answer."""
+def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tuple:
+    """Search memory and generate an answer. Returns (answer, n_facts_retrieved, retrieved_facts)."""
     from butterfly_dream.retrieval import ThreeDimRetriever
 
     retriever = ThreeDimRetriever(provider._store)
-    results = retriever.search(query=question, scenario="chat", limit=10)
+    results = retriever.search(query=question, scenario="chat", limit=20)
 
     if not results:
-        return "I don't have enough information to answer this question."
+        return ("I don't have enough information to answer this question.", 0, [])
 
-    context_parts = [r.get("content", "") for r in results if r.get("content")]
+    # Use top 10 for LLM context (avoid noise from lower-ranked facts)
+    context_parts = [r.get("content", "") for r in results[:10] if r.get("content")]
     context = "\n".join(context_parts)
-    return _generate_answer(question, context)
+    # Log all top 20 retrieved facts
+    retrieved_facts = [{"rank": i+1, "score": round(r["score"], 4), "content": r["content"]} for i, r in enumerate(results)]
+    # Debug: log what's passed to the model
+    import sys
+    print(f"    [DEBUG] Retrieved {len(results)} facts, using top {len(context_parts)} for answer: {question[:50]}...", file=sys.stderr)
+    for i, c in enumerate(context_parts):
+        print(f"      [{i+1}] {c[:80]}", file=sys.stderr)
+    return (_generate_answer(question, context), len(context_parts), retrieved_facts)
 
 
 def _generate_answer(question: str, context: str) -> str:
@@ -173,19 +195,100 @@ Reply with ONLY the number (1-5). No explanation."""
     return int(m.group(0)) if m else 0
 
 
+def _create_run_dir(benchmark: str, tag: str) -> Path:
+    """Create a timestamped run directory and return it."""
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    name = f"{ts}_{benchmark}_{tag}" if tag else f"{ts}_{benchmark}"
+    run_dir = _RUNS_DIR / name
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def _write_config(run_dir: Path, benchmark: str, args, extra: dict = None):
+    """Write config.json with run metadata."""
+    from datetime import datetime
+    cfg = {
+        "benchmark": benchmark,
+        "timestamp": datetime.now().isoformat(),
+        "args": {k: v for k, v in vars(args).items() if v},
+        "model_config": get_model_config("all"),
+    }
+    if extra:
+        cfg.update(extra)
+    with open(run_dir / "config.json", "w") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+
+def _write_summary(run_dir: Path, benchmark: str, args, all_results: list,
+                   total_time: float, n_convs: int):
+    """Write human-readable summary.txt."""
+    from collections import defaultdict
+    from datetime import datetime
+    total_correct = sum(1 for r in all_results if r["is_correct"])
+    avg_score = sum(r["score"] for r in all_results) / len(all_results) if all_results else 0
+    avg_ms = (total_time / n_convs) * 1000 if n_convs else 0
+
+    by_cat = defaultdict(lambda: {"total": 0, "correct": 0, "scores": []})
+    for r in all_results:
+        c = r["category"]
+        by_cat[c]["total"] += 1
+        if r["is_correct"]:
+            by_cat[c]["correct"] += 1
+        by_cat[c]["scores"].append(r["score"])
+
+    _ext_cfg = get_model_config("extraction")
+    _eff_model = args.model or f"{_ext_cfg.get('provider','?')}/{_ext_cfg.get('model','?')}"
+    lines = [
+        f"Benchmark: {benchmark}",
+        f"Time: {datetime.now().isoformat()}",
+        f"Model: {_eff_model}",
+        f"Sample: {args.sample or 'all'}",
+        f"Judge: {'off' if args.no_judge else 'on'}",
+        "",
+        f"Total QA: {len(all_results)}",
+        f"Accuracy: {total_correct}/{len(all_results)} = {total_correct/len(all_results)*100:.1f}%",
+        f"Avg score: {avg_score:.2f}/5.0",
+        f"Avg time: {avg_ms:.0f}ms/conv",
+        "",
+        "--- Per Category ---",
+    ]
+    CAT_NAMES = {1: "single-session single-hop", 2: "single-session multi-hop",
+                 3: "cross-session single-hop", 4: "cross-session multi-hop",
+                 5: "temporal reasoning"}
+    for c in sorted(by_cat):
+        s = by_cat[c]
+        avg = sum(s["scores"]) / len(s["scores"])
+        acc = s["correct"] / s["total"] * 100
+        lines.append(f"  [{c}] {CAT_NAMES.get(c, ''):30s} {s['correct']}/{s['total']} = {acc:.0f}%  avg={avg:.2f}")
+
+    (run_dir / "summary.txt").write_text("\n".join(lines))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Butterfly Dream × LoCoMo")
     parser.add_argument("--limit", type=int, default=0,
                         help="Max QA pairs to process (0=all)")
+    parser.add_argument("--start", type=int, default=0,
+                        help="Skip first N QA pairs (0-based)")
+    parser.add_argument("--sample", default="",
+                        help="Uniform sampling: 'N' or 'N-per-cat' (e.g. '3-per-cat')")
     parser.add_argument("--conv", default="",
                         help="Process only this conversation ID (e.g. conv-26)")
-    parser.add_argument("--output", default="",
-                        help="Output JSONL path")
-    parser.add_argument("--model", default="glm-4.7-flash",
-                        help="Extraction model")
+    parser.add_argument("--tag", default="",
+                        help="Run tag for folder naming (e.g. 'sample3', 'v2')")
+    parser.add_argument("--model", default="",
+                        help="Extraction model (overrides config)")
     parser.add_argument("--no-judge", action="store_true",
                         help="Skip LLM judge (faster, exact match only)")
+    parser.add_argument("--db-dir", default="",
+                        help="Reuse existing DBs from this directory (skip extraction)")
     args = parser.parse_args()
+
+    # Create run directory
+    run_dir = _create_run_dir("locomo", args.tag)
+    set_run_dir(run_dir)
+    print(f"📁 Run dir: {run_dir}")
 
     data_path = Path(__file__).resolve().parent / "data" / "locomo10.json"
     data = load_dataset(str(data_path))
@@ -197,9 +300,22 @@ def main():
             print(f"❌ Conversation {args.conv} not found")
             return
 
-    if not args.output:
-        args.output = "results_locomo.jsonl"
-    output_path = Path(__file__).resolve().parent / args.output
+    # Uniform sampling (--sample 3-per-cat or --sample 3)
+    sampled_conv_ids = None
+    if args.sample:
+        import random as _random
+        _random.seed(42)
+        n = int(args.sample.replace("-per-cat", ""))
+        eligible_convs = []
+        for conv in data:
+            has_answer = any("answer" in qa for qa in conv["qa"])
+            if has_answer:
+                eligible_convs.append(conv)
+        sampled_conv_ids = [c["sample_id"] for c in _random.sample(eligible_convs, min(n, len(eligible_convs)))]
+        data = [d for d in data if d["sample_id"] in sampled_conv_ids]
+        print(f"🎲 Sampled {len(data)} conversations (from {len(eligible_convs)} with answers)")
+
+    output_path = run_dir / "results.jsonl"
 
     all_results = []
     total_time = 0
@@ -217,44 +333,60 @@ def main():
         print(f"💬 [{conv_idx+1}/{len(data)}] {sid} — {len(qa_list)} QA pairs")
         print(f"{'='*60}")
 
-        # Extract per-session
-        t0 = time.perf_counter()
-        session_names = get_session_names(conv)
-        total_turns = sum(len(conv[s]) for s in session_names)
-        print(f"  📝 {len(session_names)} sessions, {total_turns} turns")
+        # Decide DB path and whether to extract
+        skip_extract = False
+        if args.db_dir:
+            q_db = str(Path(args.db_dir) / f"{sid}.db")
+            if not Path(q_db).exists():
+                print(f"  ⚠️  DB not found at {q_db}, will create & extract")
+                q_db = str(get_db_path('locomo', sid))
+            else:
+                skip_extract = True
+                print(f"  ♻️  Reusing existing DB: {q_db}")
+        else:
+            q_db = str(get_db_path('locomo', sid))
 
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            q_db = tmp.name
         qp = ButterflyDreamMemoryProvider({
             "db_path": q_db, "llm_extract": True,
-            "extraction_model": {"provider": "glm", "model": args.model},
+            "extraction_model": get_model_config("extraction") if not args.model else {"provider": "openrouter", "model": args.model},
             "trivial_filter": True,
             "circuit_breaker": {"max_failures": 5, "cooldown_seconds": 120},
             "reflection": False,
         })
         qp.initialize(session_id=f"locomo-{sid}")
 
-        try:
-            process_conversation(qp, conv)
-        except Exception as e:
-            print(f"  ⚠️  Extraction error: {e}")
-
-        n_facts = qp._store.count_facts() if qp._store else 0
-        extract_time = time.perf_counter() - t0
-        print(f"  ✅ Extracted {n_facts} facts in {extract_time:.1f}s")
+        t0 = time.perf_counter()
+        if skip_extract:
+            n_facts = qp._store.count_facts() if qp._store else 0
+            extract_time = 0
+            print(f"  ✅ Skipped extraction, {n_facts} existing facts")
+        else:
+            session_names = get_session_names(conv)
+            total_turns = sum(len(conv[s]) for s in session_names)
+            print(f"  📝 {len(session_names)} sessions, {total_turns} turns")
+            try:
+                process_conversation(qp, conv)
+            except Exception as e:
+                print(f"  ⚠️  Extraction error: {e}")
+            n_facts = qp._store.count_facts() if qp._store else 0
+            extract_time = time.perf_counter() - t0
+            print(f"  ✅ Extracted {n_facts} facts in {extract_time:.1f}s")
 
         # Answer QAs
         conv_correct = 0
         conv_scores = []
         for qi, qa in enumerate(qa_list):
-            if args.limit > 0 and qa_count >= args.limit:
+            if qa_count < args.start:
+                qa_count += 1
+                continue
+            if args.limit > 0 and qa_count >= args.start + args.limit:
                 break
 
             question = qa["question"]
-            gold = qa.get("answer", qa.get("adversarial_answer", ""))
+            gold = str(qa.get("answer", qa.get("adversarial_answer", "")))
             category = qa["category"]
 
-            hypothesis = answer_question(qp, question)
+            hypothesis, n_retrieved, retrieved_facts = answer_question(qp, question)
 
             score = 0
             if not args.no_judge:
@@ -270,7 +402,7 @@ def main():
             qa_count += 1
 
             mark = "✅" if is_correct else "❌"
-            print(f"  [{qa_count}] {mark} cat={category} score={score} Q: {question[:60]}...")
+            print(f"  [{qa_count}] {mark} cat={category} score={score} facts={n_retrieved} Q: {question[:60]}...")
 
             all_results.append({
                 "sample_id": sid,
@@ -282,14 +414,19 @@ def main():
                 "category_name": CAT_NAMES.get(category, ""),
                 "score": score,
                 "is_correct": is_correct,
+                "n_facts": n_facts,
+                "n_retrieved": n_retrieved,
+                "retrieved_facts": retrieved_facts,
             })
+
+            # Incremental write: flush after each QA so partial results survive timeouts
+            with open(output_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(all_results[-1], ensure_ascii=False) + "\n")
 
         # Cleanup provider
         qp.shutdown()
-        try:
-            os.unlink(q_db)
-        except OSError:
-            pass
+        time.sleep(3)
+        print(f"  💾 DB saved: {q_db}")
 
         avg_score = sum(conv_scores) / len(conv_scores) if conv_scores else 0
         conv_time = time.perf_counter() - t0
@@ -301,6 +438,14 @@ def main():
         for r in all_results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
+    # Write config.json and summary.txt
+    _write_config(run_dir, "locomo", args, extra={
+        "n_conversations": len(data),
+        "n_facts_per_conv": {r["sample_id"]: r.get("n_facts", 0) for r in all_results
+                             if "n_facts" in r},
+    })
+    _write_summary(run_dir, "locomo", args, all_results, total_time, len(data))
+
     # Summary
     total_correct = sum(1 for r in all_results if r["is_correct"])
     avg_score = sum(r["score"] for r in all_results) / len(all_results) if all_results else 0
@@ -311,7 +456,7 @@ def main():
     print(f"  📊 Accuracy (score≥4): {total_correct}/{len(all_results)} = {total_correct/len(all_results)*100:.1f}%")
     print(f"  📊 Average score: {avg_score:.2f}/5.0")
     print(f"  ⏱  Average: {avg_ms:.0f}ms/conversation")
-    print(f"  📄 Results: {output_path}")
+    print(f"  📁 Run dir: {run_dir}")
     print(f"{'='*60}")
 
     # Per-category breakdown
