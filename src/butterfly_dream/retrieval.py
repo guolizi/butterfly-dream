@@ -240,10 +240,16 @@ class ThreeDimRetriever:
             # Boost relevance for time-related queries if fact has a precise date
             if is_temporal_query:
                 cd = fact.get("content_date") or ""
-                if len(cd) == 10 and cd[5:7] != "00" and cd[8:10] != "01":
-                    # Precise date: content_date is YYYY-MM-DD and day is not 01
-                    # (01 is convention for imprecise/estimated dates like "around June 2023")
-                    relevance = min(1.0, relevance + _TEMPORAL_BOOST)
+                # Precise date: content_date is YYYY-MM-DD and month is specified
+                # Day=01 is treated as imprecise (e.g., "around June 2023" → "2023-06-01"),
+                # but give a half boost to avoid excluding valid dates like July 1
+                if len(cd) == 10 and cd[5:7] != "00":
+                    if cd[8:10] != "01":
+                        # Fully precise date (day specified)
+                        relevance = min(1.0, relevance + _TEMPORAL_BOOST)
+                    else:
+                        # Month-precise date (day=01 = imprecise/estimated, smaller boost)
+                        relevance = min(1.0, relevance + _TEMPORAL_BOOST * 0.5)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
