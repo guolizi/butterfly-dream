@@ -543,20 +543,13 @@ class ThreeDimRetriever:
             if re.search(pat, q):
                 return 'fact'
 
-        # "what [concrete-noun]" — match the noun after "what", singularize it,
-        # and check against a set of base-form concrete nouns (symbol, event,
-        # hobby, food, book, place, song, etc.). Avoids maintaining regex
-        # variants for every singular/plural/irregular form.
-        m = re.match(r'\bwhat\s+(\w+)\b', q)
+        # "what [concrete-noun]" — scan all words after "what" (not just the first)
+        # and check if any singularizes to a concrete noun. This avoids the
+        # limitation of only matching the first word (e.g. "what musical artists"
+        # → first word is the adjective "musical", not the noun "artists").
+        m = re.match(r'\bwhat\s+(.+)$', q)
         if m:
-            noun = m.group(1).lower()
-            # Simple singularization
-            if noun.endswith('ies'):
-                noun_sing = noun[:-3] + 'y'
-            elif noun.endswith('s') and not noun.endswith('ss'):
-                noun_sing = noun[:-1]
-            else:
-                noun_sing = noun
+            remainder = m.group(1)
             _CONCRETE_NOUNS = {
                 'symbol', 'event', 'activity', 'hobby',
                 'food', 'drink', 'book', 'movie', 'song',
@@ -565,13 +558,22 @@ class ThreeDimRetriever:
                 'item', 'object', 'gift', 'present',
                 # LoCoMo Q61: "what instruments" → "instrument"
                 'instrument',
-                # LoCoMo Q62: "what musical artists/bands" → "musical"
-                'musical',
                 # LoCoMo Q66: "what changes" → "change"
                 'change',
+                # "what artists" → "artist"
+                'artist',
             }
-            if noun_sing in _CONCRETE_NOUNS:
-                return 'fact'
+            # Check each word in the remainder — singularize and compare
+            for word in re.findall(r'\b(\w{3,})\b', remainder):
+                w = word.lower()
+                if w.endswith('ies'):
+                    w_sing = w[:-3] + 'y'
+                elif w.endswith('s') and not w.endswith('ss'):
+                    w_sing = w[:-1]
+                else:
+                    w_sing = w
+                if w_sing in _CONCRETE_NOUNS:
+                    return 'fact'
 
         # "what has/have/did [words] [action-verb]" — extract all 3+ letter words
         # after the auxiliary verb and check if any lemmatizes to a known action verb.
