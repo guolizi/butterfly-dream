@@ -563,6 +563,12 @@ class ThreeDimRetriever:
                 'music', 'game', 'sport', 'place', 'city',
                 'country', 'store', 'restaurant', 'store',
                 'item', 'object', 'gift', 'present',
+                # LoCoMo Q61: "what instruments" → "instrument"
+                'instrument',
+                # LoCoMo Q62: "what musical artists/bands" → "musical"
+                'musical',
+                # LoCoMo Q66: "what changes" → "change"
+                'change',
             }
             if noun_sing in _CONCRETE_NOUNS:
                 return 'fact'
@@ -581,6 +587,8 @@ class ThreeDimRetriever:
                 'bake', 'build', 'participate', 'experience',
                 'purchase', 'order', 'eat', 'drink', 'wear',
                 'bring', 'take', 'try', 'use', 'get',
+                # Q66: "what changes has Caroline faced" → "face"
+                'face',
             }
             for w in re.findall(r'\b(\w{3,})\b', after):
                 try:

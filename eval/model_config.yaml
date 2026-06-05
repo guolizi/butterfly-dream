@@ -3,23 +3,12 @@
 
 extraction:
   provider: openrouter
-  model: openrouter/owl-alpha
+  model: openai/gpt-oss-120b:free
 
 answer:
   provider: openrouter
-  model: openrouter/owl-alpha
+  model: openai/gpt-oss-120b:free
 
 judge:
   provider: openrouter
-  model: openrouter/owl-alpha
-
-# DeepSeek V4 Flash 备选（reasoning model，judge 需要 max_tokens >= 500）
-# extraction:
-#   provider: deepseek
-#   model: deepseek-v4-flash
-# answer:
-#   provider: deepseek
-#   model: deepseek-v4-flash
-# judge:
-#   provider: deepseek
-#   model: deepseek-v4-flash
+  model: openai/gpt-oss-120b:free

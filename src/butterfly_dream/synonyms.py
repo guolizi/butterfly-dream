@@ -51,6 +51,18 @@ _CORE: dict[str, list[str]] = {
     # FTS5 prefix "art*" doesn't match "painting" (starts with "paint").
     "art":        ["painting", "drawing", "sculpture"],
 
+    # --- Music / performance ---
+    # Q62: query "musical artists/bands" → fact text "concert", "perform"
+    "music":      ["song", "concert", "band", "artist", "musical"],
+    "musical":    ["music", "concert", "show", "performance"],
+    "artist":     ["singer", "musician", "performer", "band"],
+    "band":       ["group", "performer", "orchestra", "ensemble"],
+    "concert":    ["show", "performance", "gig", "live"],
+
+    # --- change / transition ---
+    # Q66: query "changes" → fact text "transition", "body changes"
+    "change":     ["transition", "shift", "transformation", "difference"],
+
     # --- Help / support ---
     "help":       ["support", "assist", "aid"],
     "support":    ["help", "assist", "aid"],
