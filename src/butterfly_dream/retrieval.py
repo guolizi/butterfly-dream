@@ -125,7 +125,6 @@ class ThreeDimRetriever:
         importance_weight: Optional[float] = None,
         persistent_only: bool = False,
         fts_mode: str = "or",
-        mmr_lambda: Optional[float] = None,
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -139,10 +138,6 @@ class ThreeDimRetriever:
             recency_weight: Override recency weight for this call.
             relevance_weight: Override relevance weight for this call.
             importance_weight: Override importance weight for this call.
-            mmr_lambda: MMR diversity parameter (0.0–1.0). Higher = more relevance,
-                lower = more diversity. Default 0.7 when MMR is enabled. Set to 1.0
-                to disable MMR (pure relevance ranking). MMR is automatically applied
-                when the candidate pool contains near-duplicate facts (Jaccard > 0.6).
 
         Returns:
             List of fact dicts with 'score' field, sorted descending.
@@ -241,60 +236,9 @@ class ThreeDimRetriever:
 
         # Sort by score descending
         scored.sort(key=lambda x: x["score"], reverse=True)
-
-        # Stage 3: Dedup near-duplicate facts via clustering
-        scored = self._dedup(scored, limit)
-
         return scored[:limit]
 
     # -- Internal pipeline helpers --------------------------------------------
-
-    def _dedup(self, scored: list[dict], limit: int) -> list[dict]:
-        """Remove near-duplicate facts to improve diversity.
-
-        Groups facts whose Jaccard similarity exceeds 0.4, keeps only the
-        highest-scoring fact per group, then backfills from remaining
-        candidates until `limit` is reached. This prevents 6 near-identical
-        "counseling career" facts from crowding out a more specific
-        "work with trans people" fact.
-        """
-        if len(scored) <= limit:
-            return scored
-
-        _DEDUP_THRESHOLD = 0.4
-
-        # Pre-tokenize once
-        token_cache = [self._tokenize(s["content"]) for s in scored]
-
-        selected: list[dict] = []
-        selected_indices: set[int] = set()
-
-        for i, candidate in enumerate(scored):
-            if i in selected_indices:
-                continue
-
-            # Check if this candidate is near-duplicate of any already-selected
-            cand_tokens = token_cache[i]
-            is_dup = False
-            for sel_idx in selected_indices:
-                if self._jaccard_similarity(cand_tokens, token_cache[sel_idx]) > _DEDUP_THRESHOLD:
-                    is_dup = True
-                    break
-
-            if not is_dup:
-                selected.append(candidate)
-                selected_indices.add(i)
-
-            if len(selected) >= limit:
-                break
-
-        return selected
-
-    def _fact_similarity(self, a: dict, b: dict) -> float:
-        """Similarity between two facts (Jaccard on content tokens)."""
-        tokens_a = self._tokenize(a["content"])
-        tokens_b = self._tokenize(b["content"])
-        return self._jaccard_similarity(tokens_a, tokens_b)
 
     def _fts_candidates(
         self,
