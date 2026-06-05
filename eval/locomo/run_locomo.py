@@ -199,7 +199,9 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
 def _generate_answer(question: str, context: str) -> str:
     """Use LLM to generate an answer via eval_utils.call_llm()."""
     prompt = f"""Based on the following memory context about a conversation between two people, answer the question.
-You may make reasonable inferences based on the context — for example, if the context says someone "collects classic children's books", you can infer they likely have Dr. Seuss books.
+You may make reasonable inferences based on the context:
+- **Positive inference**: if the context says someone "collects classic children's books", you can infer they likely have Dr. Seuss books.
+- **Negative inference**: if the context says someone "wants to be a counselor" and nothing mentions writing, you can infer they would likely NOT pursue writing as a career.
 Be concise and direct. If the context doesn't contain enough information even after reasonable inference, say "I don't have enough information."
 
 Memory context:
