@@ -199,7 +199,8 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
 def _generate_answer(question: str, context: str) -> str:
     """Use LLM to generate an answer via eval_utils.call_llm()."""
     prompt = f"""Based on the following memory context about a conversation between two people, answer the question.
-Be concise and direct. If the context doesn't contain enough information, say "I don't have enough information."
+You may make reasonable inferences based on the context — for example, if the context says someone "collects classic children's books", you can infer they likely have Dr. Seuss books.
+Be concise and direct. If the context doesn't contain enough information even after reasonable inference, say "I don't have enough information."
 
 Memory context:
 {context}
@@ -209,7 +210,7 @@ Question: {question}
 Answer:"""
 
     messages = [
-        {"role": "system", "content": "You are a helpful assistant. Answer based only on the provided memory context. Be concise."},
+        {"role": "system", "content": "You are a helpful assistant. Answer based on the provided memory context, making reasonable inferences when appropriate. Be concise."},
         {"role": "user", "content": prompt},
     ]
     result = call_llm("answer", messages=messages, max_tokens=1024)
