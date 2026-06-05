@@ -222,15 +222,17 @@ Detailed rules:
    - Activity is more concrete and easier to verify
 
 - "tags": optional comma-separated tags (people names, topics)
+- "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). Include the subject of the fact even if they are only mentioned by first name.
 - "importance": integer 1-10
 - "is_persistent": boolean
 - "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20", use it as the reference timestamp to convert relative expressions ("about a month ago", "last week", "about 4 years") into absolute ISO dates. null ONLY if absolutely no date info exists.
 
 Examples:
 [
-  {"content": "Caroline went to the LGBTQ support group on March 5, 2023", "category": "event", "tags": "Caroline,LGBTQ,support-group", "importance": 6, "is_persistent": false, "content_date": "2023-03-05"},
-  {"content": "Melanie is a freelance graphic designer who specializes in brand identity", "category": "identity", "tags": "Melanie,design,career", "importance": 7, "is_persistent": true, "content_date": null},
-  {"content": "Jon lost his job as a banker on 19 January, 2023 and started a dance studio", "category": "event", "tags": "Jon,career,business", "importance": 8, "is_persistent": true, "content_date": "2023-01-19"},
+  {"content": "Caroline went to the LGBTQ support group on March 5, 2023", "category": "event", "tags": "Caroline,LGBTQ,support-group", "entities": ["Caroline"], "importance": 6, "is_persistent": false, "content_date": "2023-03-05"},
+  {"content": "Melanie is a freelance graphic designer who specializes in brand identity", "category": "identity", "tags": "Melanie,design,career", "entities": ["Melanie"], "importance": 7, "is_persistent": true, "content_date": null},
+  {"content": "Caroline and Melanie went to a pride festival together in 2022", "category": "event", "tags": "Caroline,Melanie,pride,festival", "entities": ["Caroline", "Melanie"], "importance": 6, "is_persistent": false, "content_date": "2022-06-01"},
+  {"content": "Jon lost his job as a banker on 19 January, 2023 and started a dance studio", "category": "event", "tags": "Jon,career,business", "entities": ["Jon"], "importance": 8, "is_persistent": true, "content_date": "2023-01-19"},
   {"content": "The project uses FastAPI with SQLAlchemy async", "category": "project", "tags": "backend,stack", "importance": 6, "is_persistent": true, "content_date": null},
   {"content": "User goes swimming every Wednesday", "category": "activity", "tags": "swimming,routine", "importance": 5, "is_persistent": true, "content_date": null},
   {"content": "User uses painting to express feelings and relax", "category": "activity", "tags": "painting,routine", "importance": 5, "is_persistent": true, "content_date": null},
@@ -992,6 +994,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     category=fact.get("category", "general"),
                     tags=fact.get("tags", ""),
                     importance=fact.get("importance", 5),
+                    entities=fact.get("entities", None),
                     is_persistent=fact.get("is_persistent", False),
                     dedup_threshold=0.7,
                     content_date=_normalize_date(fact.get("content_date")) or _extract_date_from_content(fact.get("content", "")),
@@ -1113,6 +1116,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     category=fact.get("category", "general"),
                     tags="reflection," + fact.get("tags", ""),
                     importance=base_imp,
+                    entities=fact.get("entities", None),
                     is_persistent=True,
                     dedup_threshold=0.7,
                 )

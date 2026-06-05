@@ -109,15 +109,19 @@ class TestUpdateRemove:
 
 class TestEntityManagement:
     def test_entity_extraction_capitalized(self, memstore):
-        """Capitalized multi-word phrases extracted as entities."""
-        facts = memstore._extract_entities("Alice and Bob work on Project X")
-        assert "Alice" not in facts  # single capitalized words aren't entities by default
-        # Actually let me check the pattern
-        # _RE_CAPITALIZED = r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b'
-        # That requires at least TWO capitalized words in sequence
+        """Capitalized names extracted as entities (single + multi-word)."""
+        # Single name + verb pattern: "Name verb..."
+        facts = memstore._extract_entities("Caroline is considering a career in counseling")
+        assert "Caroline" in facts
+        facts = memstore._extract_entities("Melanie ran a charity race")
+        assert "Melanie" in facts
+        # Multi-word names
         facts = memstore._extract_entities("Alice Johnson and Bob Smith")
         assert "Alice Johnson" in facts
         assert "Bob Smith" in facts
+        # No false positives from non-name words
+        facts = memstore._extract_entities("The project uses FastAPI")
+        assert "The" not in facts
 
     def test_entity_extraction_quotes(self, memstore):
         """Quoted phrases extracted as entities."""

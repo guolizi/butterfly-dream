@@ -191,7 +191,8 @@ def _media_type_prefix(mime_type: str) -> str:
 
 
 # Entity extraction patterns (from Holographic, enhanced for CJK)
-_RE_CAPITALIZED  = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')
+_RE_CAPITALIZED  = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')  # multi-word names
+_RE_SINGLE_NAME  = re.compile(r'\b([A-Z][a-z]{2,15})\s+(?:is|was|has|had|went|likes|loves|works|lives|said|told|got|made|ran|came|wants|plans|loves|hates|enjoys|prefers|started|attended|joined|created|bought|found|helped|met|played|read|wrote|sang|painted|cooked|drove|flew|swam|ran)\b')  # single name + verb → entity
 _RE_DOUBLE_QUOTE = re.compile(r'"([^"]+)"')
 _RE_SINGLE_QUOTE = re.compile(r"'([^']+)'")
 _RE_AKA = re.compile(
@@ -1069,7 +1070,7 @@ class MemoryStore:
     def _extract_entities(self, text: str) -> list[str]:
         """Extract entity candidates from text."""
         entities = set()
-        for pattern in (_RE_CAPITALIZED, _RE_DOUBLE_QUOTE, _RE_SINGLE_QUOTE,
+        for pattern in (_RE_CAPITALIZED, _RE_SINGLE_NAME, _RE_DOUBLE_QUOTE, _RE_SINGLE_QUOTE,
                         _RE_CJK_BRACKETS, _RE_QUOTED_CN):
             for match in pattern.finditer(text):
                 for group in match.groups():
@@ -1079,7 +1080,21 @@ class MemoryStore:
         for match in _RE_AKA.finditer(text):
             entities.add(match.group(1).strip())
             entities.add(match.group(2).strip())
-        return [e for e in entities if len(e) >= 2]
+        # Filter out garbage: possessive fragments ("s Web", "s favorite...")
+        # and common non-entity words
+        _STOP_ENTITIES = {
+            'the', 'this', 'that', 'these', 'those', 'here', 'there',
+            'when', 'where', 'what', 'which', 'who', 'how', 'why',
+            'user', 'assistant', 'memory', 'context', 'based', 'following',
+            'however', 'therefore', 'meanwhile', 'otherwise', 'instead',
+        }
+        return [
+            e for e in entities
+            if len(e) >= 2
+            and not e.startswith("s ")      # possessive garbage
+            and not e.startswith("'s ")      # possessive garbage
+            and e.lower() not in _STOP_ENTITIES
+        ]
 
     def _link_entities(self, fact_id: int, entity_names: list[str]) -> None:
         """Associate entities with a fact, creating them if needed."""
