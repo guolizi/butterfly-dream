@@ -544,15 +544,31 @@ class ThreeDimRetriever:
         # NOTE: Only prefix-match tokens with length >= 3 to avoid short prefixes
         # like "go*" accidentally matching "goal" or "to*" matching "today".
         op = ' AND ' if fts_mode == 'and' else ' OR '
-        if len(tokens_clean) > 1:
-            return op.join(
-                t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
-                for t in tokens_clean
-            )
-        # Single token: use prefix match only if CJK (jieba may over-split)
-        if re.search(r'[\u4e00-\u9fff]', safe):
-            return tokens_clean[0] + '*' if tokens_clean else ''
-        return tokens_clean[0] if tokens_clean else ''
+        # Build base query terms (prefix match for long/CJK tokens)
+        terms = [
+            t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
+            for t in tokens_clean
+        ]
+        # Handle compound words: FTS5 default tokenizer splits on hyphens,
+        # so "de-stress" is indexed as ["de", "stress"] while the query may
+        # have "destress" (no hyphen). To bridge this gap, for tokens that
+        # contain a known English prefix (de-, re-, un-, pre-, dis-, mis-,
+        # over-, under-, out-, non-, anti-, counter-), also add the root
+        # part as an additional OR term so "destress* OR stress*" matches.
+        PREFIXES = ('de', 're', 'un', 'pre', 'dis', 'mis', 'over', 'under',
+                     'out', 'non', 'anti', 'counter', 'inter', 'super',
+                     'sub', 'semi', 'mid', 'co', 'ex', 'en')
+        extra_terms = []
+        for t in tokens_clean:
+            tl = t.lower()
+            for pfx in PREFIXES:
+                if tl.startswith(pfx) and len(tl) > len(pfx) + 2:
+                    root = tl[len(pfx):]
+                    if len(root) >= 3:
+                        extra_terms.append(root + '*')
+                    break  # one split per token
+        terms.extend(extra_terms)
+        return op.join(terms)
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
