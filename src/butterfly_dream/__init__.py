@@ -144,25 +144,73 @@ Rules:
 - Include dates, names, locations, and specific details whenever mentioned.
 - If nothing worth extracting, return an empty array.
 - Deduplicate: don't extract the same fact multiple times.
-- **CONSOLIDATE related facts from the same session:** If the conversation mentions multiple details about the same topic (e.g. multiple mentions of camping preferences, past trips, and future plans), merge them into fewer, richer facts rather than many fragmented ones. For example, instead of extracting 5 separate facts ("Melanie loves camping", "Melanie's family went camping", "Melanie's family is thinking about camping next month", "Melanie's family has annual camping trips", "Melanie enjoys campfire stories"), consolidate into 2-3 facts that capture the full picture:
-  1. {"content": "Melanie's family has annual summer camping trips and loves camping at the beach together", "category": "activity"}
-  2. {"content": "Melanie's family is planning a camping trip next month (around June 2023)", "category": "goal"}  
-  3. {"content": "Melanie's family enjoys campfire stories, roasting marshmallows, and nature during camping trips", "category": "preference"}
+- **CONSOLIDATE related details about the SAME subtopic** into one richer, natural-sounding fact. If the conversation mentions multiple aspects of the same narrow topic (e.g. a person's camping preferences), merge them into a coherent sentence rather than many fragmented ones. For example, instead of 5 separate facts ("Melanie loves camping", "Melanie's family went camping", "Melanie's family is thinking about camping next month", "Melanie's family has annual camping trips", "Melanie enjoys campfire stories"), consolidate into 2-3 facts:
 
-  Consolidation guidelines:
-  - Combine past events + preferences about the same activity → at most 2-3 broader facts per topic per session
-  - Keep facts that have specific timing (dates, months) separate from general preference/activity facts
-  - Don't merge facts about different people or different activities
-  - Prioritize completeness: a consolidated fact with specific timing is worth more than 5 fragmented facts without dates
+  ✓ GOOD (same topic, natural sentence):
+  ```
+  {"content": "Melanie's family has annual summer camping trips and loves camping at the beach together", "category": "activity"}
+  {"content": "Melanie's family is planning a camping trip next month (around June 2023)", "category": "goal"}
+  {"content": "Melanie's family enjoys campfire stories, roasting marshmallows, and nature during camping trips", "category": "preference"}
+  ```
+
+- **NEVER use `；` `;` `|` or any separator to join facts about different subtopics into one content string.** Each fact must be a single, standalone, grammatically complete sentence about ONE coherent topic.
+
+  ✗ BAD (different topics joined by separator):
+  ```
+  {"content": "Caroline moved from her home country 4 years ago；Caroline started transitioning three years ago"}
+  ```
+  Instead, extract as two separate facts:
+  ✓ GOOD:
+  ```
+  {"content": "Caroline moved from her home country 4 years ago, around June 2019", ...}
+  {"content": "Caroline started transitioning three years ago, around June 2020", ...}
+  ```
+
+  ✗ BAD (merging location origin with timing into one fact):
+  ```
+  {"content": "Caroline started transitioning three years ago around June 2020；Caroline moved from her home country about 4 years ago", ...}
+  ```
+  ✓ GOOD (separate facts, each complete):
+  ```
+  {"content": "Caroline is from Sweden", "category": "place", ...}
+  {"content": "Caroline moved from Sweden about 4 years ago, around June 2019", "category": "event", ...}
+  {"content": "Caroline started transitioning three years ago, around June 2020", "category": "event", ...}
+  ```
+
+  **EXTRACT critical identity/place facts separately,** even if they overlap with event facts. "Caroline is from Sweden" (identity/place) AND "Caroline moved from her home country 4 years ago" (event) are BOTH valuable and should both be extracted.
+
+**IMPORTANT — same-subtopic merging (GOOD) vs same-person-different-topic splitting (ALSO GOOD):**
+
+  ✗ BAD (same subtopic, split into fragments that each miss keywords):
+  ```
+  {"content": "Caroline is interested in counseling or working in mental health to support people with similar issues", ...}
+  {"content": "Caroline wants to work with trans people, helping them accept themselves and supporting their mental health", ...}
+  ```
+  The query "career path" matches the first fact but NOT the second, so the "trans people" detail is lost. Instead, merge:
+
+  ✓ GOOD (merge same-subtopic details into one rich, queryable fact):
+  ```
+  {"content": "Caroline wants to pursue a career in counseling/mental health, specifically working with trans people to help them accept themselves and support their mental health", "category": "goal", "importance": 8}
+  ```
+  One fact that covers the full picture — matches "career" AND "counseling" AND "mental health" AND "trans people".
+
+  Decision rule:
+  - Same narrow subtopic (e.g. "counseling career direction", "camping preferences") → MERGE details into one rich fact
+  - Different subtopics (e.g. "transitioning" vs "moving from Sweden") → KEEP separate, never use `；`
+  - When unsure, consider: "Would a question about this topic need BOTH details to answer correctly?" If yes, merge.
+
+- Keep facts that have specific timing (dates, months) separate from general preference/activity facts, even about the same topic.
+- Don't merge facts about different people or different activities.
 - Output in the SAME language as the conversation.
 - **TEMPORAL: Always include dates when mentioned.** Preserve the original date format. "Got married on June 15, 2023" not just "Got married".
 
 **Importance scoring (1-10):**
-- 9-10: Major life events, identity-defining facts, irreversible decisions
-- 7-8: Important relationships, significant choices, key milestones, concrete future plans with specific timing
-- 5-6: Useful context, notable preferences, relevant details, tentative plans/ideas, recurring activities
-- 3-4: Minor details, temporary states, easily forgotten info
-- 1-2: Trivial details, likely to change, not worth remembering
+|- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
+|- 7-8: Important relationships, significant choices, **key milestones with specific dates**, concrete future plans with specific timing, identity-level facts with location (e.g. "is from Sweden"), named events
+|- **6-7: Past events with specific dates (one-time occurrences, not recurring), personal milestones with timing (birthday/anniversary/graduation), named activities with timing (a specific conference, a specific trip to a named place)**
+|- **5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas**
+|- 3-4: Minor details, temporary states, vague preferences, easily forgotten info
+|- 1-2: Trivial details, likely to change, not worth remembering
 
 **IMPORTANT — event vs goal importance:**
 - A concrete plan with specific timing (e.g. "thinking about going camping next month (June 2023)") → 6-7, NOT 4. Even though it's tentative, the specific timing makes it retrievable.
@@ -187,7 +235,9 @@ Set is_persistent=false for facts that are:
 Return a JSON array of objects, each with:
 - "content": the fact statement (plain text, max 400 chars, INCLUDE dates/names/details)
 - "category": the semantic type of this fact. One of:
-  - place: locations, origins, destinations ("is from Sweden", "went to beach")
+  - place: locations, origins, destinations, hometowns, countries of origin.
+    **Always extract "is from X", "grew up in X", "moved to/from X" as separate place/identity facts,
+    even if the same conversation also describes the timing of the move.** ("is from Sweden", "went to beach")
   - time: dates, durations ("on July 2", "for 4 years")
   - person: relationships, social connections ("has children", "friend Melanie")
   - event: one-time occurrences with clear boundaries, already happened ("gave a school talk", "passed interviews", "went camping last weekend"). Past tense = event.
@@ -238,7 +288,7 @@ Detailed rules:
    - Activity is more concrete and easier to verify
 
 - "tags": optional comma-separated tags (people names, topics)
-- "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). Include the subject of the fact even if they are only mentioned by first name.
+- "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). **REQUIRED: always include the subject of the fact.** For relationship facts about two people, include BOTH entities. If the entity name is not explicitly in the content text, infer it from the conversation context. Never leave entities empty — include at least the primary subject.
 - "importance": integer 1-10
 - "is_persistent": boolean
 - "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20", use it as the reference timestamp to convert relative expressions ("about a month ago", "last week", "about 4 years") into absolute ISO dates. null ONLY if absolutely no date info exists.
@@ -256,6 +306,16 @@ Examples:
   {"content": "User has a blue Tesla Model 3", "category": "possession", "tags": "car,Tesla", "importance": 5, "is_persistent": true, "content_date": null},
   {"content": "User's computer is broken", "category": "state", "tags": "computer,issue", "importance": 4, "is_persistent": false, "content_date": null}
 ]
+
+IMPORTANT -- Quality self-check before responding:
+Review every fact you just extracted against these rules:
+1. **No separators:** Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it into separate facts.
+2. **Place/identity completeness:** Does the conversation mention someone's origin/hometown/country? If so, is it extracted as a standalone "is from X" fact? (Don't bury it inside another fact.)
+3. **Entities populated:** Does every fact have a non-empty entities array with at least the primary subject?
+4. **Importance correct:** Are past events with specific dates or personal milestones (birthdays, anniversaries) scored 6-7? Are identity-level location facts scored 7-8?
+5. **One topic per fact:** Is each fact a single, standalone sentence about ONE coherent subtopic? (Related details about the SAME subtopic should be merged, not split. See the "same-subtopic merging" rule above.)
+
+If any check fails, FIX the output before responding. Do NOT output facts that violate these rules.
 
 IMPORTANT -- JSON validity check before responding:
 - Output ONLY the JSON array, no extra text before or after.

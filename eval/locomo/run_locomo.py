@@ -320,7 +320,7 @@ def main():
     parser.add_argument("--limit", type=int, default=0,
                         help="Max QA pairs to process (0=all)")
     parser.add_argument("--start", type=int, default=0,
-                        help="Skip first N QA pairs (0-based)")
+                        help="Skip first N QA pairs (0-based, used with --limit)")
     parser.add_argument("--sample", default="",
                         help="Uniform sampling: 'N' or 'N-per-cat' (e.g. '3-per-cat')")
     parser.add_argument("--conv", default="",
@@ -458,7 +458,7 @@ def main():
 
             all_results.append({
                 "sample_id": sid,
-                "question_id": f"{sid}_q{qi}",
+                "question_id": f"{sid}_q{qi+1}",
                 "question": question,
                 "gold": gold,
                 "hypothesis": hypothesis,
