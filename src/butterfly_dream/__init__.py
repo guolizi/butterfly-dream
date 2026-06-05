@@ -220,7 +220,9 @@ Rules:
 |- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
 |- 7-8: Important relationships, significant choices, **key milestones with specific dates**, concrete future plans with specific timing, identity-level facts with location (e.g. "is from Sweden"), named events
 |- **6-7: Past events with specific dates (one-time occurrences, not recurring), personal milestones with timing (birthday/anniversary/graduation), named activities with timing (a specific conference, a specific trip to a named place)**
-|- **5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas**
+|- **5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas. 
+       NOTE: ALL personal hobbies, regular activities, and routine pastimes get at least 5, even if only mentioned once or with a specific date.** 
+       (E.g. "went swimming with kids" → 5-6, NOT 3)
 |- 3-4: Minor details, temporary states, vague preferences, easily forgotten info
 |- 1-2: Trivial details, likely to change, not worth remembering
 
@@ -254,6 +256,7 @@ Return a JSON array of objects, each with:
   - person: relationships, social connections ("has children", "friend Melanie")
   - event: one-time occurrences with clear boundaries, already happened ("gave a school talk", "passed interviews", "went camping last weekend"). Past tense = event.
   - activity: recurring behaviors, schedules, routines ("goes camping every summer", "exercises daily"). Preserve frequency words (often, every week, daily).
+    **IMPORTANT — routine activities with specific dates:** If someone mentions doing a hobby/regular activity on a specific date (e.g. "went swimming on May 8"), classify this as **activity** (not event) because the core information is about their routine/hobby. Include the date in the content but keep category=activity. Exception: one-time special events that are clearly not routine (e.g. "gave a speech at school" = event).
   - preference: attitudes, likes/dislikes, emotional expressions ("loves nature", "hates running", "finds camping peaceful"). When emotional words (喜欢/love/讨厌/hate/最爱/prefer) appear, classify as preference even if frequency is mentioned.
   - identity: roles, traits, long-term characteristics ("is transgender", "is a designer", "is vegetarian")
   - goal: plans, aspirations, intentions, future proposals, tentative ideas ("wants to pursue counseling", "plans to adopt", "is thinking about going camping next month"). Future tense / planning verbs / conditional = goal. NOT event.
