@@ -154,6 +154,19 @@ class ThreeDimRetriever:
         if importance_weight is not None:
             weights["importance"] = importance_weight
 
+        # ── Dynamic weight adjustment based on query type ──
+        # Fact-finding queries need low importance weight so specific details
+        # (imp=5-6) aren't drowned out by high-importance identity facts (imp=8-10).
+        # Opinion/assessment queries keep default weights.
+        query_type = self._detect_query_type(query)
+        if query_type == 'fact':
+            _FACT_IMPORTANCE_CAP = 0.05  # cap importance at 5% for fact queries
+            if weights.get("importance", 0.3) > _FACT_IMPORTANCE_CAP:
+                excess = weights["importance"] - _FACT_IMPORTANCE_CAP
+                # Shift excess from importance → relevance
+                weights["relevance"] = weights.get("relevance", 0.4) + excess
+                weights["importance"] = _FACT_IMPORTANCE_CAP
+
         # Stage 1: Get FTS5 candidates
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
 
@@ -464,6 +477,83 @@ class ThreeDimRetriever:
 
         # Deduplicate while preserving order
         return list(dict.fromkeys(categories))
+
+    @staticmethod
+    def _detect_query_type(query: str) -> str | None:
+        """Classify query as fact-finding ('fact'), opinion-seeking ('opinion'), or None (balanced).
+
+        Fact-finding queries ask for a specific concrete answer (names, dates,
+        subjects, counts). Opinion queries ask for judgment or assessment. The
+        classification lets the 3D scoring reduce importance weight for fact
+        queries — where high-importance identity facts otherwise drown out the
+        specific facts needed for a correct answer.
+
+        Detection patterns:
+        - Fact: "what subject/name/type...", "when did...", "how many...",
+                "where did...", "which [noun]...", contains "named"/"called"
+        - Opinion: "would [X] be considered", "likely", "think about",
+                   "opinion", "personality", "what kind of person"
+        """
+        import re
+        q = query.lower().strip()
+
+        # ── Opinion/assessment signals (keep default importance) ──
+        opinion_patterns = [
+            r'\bwould\b.*\bbe considered\b',
+            r'\bwould\b.*\blikely\b',
+            r'\bwhat kind of (person|personality|character|temperament)\b',
+            r'\bopinion\b',
+            r'\bpersonality\b',
+            r'\bview on\b',
+        ]
+        for pat in opinion_patterns:
+            if re.search(pat, q):
+                return 'opinion'
+
+        # ── Fact-finding signals (reduce importance) ──
+        fact_patterns = [
+            # "what [specific noun]" — asks for a concrete attribute
+            r'\bwhat\s+(subject|name|type|kind|sort|color|size|shape|'
+            r'date|time|day|month|year|age|address|phone|price|cost|'
+            r'brand|model|version|language|genre|style|title|nickname|'
+            r'flavor|material|pattern|direction|route)\b',
+            # "what is/are/was/were the [name/date/subject/title]"
+            r'\bwhat (are|is|were|was)\s+(the\s+)?(name|date|time|subject|title)s?\b',
+            # "what are [person]/[possessive] [attribute]" — e.g. "what are Melanie pets names"
+            r'\bwhat (are|is|were|was)\s+\w+\s+(\w+ ){0,3}(name|names|subject|type|type of)\b',
+            # "what types/kinds/sorts of" — e.g. "what types of pottery"
+            r'\bwhat (types|kinds|sorts) of\b',
+            # "what has/have/did [person] [verb]" — past actions with specific verb
+            # Handles both "what has Melanie painted" and "what events has Caroline participated"
+            r'\bwhat (\w+\s+){0,3}(has|have|did|does)\s+(\w+\s+){0,3}'
+            r'(bought|buy|painted|paints|paint|drew|drawn|draw|made|makes|make|'
+            r'created|creates|create|'
+            r'visited|visits|visit|attended|attends|attend|went|gone|go|does|done|do|'
+            r'said|say|wrote|written|write|read|watched|watches|watch|'
+            r'played|plays|play|cooked|cooks|cook|baked|bakes|bake|'
+            r'built|builds|build|'
+            r'participated|participates|participate|'
+            r'experienced|experiences|experience|'
+            r'purchased|purchases|purchase|ordered|orders|order|'
+            r'ate|eaten|eat|drank|drunk|drink|wore|worn|wear|brought|bring|'
+            r'took|taken|take)\b',
+            # "when did/was/were/will/does"
+            r'\bwhen (did|was|were|will|does|is|are)\b',
+            # "where did/was/is/are/does"
+            r'\bwhere (did|was|were|is|are|does)\b',
+            # "how many/much/long/old/often/far"
+            r'\bhow (many|much|long|old|often|far|wide|deep|tall|heavy)\b',
+            # "which [noun]"
+            r'\bwhich\s+(one|of|of the|\w+ (did|was|were|is|are|has|have))\b',
+            # contains "named" / "called" / "name of" / "names of"
+            r'\b(name|names) of\b',
+            r'\b(named|called)\b',
+        ]
+        for pat in fact_patterns:
+            if re.search(pat, q):
+                return 'fact'
+
+        return None
 
     def _semantic_category_candidates(
         self,

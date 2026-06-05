@@ -234,6 +234,29 @@
 
 ---
 
+## Q53 (conv-26): 宠物事实 importance 偏低导致被挤出 top-10
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What are Melanie's pets' names? |
+| Gold | Oliver, Luna, Bailey |
+| 模型回答 | Bailey only ("no other pets mentioned") |
+| 得分 | 2 |
+| 检索排名 | fact[125] (Bailey) rank 4, fact[66] (Luna+Oliver) rank 11 ❌ 差0.0001分被挤出 |
+
+**根因**: 提取 LLM 给宠物事实打了 imp=5（归类为"有用背景"），而"Melanie has children"等家庭事实得到 imp=7（归类为"重要关系"）。3D评分中 importance 贡献差 0.067，导致 fact[66] 排在 #11 刚好掉出 top-10。
+
+**验证**: 手动将 fact[66] imp=5→7 后，#11→#2 跃升，两跳进入 top-2。
+
+**修复**: ✅ **已修复** — 提取 prompt 明确标注 pets/animals 与 family members 同等重要（7-8 分）。commit 0e61a2a。
+
+```
+|**Importance scoring (1-10):**
+- 7-8: Important relationships (family, **pets** — knowing someone's pets/animals is as important as knowing their family members)...
+```
+
+---
+
 ```
 ## Q{题号} (conv-{id}): {简述}
 
