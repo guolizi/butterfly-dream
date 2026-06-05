@@ -203,6 +203,18 @@ Rules:
 - Don't merge facts about different people or different activities.
 - Output in the SAME language as the conversation.
 - **TEMPORAL: Always include dates when mentioned.** Preserve the original date format. "Got married on June 15, 2023" not just "Got married".
+- **COREFERENCE RESOLUTION — resolve "we/us/our" carefully:** When a speaker says "we" or "us", determine who is actually included. The default assumption is NOT the conversation partner. Look at the surrounding context:
+  - If the previous sentence mentions specific other people (e.g. "My friends, family and mentors..."), then "we" likely refers to the speaker AND those people — NOT the conversation partner.
+  - "Here's a pic from when we met up" does NOT mean the speaker met up with the conversation partner, unless the conversation explicitly describes them being together in person.
+  - When in doubt, check: is this an in-person meeting they both attended, or is the speaker describing an event the other person wasn't present for?
+  - Extract the fact with the CORRECT participants. E.g. "Caroline met up with her friends, family and mentors" not "Caroline and Melanie met up".
+- **CAUSALITY & MOTIVATION — extract the "why" behind decisions and actions:** When a person explains WHY they do something, extract that causal link explicitly:
+  - Format: "Because [cause], [person] [did/wants/plans action]". E.g. "Caroline saw how counseling improved her own life, which motivated her to pursue a career in counseling" NOT just "Caroline wants to pursue counseling".
+  - Include the full reasoning chain: struggle → received support → realized importance → decided to help others.
+- **COUNTERFACTUAL — extract "what if not" implications when the conversation implies them:** If a person says their support/experience/help was essential to reaching a decision, infer the counterfactual:
+  - Format: "Without [cause], [person] would [likely not / not have] [outcome]". E.g. "Without the support she received, Caroline would likely not have pursued counseling" or "Without the support group, Caroline would not have felt accepted enough to embrace her identity".
+  - Only extract counterfactuals that are STRONGLY implied by the conversation (e.g. "I couldn't have done it without them", "Their support made all the difference", "It made me realize how important it is").
+  - Counterfactuals are HIGH importance (7-9) because they enable answering "what if" questions.
 
 **Importance scoring (1-10):**
 |- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
