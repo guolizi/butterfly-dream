@@ -39,6 +39,25 @@
 
 ---
 
+## Q24 (conv-26): Gold 答案提及对话中不存在的书名
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What books has Melanie read? |
+| Gold | "Nothing is Impossible", "Charlotte's Web" |
+| 证据 | Charlotte's Web 在 Session 6 明确提及；"Nothing is Impossible" 在全 19 个 session 中**从未出现** |
+| 最长匹配 | Session 17: "Been reading that book you recommended a while ago" — 但未提书名 |
+| 模型回答 | 只答出 Charlotte's Web |
+| 得分 | 3 |
+
+**问题**: Gold 答案中包含对话文本中不存在的信息。"Nothing is Impossible" 在全部 218 条提取事实中无对应，属于 LoCoMo 数据集标注噪音。
+
+**影响**: 此题不可能答对满分，系统不受影响。
+
+**改进方向**: 无需修复（数据集问题）。分析时直接跳过。
+
+---
+
 ## 待归档模板
 
 ```
