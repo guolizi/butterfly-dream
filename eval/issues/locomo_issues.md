@@ -77,7 +77,162 @@
 
 ---
 
-## 待归档模板
+## Q34 (conv-26): 多义性——多个事实匹配同一问题，gold 只认一个
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Caroline go to a pride parade **during the summer**? |
+| Gold | The week before 3 July 2023 |
+| 检索结果 (rank 2) | Caroline attended a pride parade a few weeks before July 15, 2023 (around late June 2023) ✅ |
+| 检索结果 (rank 4) | Caroline attended a pride parade last Friday, August 11, 2023 ❌ |
+| 模型回答 | August 11, 2023（选了日期更具体的那条） |
+| 得分 | 2 |
+
+**问题**: 正确事实（rank 2, score 0.4389）分数比错误事实（rank 4, score 0.4275）**更高**，但模型倾向选日期更具体的 "August 11" 而非模糊的 "around late June"。这是推理偏误，不是检索问题。
+
+**影响**: 模型在多候选答案中选了最具体但不是 gold 的那个。
+
+**改进方向**: 可在 answer prompt 加"如有多个匹配事实，优先最早的"规则，但治标不治本。本质是数据集的多义性。
+
+---
+
+## Q35 (conv-26): 提问用词和对话原文的词汇鸿沟
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What events has Caroline participated in to help **children**? |
+| Gold | Mentoring program, school speech |
+| 对话原文 | "encouraged **students**" (Session 3), "mentorship program for LGBTQ **youth**" + "mentor a transgender **teen**" (Session 9) |
+| 提取事实 | "gave a school talk...encouraging **students**..." / "joined a mentorship program for LGBTQ **youth**..." |
+| 模型回答 | 只提到 adoption 相关活动（"children" 关键词匹配） |
+| 得分 | 2 |
+
+**问题**: 提问用词 "children" 与原文关键词 "students/youth/teen" 不匹配，FTS5 精确匹配无法跨过这个词汇鸿沟。提取事实本身准确无误。
+
+**影响**: 即使检索到正确事实（mentorship rank 15, school talk rank 20+），也因为不包含 "children" 关键词被 adoption 类事实（含 "children" 字面）挤到 top-10 之外。
+
+**改进方向**: 需要语义匹配能力（query expansion / embedding retrieval）才能根本解决。目前属于系统能力边界，非 bug。
+
+---
+
+## Q37 (conv-26): 提取中相对日期未绝对化
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Caroline join a mentorship program? |
+| Gold | The weekend before 17 July 2023 |
+| 对话原文 | Session 9 (July 17, 2023): "**Last weekend** I joined a mentorship program..." |
+| 提取结果 | "Caroline joined a mentorship program for LGBTQ youth in **July 2023**"（模糊） |
+| 得分 | 3 |
+
+**问题**: 提取 LLM 的 extraction prompt 已经要求根据 session timestamp 解析相对日期，但 LLM 实际输出中仍写成 "July 2023" 而非 "July 15-16, 2023"。属于 LLM 未严格遵守指令。
+
+**影响**: 检索时精确度损失，但 gold 也接受模糊答案 "The weekend before 17 July 2023"，score=3 够用。
+
+**修复**: 已在 547454b 中加强 extraction prompt 的日期分辨率指令。需重跑 extraction 后才能验证。
+
+---
+
+## Q39 (conv-26): 词汇鸿沟——family vs kids
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What activities has Melanie done with her family? |
+| Gold | Pottery, painting, camping, museum, swimming, hiking |
+| 最终得分 | 3 (v2-entity, owl-alpha) |
+
+**问题**: 查询词 "family" 无法匹配事实中使用的 "kids"（"Melanie took her kids to the pottery workshop"），BM25 精确匹配导致 3 个活动掉出 top-10。
+
+**修复**: synonyms.py + 查询时同义词扩展（family → kid, children）。修复后 painting 进入 top-2，4/6 gold 活动在 top-10（pottery rank 16, museum rank 9 仍需进一步优化）。
+
+---
+
+## Q40 (conv-26): 词汇鸿沟 + 3D scoring 压缩
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | In what ways is Caroline participating in the LGBTQ community? |
+| Gold | Joining activist group, going to pride parades, participating in an art show, mentoring program |
+| 最终得分 | 3 (v2-entity, owl-alpha) |
+
+**问题**: FTS5 候选池（30条）中包含所有 4 个 gold 事实（activist group rank 10, mentorship rank 13, art show rank 15-18, pride parade rank 27-29），但 3D scoring 后全部掉出 top-10。根因：1) importance=10 的泛泛 identity 事实（"Caroline is a transgender woman"）被过度推高；2) fts_rank 被 sigmoid 压缩到 0.85-0.99 之间，差距仅 0.03-0.04。
+
+**修复**: synonyms.py 中 participate → join, attend, go 扩展。修复后 mentorship 从 outside top-10 提到 rank 6，pride parade rank 12。
+
+---
+
+## Q41 (conv-26): 推理粒度——"camping at the beach" 是否算 beach trip？
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | How many times has Melanie gone to the beach in 2023? |
+| Gold | 2 |
+| 证据 | D6:16 (camping at the beach) + D10:8 (went to the beach recently) |
+| 提取事实 | ① "camping at the beach" ✅ ② "went to the beach recently" ✅ ③ "once or twice a year" |
+| 得分 | 2 |
+
+**问题**: 三个相关事实都在 top-10（rank 2/3/10），模型也全看到了。但模型认为 "camping at the beach" 是 camping trip 而非 beach trip，只数出 1 个确认的 beach trip。Gold 标准把两个都算上。
+
+**根因**: 提取把事件标记为 "camping at the beach"（强调 camping），而非 "went to the beach"（强调 beach）。模型按字面理解只认了后者。这不是检索问题，是提取的事实措辞 + 推理粒度的 mismatch。
+
+**改进方向**: 提取时将复合事件拆成多维度事实（既有 camping 属性又有 beach 属性）。低优先级，gold 本身也有歧义。
+
+---
+
+## Q44 (conv-26): 提取缺失 "abstract art" 风格标签
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What kind of art does Caroline make? |
+| Gold | abstract art |
+| 原文证据 | [D11:12, D11:8, D9:14] → 描述主题（inclusivity, diversity, LGBTQ+ advocacy），未提风格 |
+| 实际提及 "abstract" 的位置 | Session 17 (D17:13): Caroline 说 "I've been trying out **abstract** stuff recently" |
+| 提取结果 | "Caroline has been trying out abstract painting recently" (ID=199, imp=5) |
+| 检索排名 | FTS5 rank 35/141 — 未进 top-30 候选池 |
+| 模型回答 | 描述了 art 的主题（inclusivity, diversity, LGBTQ+ advocacy），没说 abstract |
+| 得分 | 2 ❌ |
+
+**根因**: 提取没有把 "abstract" 和 "art" 放到同一个描述性事实里。ID=199 说 "trying out abstract painting"（像在描述一个临时尝试），而检索时 `abstract*` 不匹配 `art*` 或 `painting*`。提取也缺少一个概括性事实 "Caroline makes abstract art"。
+
+**修复**: extraction prompt 加规则——提取艺术类事实时显式标注风格标签。**用户决定跳过，不需要改。**
+
+---
+
+## Q47 (conv-26): 词汇鸿沟——"ally" 未匹配 "support"/"friend" 事实
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | Would Melanie be considered an ally to the transgender community? |
+| Gold | Yes, she is supportive |
+| 证据 | [] （category 3 推理题，无直接证据引用） |
+| 旧 top-10 | 全为 Caroline 的 trans identity 事实，无 Melanie 支持态度 |
+| 旧模型回答 | "Likely no" ❌ |
+| 得分 | 1 |
+
+**问题**: 查询词 "ally" 无法匹配事实中的 "support"/"friend"（ID=86 "close friends who support each other"），该事实 FTS5 rank 41/123，未进 top-30 候选池。
+
+**修复**: synonyms.py 加 ally → support, friend, advocate。修复后事实 ID=86 进入 FTS5 rank 11，3D top-10 rank 3。
+
+---
+
+## Q49 (conv-26): 提取遗漏 "cup"——对方 speaker 提及的细节未提取
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What types of pottery have Melanie and her kids made? |
+| Gold | bowls, cup |
+| 证据 | D5:8 + D8:2 + D12:14（D12:14 与 pottery 无关，gold 可能标错） |
+| 提取 bowl | ✅ ID=44 "Melanie made a black and white bowl" (D5:8) |
+| 提取 pots | ✅ ID=70 "kids made their own pots" (D8:2) |
+| 提取 cup | ❌ 缺失 |
+| 对话原文 cup 位置 | D8:5 **Caroline** 说 "That **cup** is so cute!" ← 对方 speaker 提及 |
+| 得分 | 3 |
+
+**根因**: "cup" 出现在 Caroline 的话里，而非 Melanie。提取 LLM 只提取了 Melanie 的 "made their own pots"，没有提取 Caroline 说的 "cup"。这是提取的 speaker 关注偏差。
+
+**修复**: 低优先级，用户决定跳过。
+
+---
 
 ```
 ## Q{题号} (conv-{id}): {简述}

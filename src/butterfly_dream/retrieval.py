@@ -564,12 +564,27 @@ class ThreeDimRetriever:
         # Prefix matching ensures partial jieba tokens still produce candidates.
         # NOTE: Only prefix-match tokens with length >= 3 to avoid short prefixes
         # like "go*" accidentally matching "goal" or "to*" matching "today".
+        from .synonyms import get_synonyms
+
         op = ' AND ' if fts_mode == 'and' else ' OR '
-        # Build base query terms (prefix match for long/CJK tokens)
-        terms = [
-            t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
-            for t in tokens_clean
-        ]
+        # Build base query terms — expand synonyms as OR groups
+        terms = []
+        for t in tokens_clean:
+            base = t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
+            syns = get_synonyms(t)
+            if syns:
+                syn_terms = [
+                    s + '*' if len(s) >= 3 or re.search(r'[\u4e00-\u9fff]', s) else s
+                    for s in syns
+                ]
+                # Deduplicate: avoid repeating the base term as a synonym
+                syn_terms = [st for st in syn_terms if st != base]
+                if syn_terms:
+                    terms.append(f'({base} OR ' + ' OR '.join(syn_terms) + ')')
+                else:
+                    terms.append(base)
+            else:
+                terms.append(base)
         # Handle compound words: FTS5 default tokenizer splits on hyphens,
         # so "de-stress" is indexed as ["de", "stress"] while the query may
         # have "destress" (no hyphen). To bridge this gap, for tokens that

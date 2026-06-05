@@ -242,8 +242,18 @@ class TestSanitizeFTSQuery:
         from butterfly_dream.retrieval import ThreeDimRetriever
         result = ThreeDimRetriever._sanitize_fts_query("python programming")
         # Should be preserved as AND query
+        # NOTE: "programming" is verb-lemmatized to "program" by NLTK
         assert "python" in result
-        assert "programming" in result
+        assert "program" in result
+
+    def test_synonym_expansion(self):
+        from butterfly_dream.retrieval import ThreeDimRetriever
+        # "children" has synonyms: student, youth, teen, kid
+        result = ThreeDimRetriever._sanitize_fts_query("help children")
+        assert "children" in result
+        assert "student" in result or "youth" in result
+        # Should contain OR groups
+        assert "OR" in result
 
     def test_hyphenated_words(self):
         from butterfly_dream.retrieval import ThreeDimRetriever
