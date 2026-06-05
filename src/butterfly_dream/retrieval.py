@@ -183,6 +183,9 @@ class ThreeDimRetriever:
 
         # Entity boost: find entities mentioned in the query
         _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
+        # Temporal boost: for time-related queries, boost facts with precise dates
+        _TEMPORAL_BOOST = 0.15  # boost for precise-date facts on time queries
+        is_temporal_query = bool(semantic_cats and "time" in semantic_cats)
         entity_fact_ids: set[int] = set()
         try:
             # Get all known entity names
@@ -233,6 +236,14 @@ class ThreeDimRetriever:
             # Boost relevance if fact is linked to an entity mentioned in the query
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
                 relevance = min(1.0, relevance + _ENTITY_BOOST)
+
+            # Boost relevance for time-related queries if fact has a precise date
+            if is_temporal_query:
+                cd = fact.get("content_date") or ""
+                if len(cd) == 10 and cd[5:7] != "00" and cd[8:10] != "01":
+                    # Precise date: content_date is YYYY-MM-DD and day is not 01
+                    # (01 is convention for imprecise/estimated dates like "around June 2023")
+                    relevance = min(1.0, relevance + _TEMPORAL_BOOST)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
