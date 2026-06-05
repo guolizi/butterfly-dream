@@ -262,6 +262,12 @@ class ThreeDimRetriever:
                 + self.hrr_weight * hrr_sim
             )
 
+            # Boosts are multiplicative: each boost applies as a multiplier on relevance.
+            # This prevents low-relevance facts from overtaking better matches through
+            # multiple additive boosts alone. A fact with low base relevance stays low
+            # even with all boosts active.
+            boost = 1.0
+
             # Boost relevance if fact's category matches query intent
             # Uses SEMANTIC_CAT_BOOST_MAP to map query categories → boosted fact categories,
             # e.g. "time" query → boost event/activity facts, not exact "time" category.
@@ -270,11 +276,11 @@ class ThreeDimRetriever:
                 for sc in semantic_cats:
                     boost_cats.update(SEMANTIC_CAT_BOOST_MAP.get(sc, ()))
                 if boost_cats and fact.get("category") in boost_cats:
-                    relevance = min(1.0, relevance + _CAT_BOOST)
+                    boost += _CAT_BOOST
 
             # Boost relevance if fact is linked to an entity mentioned in the query
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
-                relevance = min(1.0, relevance + _ENTITY_BOOST)
+                boost += _ENTITY_BOOST
 
             # Boost relevance for time-related queries if fact has a precise date
             if is_temporal_query:
@@ -285,10 +291,12 @@ class ThreeDimRetriever:
                 if len(cd) == 10 and cd[5:7] != "00":
                     if cd[8:10] != "01":
                         # Fully precise date (day specified)
-                        relevance = min(1.0, relevance + _TEMPORAL_BOOST)
+                        boost += _TEMPORAL_BOOST
                     else:
                         # Month-precise date (day=01 = imprecise/estimated, smaller boost)
-                        relevance = min(1.0, relevance + _TEMPORAL_BOOST * 0.5)
+                        boost += _TEMPORAL_BOOST * 0.5
+
+            relevance = min(1.0, relevance * boost)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
@@ -382,7 +390,7 @@ class ThreeDimRetriever:
         seen_fact_ids = {}
         for row in rows:
             d = {key: row[key] for key in row.keys()}
-            d["fts_rank"] = 1.0 / (1.0 + math.exp(d.get("rank", 0) or 0))
+            d["fts_rank"] = min(1.0, max(0.0, -(d.get("rank", 0) or 0) / 10.0))
             d["media"] = []
             d["_media_match"] = False
             results.append(d)
@@ -404,7 +412,7 @@ class ThreeDimRetriever:
         for row in media_rows:
             media = {key: row[key] for key in row.keys()}
             media_rank = media.pop("rank", 0)  # pop rank before ma.* columns shadow it
-            media_fts_score = 1.0 / (1.0 + math.exp(float(media_rank or 0)))
+            media_fts_score = min(1.0, max(0.0, -float(media_rank or 0) / 10.0))
             fid = media["fact_id"]
 
             if fid in seen_fact_ids:
