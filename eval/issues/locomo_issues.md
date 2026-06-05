@@ -58,6 +58,25 @@
 
 ---
 
+## Q27 (conv-26): Gold 答案提及对话中不存在的书名（同 Q24）
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Melanie read the book **"nothing is impossible"**? |
+| Gold | **2022** |
+| 证据 | "Nothing is Impossible" 在全 19 个 session 中**从未出现**；年份 `2022` 也未在对话中出现 |
+| 最长匹配 | Session 7: "This book I read last year reminds me to always pursue my dreams" — 未提书名 |
+| 模型回答 | I don't have enough information |
+| 得分 | 2 |
+
+**问题**: 同 Q24，Gold 答案中包含对话文本中不存在的信息。书名和年份均无法从对话中获取。
+
+**影响**: 此题不可能答对，系统不受影响。
+
+**改进方向**: 无需修复（数据集问题）。分析时直接跳过。
+
+---
+
 ## 待归档模板
 
 ```
