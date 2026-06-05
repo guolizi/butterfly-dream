@@ -250,6 +250,25 @@
 
 **修复**: ✅ **已修复** — 提取 prompt 明确标注 pets/animals 与 family members 同等重要（7-8 分）。commit 0e61a2a。
 
+---
+
+## Q56 (conv-26): 查询类型检测 + 动态 3D 权重调整
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What subject have Caroline and Melanie both painted? |
+| Gold | Sunsets |
+| 模型回答 | "no specific shared subject is mentioned" |
+| 得分 | 2 |
+| 旧检索 | ❌ 0/6 条日落事实进入 top-20（3D 评分被 imp=8-10 身份事实淹没） |
+| 新检索 | ✅ 3/6 条进入 top-20，1 条进入 top-10（rank 6） |
+
+**根因**: 查询词中没有 "sunset"（自然现象——问的是"共同画了什么"，答案词不在查询中）。FTS5 通过 "painted" + 人名找到日落事实（FTS#4-11），但 importance 权重（0.3）让 imp=8-10 的无关身份事实在 3D 评分中反超。
+
+**修复**: ✅ **已修复** — 新增 `_detect_query_type()`，对 `fact` 类查询（what subject/name/when/how many...）将 importance 权重降至 0.05，差值移至 relevance。opinion 类查询（would/be considered）保持默认权重。commit ae5d413。
+
+---
+
 ```
 |**Importance scoring (1-10):**
 - 7-8: Important relationships (family, **pets** — knowing someone's pets/animals is as important as knowing their family members)...

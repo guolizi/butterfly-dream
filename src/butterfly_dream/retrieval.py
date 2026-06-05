@@ -511,6 +511,7 @@ class ThreeDimRetriever:
                 return 'opinion'
 
         # ── Fact-finding signals (reduce importance) ──
+        # Concrete-noun patterns — checked via regex
         fact_patterns = [
             # "what [specific noun]" — asks for a concrete attribute
             r'\bwhat\s+(subject|name|type|kind|sort|color|size|shape|'
@@ -523,20 +524,6 @@ class ThreeDimRetriever:
             r'\bwhat (are|is|were|was)\s+\w+\s+(\w+ ){0,3}(name|names|subject|type|type of)\b',
             # "what types/kinds/sorts of" — e.g. "what types of pottery"
             r'\bwhat (types|kinds|sorts) of\b',
-            # "what has/have/did [person] [verb]" — past actions with specific verb
-            # Handles both "what has Melanie painted" and "what events has Caroline participated"
-            r'\bwhat (\w+\s+){0,3}(has|have|did|does)\s+(\w+\s+){0,3}'
-            r'(bought|buy|painted|paints|paint|drew|drawn|draw|made|makes|make|'
-            r'created|creates|create|'
-            r'visited|visits|visit|attended|attends|attend|went|gone|go|does|done|do|'
-            r'said|say|wrote|written|write|read|watched|watches|watch|'
-            r'played|plays|play|cooked|cooks|cook|baked|bakes|bake|'
-            r'built|builds|build|'
-            r'participated|participates|participate|'
-            r'experienced|experiences|experience|'
-            r'purchased|purchases|purchase|ordered|orders|order|'
-            r'ate|eaten|eat|drank|drunk|drink|wore|worn|wear|brought|bring|'
-            r'took|taken|take)\b',
             # "when did/was/were/will/does"
             r'\bwhen (did|was|were|will|does|is|are)\b',
             # "where did/was/is/are/does"
@@ -552,6 +539,31 @@ class ThreeDimRetriever:
         for pat in fact_patterns:
             if re.search(pat, q):
                 return 'fact'
+
+        # "what has/have/did [words] [action-verb]" — extract all 3+ letter words
+        # after the auxiliary verb and check if any lemmatizes to a known action verb.
+        # This handles all verb forms (painted, bought, read, participated, etc.)
+        # without enumerating every inflection.
+        m = re.search(r'\bwhat\b.+\b(has|have|did|does)\b', q)
+        if m:
+            after = q[m.end():]
+            _FACT_VERBS = {
+                'buy', 'paint', 'draw', 'make', 'create',
+                'visit', 'attend', 'go', 'do', 'say',
+                'write', 'read', 'watch', 'play', 'cook',
+                'bake', 'build', 'participate', 'experience',
+                'purchase', 'order', 'eat', 'drink', 'wear',
+                'bring', 'take', 'try', 'use', 'get',
+            }
+            for w in re.findall(r'\b(\w{3,})\b', after):
+                try:
+                    from nltk.stem import WordNetLemmatizer
+                    wnl = WordNetLemmatizer()
+                    w_lemma = wnl.lemmatize(w, 'v')
+                except ImportError:
+                    w_lemma = w
+                if w_lemma in _FACT_VERBS:
+                    return 'fact'
 
         return None
 
