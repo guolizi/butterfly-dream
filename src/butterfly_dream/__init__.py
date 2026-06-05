@@ -216,10 +216,11 @@ Rules:
   - Only extract counterfactuals that are STRONGLY implied by the conversation (e.g. "I couldn't have done it without them", "Their support made all the difference", "It made me realize how important it is").
   - Counterfactuals are HIGH importance (7-9) because they enable answering "what if" questions.
 
-**Importance scoring (1-10):**
+|**Importance scoring (1-10):**
 |- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
-|- 7-8: Important relationships, significant choices, **key milestones with specific dates**, concrete future plans with specific timing, identity-level facts with location (e.g. "is from Sweden"), named events
-|- **6-7: Past events with specific dates (one-time occurrences, not recurring), personal milestones with timing (birthday/anniversary/graduation), named activities with timing (a specific conference, a specific trip to a named place)**
+|- 7-8: Important relationships, significant choices, **key milestones with specific dates**, concrete future plans with **exact dates** (e.g. "conference on July 10" not "conference in July"), identity-level facts with location (e.g. "is from Sweden"), named events
+|- **6-7: Past events with specific dates (one-time occurrences, not recurring), personal milestones with timing (birthday/anniversary/graduation), named activities with timing (a specific conference, a specific trip to a named place).**
+       **NOTE: exact dates (day-level) → 7; month-only timing → 6.** E.g. "attended conference on July 10, 2023" → 7, but "attended conference in July 2023" → 6.
 |- **5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas. 
        NOTE: ALL personal hobbies, regular activities, and routine pastimes get at least 5, even if only mentioned once or with a specific date.** 
        (E.g. "went swimming with kids" → 5-6, NOT 3)
