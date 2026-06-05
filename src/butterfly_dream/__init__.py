@@ -307,7 +307,13 @@ Detailed rules:
 - "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). **REQUIRED: always include the subject of the fact.** For relationship facts about two people, include BOTH entities. If the entity name is not explicitly in the content text, infer it from the conversation context. Never leave entities empty — include at least the primary subject.
 - "importance": integer 1-10
 - "is_persistent": boolean
-- "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20", use it as the reference timestamp to convert relative expressions ("about a month ago", "last week", "about 4 years") into absolute ISO dates. null ONLY if absolutely no date info exists.
+- "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20",
+use it as the reference timestamp to convert ALL relative date expressions
+into absolute ISO dates. This includes "last weekend", "yesterday", "today",
+"last Friday", "a few weeks ago", "next month", etc.
+CRITICAL: do NOT leave content_date as month-only (e.g. "2023-07-01")
+when a more precise date can be calculated from the reference timestamp.
+null ONLY if absolutely no date info exists.
 
 Examples:
 [
