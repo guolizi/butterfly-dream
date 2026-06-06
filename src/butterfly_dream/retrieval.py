@@ -826,9 +826,11 @@ class ThreeDimRetriever:
             base = t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
             syns = get_synonyms(t)
             if syns:
-                # Filter out multi-word and hyphenated synonyms — they break FTS5
-                # syntax (spaces parsed as AND, hyphens as column subtraction).
-                safe_syns = [s for s in syns if ' ' not in s and '-' not in s]
+                # Filter out multi-word, hyphenated, or special-character synonyms
+                # — they break FTS5 syntax (spaces→AND, hyphens→column subtraction,
+                # dots→column accessor, colons→NEAR syntax, etc.).
+                import re as _re_syn
+                safe_syns = [s for s in syns if _re_syn.match(r'^[a-zA-Z0-9]+$', s)]
                 if not safe_syns:
                     syns = []
                     syn_terms = []

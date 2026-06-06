@@ -53,6 +53,9 @@ def _normalize_date(raw) -> Optional[str]:
     - Already ISO: "2023-01-19" → "2023-01-19"
     - Common formats: "January 19, 2023", "19 January 2023", "Jan 19, 2023"
     - Chinese: "2023年1月19日", "2023/01/19", "2023.01.19"
+    - Month + Year: "February 2023" → "2023-02-01"
+    - Standalone year: "2023" → "2023-01-01"
+    - Chinese: "2023年1月19日", "2023/01/19", "2023.01.19"
     - Returns None if no valid date found or input is None/empty.
     """
     if not raw or not isinstance(raw, str):
@@ -65,7 +68,7 @@ def _normalize_date(raw) -> Optional[str]:
     if re.match(r'^\d{4}-\d{2}-\d{2}$', raw):
         return raw
 
-    # Try common English formats
+    # Try common English formats (full date)
     from datetime import datetime as _dt
     for fmt in (
         "%B %d, %Y",    # January 19, 2023
@@ -82,6 +85,21 @@ def _normalize_date(raw) -> Optional[str]:
         except ValueError:
             continue
 
+    # Month + Year (no day) → default to 1st of month
+    for fmt in (
+        "%B %Y",        # February 2023
+        "%b %Y",        # Feb 2023
+    ):
+        try:
+            return _dt.strptime(raw, fmt).strftime("%Y-%m-01")
+        except ValueError:
+            continue
+
+    # Standalone 4-digit year → January 1st
+    m = re.match(r'^(\d{4})$', raw)
+    if m:
+        return f"{m.group(1)}-01-01"
+
     # Chinese date: 2023年1月19日
     m = re.match(r'(\d{4})年(\d{1,2})月(\d{1,2})日?', raw)
     if m:
@@ -94,7 +112,7 @@ def _extract_date_from_content(content: str) -> Optional[str]:
     """Fallback: extract a date from fact content text when LLM omits content_date.
 
     Tries common patterns like "on 19 January, 2023", "January 19, 2023",
-    "2023-01-19", "2023年1月19日", etc.
+    "2023-01-19", "February 2023", "in 2023", "2023年1月19日", etc.
     Returns YYYY-MM-DD or None.
     """
     if not content:
@@ -117,6 +135,26 @@ def _extract_date_from_content(content: str) -> Optional[str]:
             result = _normalize_date(m.group(1))
             if result:
                 return result
+
+    # Pattern: Month + Year (no day) with time preposition
+    # e.g. "in February 2023", "around March 2023", "since June 2023"
+    m = re.search(
+        r'\b(?:in|during|around|since|until|by|before|after)\s+'
+        r'([A-Z][a-z]+\s+\d{4})\b',
+        content
+    )
+    if m:
+        result = _normalize_date(m.group(1))
+        if result:
+            return result
+
+    # Pattern: standalone 4-digit year with time preposition
+    # e.g. "in 2023", "during 2022"
+    m = re.search(r'\b(?:in|during|since|around)\s+(\d{4})\b', content)
+    if m:
+        result = _normalize_date(m.group(1))
+        if result:
+            return result
 
     return None
 
@@ -307,9 +345,7 @@ Detailed rules:
 - "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). **REQUIRED: always include the subject of the fact.** For relationship facts about two people, include BOTH entities. If the entity name is not explicitly in the content text, infer it from the conversation context. Never leave entities empty — include at least the primary subject.
 - "importance": integer 1-10
 - "is_persistent": boolean
-- "content_date": (REQUIRED) ISO date (YYYY-MM-DD) if a date is mentioned or can be inferred. When the context contains a date marker like "[Date: 2023/03/10]" or "Date: 2023-05-20",
-use it as the reference timestamp to convert ALL relative date expressions
-into absolute ISO dates. This includes "last weekend", "yesterday", "today",
+- "content_date": REQUIRED ISO date (YYYY-MM-DD). When the session messages start with a "[Date: ...]" marker (e.g. "[Date: 8 May, 2023]"), use it as the reference timestamp to convert ALL relative date expressions into absolute ISO dates. This session's [Date: ...] is your reference — every fact from this session MUST have a non-null content_date. For ongoing activities/identity traits with no specific event date, use the session date as approximation (e.g. session is May 2023 → "2023-05-01"). This includes "last weekend", "yesterday", "today",
 "last Friday", "a few weeks ago", "next month", etc.
 CRITICAL: do NOT leave content_date as month-only (e.g. "2023-07-01")
 when a more precise date can be calculated from the reference timestamp.
@@ -349,12 +385,13 @@ Review each fact you extracted. Check:
 
 5. **数字完整性检查:** Does the original turn mention any numbers (counts, ages, years, prices, frequencies)? Every number must appear in an extracted fact. "7 years" → fact says "7 years", not "for years". "3 kids" → fact says "3 children".
 
-6. **日期/时间完整性检查 (双向):** 
+6. **日期/时间完整性检查 (双向 + content_date 字段):** 
    - **原始轮次检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer, last month, recently, a few weeks ago, last year)? EVERY relative date in the conversation must be resolved to an ABSOLUTE date in a fact.
-   - **提取事实扫描:** After writing all facts, scan EVERY fact’s content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`, `this week`, `last year`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session’s reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
-   Use the conversation session’s timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
+   - **提取事实扫描:** After writing all facts, scan EVERY fact's content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`, `this week`, `last year`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session's reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
+   - **content_date 字段检查:** After resolving all dates in content, check the content_date field of EVERY fact. If the session messages contain a [Date: ...] marker, EVERY fact from that session MUST have a non-null content_date in YYYY-MM-DD format. Use the resolved absolute date for the content_date field, NOT the content text (e.g. if content says "May 2023", content_date should be "2023-05-01"; if content says "on August 24, 2023", content_date should be "2023-08-24"). Facts about ongoing traits/preferences with truly no specific date can use the session date as approximation.
+   Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023" and content_date = "2023-08-24".
    
-   ⚠️ **绝对日期优先于情感丰富度**: Adding emotional/cognitive content (Check 10, Check 11) is valuable, but do NOT replace a specific calendar date with a relative expression. If the conversation contains an absolute date (e.g. "August 23, 2023", "2022") AND an emotion, the fact MUST include BOTH the absolute date AND the emotion. Scanning "last year" → writing "in 2022" is correct. Writing "last year" alone is a violation even if you also add emotional content.
+   ⚠️ **绝对日期优先于情感丰富度**: Adding emotional/cognitive content (Check 10, Check 11) is valuable, but do NOT replace a specific calendar date with a relative expression. If the conversation contains an absolute date (e.g. "August 23, 2023", "2022") AND an emotion, the fact MUST include BOTH the absolute date AND the emotion. Scanning "last year" → writing "in 2022" is correct. Writing "last year" alone is a violation even if you also add emotional content. The content_date field must also reflect this resolved absolute date.
 
 7. **所有物/关系完整性检查:** Does the turn mention possessions, pets, family members with names? Each named possession/pet/family member must appear in a fact with its name. "I have a cat named Oliver" → extract "has a cat named Oliver", not just "has a cat".
 
@@ -372,7 +409,7 @@ Review each fact you extracted. Check:
     Do NOT create standalone facts for these incidental details. Merge only into closely related facts (same entity + same session context). If no related fact exists, skip the detail.
 
 
-13. **绝对日期不可丢失检查:** Re-read every fact you just wrote. Does any fact contain a relative date expression (`last year`, `last week`, `this week`, `yesterday`, `recently`, `a few weeks ago`, `last month`) WITHOUT also including the resolved absolute date? If yes, check what absolute date the conversation session suggests and REWRITE the fact to include the absolute date. This is a SEPARATE scan from Check 6 — Check 6 checks the conversation, this check checks the OUTPUT facts again. **Do NOT leave any fact with a bare relative date.** Example: "applied to adoption agencies this week" → "applied to adoption agencies during the week of August 23, 2023". Example: "attended a Pride festival together last year" → "attended a Pride festival together in 2022". Use the session’s timestamp to resolve.
+13. **绝对日期不可丢失检查 (含 content_date):** Re-read every fact you just wrote. Does any fact contain a relative date expression (`last year`, `last week`, `this week`, `yesterday`, `recently`, `a few weeks ago`, `last month`) WITHOUT also including the resolved absolute date? If yes, check what absolute date the conversation session suggests and REWRITE the fact to include the absolute date AND update the content_date field to YYYY-MM-DD format. This is a SEPARATE scan from Check 6 — Check 6 checks the conversation, this check checks the OUTPUT facts again. **Do NOT leave any fact with a bare relative date.** Example: "applied to adoption agencies this week" → content: "applied to adoption agencies during the week of August 23, 2023", content_date: "2023-08-23". Example: "attended a Pride festival together last year" → content: "attended a Pride festival together in 2022", content_date: "2022-06-01". Use the session's timestamp to resolve.
 
 14. **范围完整性检查:** Does the conversation mention a person doing multiple activities that belong to the SAME broader category (e.g., both painting AND pottery under "creating art", both running AND swimming under "exercise", both violin AND guitar under "playing music")? If yes, do NOT narrow the fact to just one specific activity — either use the broader category name or list the specific activities. Example: person talks about painting, pottery, and drawing → do NOT write "creates pottery" → write "creates art (painting, pottery, drawing)" or "enjoys painting and pottery". Losing the broader category keyword can cause the fact to fail later keyword searches.
 
