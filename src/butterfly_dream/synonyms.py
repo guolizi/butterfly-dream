@@ -59,6 +59,10 @@ _MANUAL: dict[str, list[str]] = {
     "hurt":     ["injured", "pain", "ache", "wound"],
     "music":    ["song", "concert", "band", "artist", "musical"],
     "buy":      ["purchase", "acquire", "get"],
+    # --- English: "event" has wrong WordNet sense (case/consequence/effect/outcome)
+    #              — add the "organized activity" synonyms instead
+    "event":    ["fair", "competition", "festival", "gathering", "conference", "workshop", "showcase"],
+    "events":   ["fair", "competition", "festival", "gathering", "conference", "workshop", "showcase"],
     # ===== Chinese =====
     "家庭":   ["家人", "孩子", "子女", "亲戚"],
     "家人":   ["家庭", "孩子", "子女"],
