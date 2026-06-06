@@ -180,20 +180,24 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
     from butterfly_dream.retrieval import ThreeDimRetriever
 
     retriever = ThreeDimRetriever(provider._store)
+    t0 = time.perf_counter()
     results = retriever.search(query=question, scenario="chat", limit=20)
+    search_time = time.perf_counter() - t0
 
     if not results:
-        return ("I don't have enough information to answer this question.", 0, [])
+        return ("I don't have enough information to answer this question.", 0, [], search_time)
 
     # Use top 10 for LLM context (avoid noise from lower-ranked facts)
     context_parts = [r.get("content", "") for r in results[:10] if r.get("content")]
     context = "\n".join(context_parts)
     # Log all top 20 retrieved facts
     retrieved_facts = [{"rank": i+1, "score": round(r["score"], 4), "content": r["content"]} for i, r in enumerate(results)]
-    _log(f"Retrieved {len(results)} facts for Q: {question[:80]}...")
-    for rf in retrieved_facts[:10]:
-        _log(f"  [{rf['rank']}] score={rf['score']:.4f} | {rf['content'][:100]}")
-    return (_generate_answer(question, context), len(context_parts), retrieved_facts)
+    _log(f"Retrieved {len(results)} facts in {search_time*1000:.0f}ms for Q: {question[:80]}...")
+    for rf in retrieved_facts[:5]:
+        _log(f"  [{rf['rank']}] score={rf['score']:.4f} | {rf['content'][:90]}")
+    if len(retrieved_facts) > 5:
+        _log(f"  ... {len(retrieved_facts)-5} more facts")
+    return (_generate_answer(question, context), len(context_parts), retrieved_facts, search_time)
 
 
 def _generate_answer(question: str, context: str) -> str:
@@ -449,7 +453,7 @@ def main():
             gold = str(qa.get("answer", qa.get("adversarial_answer", "")))
             category = qa["category"]
 
-            hypothesis, n_retrieved, retrieved_facts = answer_question(qp, question)
+            hypothesis, n_retrieved, retrieved_facts, search_time = answer_question(qp, question)
 
             score = 0
             if not args.no_judge:
@@ -465,7 +469,7 @@ def main():
             qa_count += 1
 
             mark = "✅" if is_correct else "❌"
-            print(f"  [{qa_count}] {mark} cat={category} score={score} facts={n_retrieved} Q: {question[:60]}...")
+            print(f"  [{qa_count}] {mark} cat={category} score={score} search={search_time*1000:.0f}ms facts={n_retrieved} Q: {question[:60]}...")
 
             all_results.append({
                 "sample_id": sid,
@@ -479,6 +483,7 @@ def main():
                 "is_correct": is_correct,
                 "n_facts": n_facts,
                 "n_retrieved": n_retrieved,
+                "search_time_ms": round(search_time * 1000, 1),
                 "retrieved_facts": retrieved_facts,
             })
 

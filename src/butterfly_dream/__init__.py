@@ -1176,6 +1176,16 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             model=self._extraction_model,
         )
 
+        # Debug: log raw LLM output
+        if facts:
+            logger.debug("ButterflyDream: LLM extracted %d raw facts", len(facts))
+            for i, f in enumerate(facts):
+                logger.debug("  raw[%d] content='%.80s' cat=%s imp=%s date=%s",
+                             i, f.get("content", ""), f.get("category", ""),
+                             f.get("importance", "?"), f.get("content_date", "?"))
+        else:
+            logger.debug("ButterflyDream: LLM returned 0 facts")
+
         # Circuit breaker: track result
         success = bool(facts)
         self._mark_extraction_result(success)
@@ -1197,8 +1207,13 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     content_date=_normalize_date(fact.get("content_date")) or _extract_date_from_content(fact.get("content", "")),
                 )
                 stored.append(result)
+                # Debug: log storage result
+                is_new = "inserted" if result.get("fact_id") and not result.get("merged") else \
+                         "merged" if result.get("merge_type") else "existing"
+                logger.debug("  stored[%d] fact_id=%d %s: '%.80s'",
+                             len(stored) - 1, result.get("fact_id", -1), is_new, result.get("content", ""))
             except Exception as e:
-                logger.debug("ButterflyDream store fact failed: %s", e)
+                logger.debug("ButterflyDream store fact failed for '%.60s': %s", fact.get("content", ""), e)
 
         # Track extraction count for reflection trigger
         if stored:

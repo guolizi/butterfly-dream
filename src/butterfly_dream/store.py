@@ -401,8 +401,8 @@ class MemoryStore:
             if dedup_threshold > 0:
                 dup = self._find_duplicate(content, dedup_threshold)
                 if dup:
-                    logger.debug("Dedup: skipped insert (Jaccard >= %.2f) — existing fact #%d",
-                                 dedup_threshold, dup["fact_id"])
+                    logger.debug("Dedup: skipped insert '%.60s' (Jaccard >= %.2f) — merged into fact #%d '%.60s'",
+                                 content, dedup_threshold, dup["fact_id"], dup.get("content", ""))
                     return dup
 
             # Level 2: Semantic merge (shared entities + FTS5 similarity)
@@ -478,7 +478,8 @@ class MemoryStore:
             dedup_threshold = 0.03
         else:
             query_tokens = self._tokenize_lemma(content)
-            dedup_threshold = 0.23
+            dedup_threshold = 0.5  # 0.23 was too aggressive — collapsed distinct facts
+                                   # sharing common words (e.g. "Jon" + "January")
         if len(query_tokens) < 3:
             return None  # Too short for meaningful dedup
 
