@@ -388,9 +388,19 @@ class ThreeDimRetriever:
 
         results = []
         seen_fact_ids = {}
+
+        # Normalize BM25 ranks to [0, 1] across ALL candidates so the
+        # best FTS5 match gets 1.0 and the worst gets 0.0.
+        # BM25 returns negative values (more negative = better match).
+        raw_ranks = [float(r["rank"]) for r in rows] if rows else [0]
+        bm25_min = min(raw_ranks)
+        bm25_max = max(raw_ranks)
+        bm25_range = bm25_max - bm25_min if bm25_max > bm25_min else 1.0
+
         for row in rows:
             d = {key: row[key] for key in row.keys()}
-            d["fts_rank"] = min(1.0, max(0.0, -(d.get("rank", 0) or 0) / 10.0))
+            raw = float(d.get("rank", 0))
+            d["fts_rank"] = 1.0 - (raw - bm25_min) / bm25_range
             d["media"] = []
             d["_media_match"] = False
             results.append(d)

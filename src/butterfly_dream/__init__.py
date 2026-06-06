@@ -329,15 +329,44 @@ Examples:
   {"content": "User's computer is broken", "category": "state", "tags": "computer,issue", "importance": 4, "is_persistent": false, "content_date": null}
 ]
 
-IMPORTANT -- Quality self-check before responding:
-Review every fact you just extracted against these rules:
-1. **No separators:** Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it into separate facts.
-2. **Place/identity completeness:** Does the conversation mention someone's origin/hometown/country? If so, is it extracted as a standalone "is from X" fact? (Don't bury it inside another fact.)
-3. **Entities populated:** Does every fact have a non-empty entities array with at least the primary subject?
-4. **Importance correct:** Are past events with specific dates or personal milestones (birthdays, anniversaries) scored 6-7? Are identity-level location facts scored 7-8?
-5. **One topic per fact:** Is each fact a single, standalone sentence about ONE coherent subtopic? (Related details about the SAME subtopic should be merged, not split. See the "same-subtopic merging" rule above.)
+IMPORTANT -- Three-phase self-check before responding:
+Run ALL three phases IN ORDER. Do NOT skip any phase.
 
-If any check fails, FIX the output before responding. Do NOT output facts that violate these rules.
+=== PHASE 1 (of 3): COVERAGE — Did I miss any facts? ===
+Go through EVERY turn of the conversation you just processed.
+For each turn, check:
+
+1. **Q&A 闭环检查:** Does this turn contain a question followed by a concrete answer? If so, the ANSWER must be extracted as a fact. Resolve "it"/"that"/"one" pronouns to their referents from the previous turn. E.g. "Did you make that plate?" → "Yeah, I made it" → extract "made a plate", NOT "made it".
+
+2. **跨 turn 代词解析检查:** Does this turn use pronouns (it, that, one, they, them) referring to something from the PREVIOUS turn? Never extract a fact with unresolved pronouns. Resolve what the pronoun refers to using the previous turn's content.
+
+3. **动作/事件 vs 情感反应分离检查:** Does this turn contain BOTH an emotional reaction ("I love it", "it's great") AND a concrete action/event ("I made it", "I signed up")? The ACTION and the EMOTION must be EXTRACTED AS SEPARATE FACTS. Do NOT let emotional reactions overshadow concrete events.
+
+4. **媒体/图片上下文检查:** Does this turn reference a photo/image shared in this or the previous turn? The photo documents something — extract the underlying event (e.g. photo of a plate → someone made/is showing a plate, photo of a painting → someone painted it).
+
+=== PHASE 2 (of 3): COMPLETENESS — Are the extracted facts complete? ===
+Review each fact you extracted. Check:
+
+5. **数字完整性检查:** Does the original turn mention any numbers (counts, ages, years, prices, frequencies)? Every number must appear in an extracted fact. "7 years" → fact says "7 years", not "for years". "3 kids" → fact says "3 children".
+
+6. **日期/时间完整性检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer)? EVERY relative date must be resolved to an ABSOLUTE date in a fact. Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
+
+7. **所有物/关系完整性检查:** Does the turn mention possessions, pets, family members with names? Each named possession/pet/family member must appear in a fact with its name. "I have a cat named Oliver" → extract "has a cat named Oliver", not just "has a cat".
+
+8. **否定/缺失信息检查:** Does the turn contain explicit NEGATION ("I don't have", "I never", "not interested", "no")? Important negative facts enable answering "does X have Y?" questions. Extract them.
+
+9. **实体归属正确性检查:** For each extracted fact, does the subject entity match who actually said/did it? If Melanie says "I made a plate", the fact subject = Melanie, NOT Caroline.
+
+=== PHASE 3 (of 3): QUALITY — Format correctness ===
+
+10. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
+11. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
+12. Entities populated: Every fact has non-empty entities array with at least the primary subject.
+13. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
+14. One topic per fact: Each fact is one coherent sentence about ONE subtopic.
+15. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
+
+If ANY check in any phase fails, FIX the output before responding. Do NOT output facts that violate these rules.
 
 IMPORTANT -- JSON validity check before responding:
 - Output ONLY the JSON array, no extra text before or after.
