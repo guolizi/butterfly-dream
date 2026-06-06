@@ -395,6 +395,74 @@ class ThreeDimRetriever:
                     tail = scored[top_n:]
                     top_slice.sort(key=lambda x: x["score"], reverse=True)
                     scored = top_slice + tail
+
+        # --- Entity diversity re-ranking ---
+        # If the top N results are dominated by a single entity (checked by DB
+        # entity tags via fact_entities + entities tables), swap in the best
+        # FTS5-ranked fact about a DIFFERENT entity from beyond the window.
+        # This uses actual entity tagging, not substring matching on content.
+        # Helps adversarial questions where the query entity is swapped.
+        _ENTITY_WINDOW = 10
+        _ENTITY_THRESHOLD = 0.7
+        top_n_e = min(_ENTITY_WINDOW, len(scored), limit)
+        if top_n_e >= 4:
+            top_slice = scored[:top_n_e]
+            # Batch-load entity info for all scored facts
+            all_fact_ids = [item["fact_id"] for item in scored]
+            try:
+                erows = self.store.execute_query(
+                    """SELECT fe.fact_id, e.name
+                       FROM fact_entities fe
+                       JOIN entities e ON fe.entity_id = e.entity_id
+                       WHERE fe.fact_id IN ({})""".format(
+                        ",".join("?" * len(all_fact_ids))
+                    ),
+                    tuple(all_fact_ids),
+                )
+            except Exception:
+                erows = []
+            fact_entity_map: dict[int, set[str]] = {}
+            for row in erows:
+                fact_entity_map.setdefault(row["fact_id"], set()).add(row["name"])
+
+            # Count entity occurrence in top-slice (fractional: dual-entity
+            # facts distribute 1/n per entity, so a Jon+Gina fact contributes
+            # 0.5 to each — prevents false inflation of single-entity dominance)
+            ent_counts: dict[str, float] = {}
+            for item in top_slice:
+                names = fact_entity_map.get(item["fact_id"], set())
+                share = 1.0 / len(names) if names else 0.0
+                for name in names:
+                    ent_counts[name] = ent_counts.get(name, 0.0) + share
+
+            if ent_counts:
+                dominant_ent, dominant_count = max(ent_counts.items(), key=lambda x: x[1])
+                if dominant_count / top_n_e >= _ENTITY_THRESHOLD:
+                    # Find the best (highest fts_rank) fact from beyond the window
+                    # that belongs to a DIFFERENT entity (no overlap with dominant_ent)
+                    best_idx = -1
+                    best_fts = -1.0
+                    for i in range(top_n_e, len(scored)):
+                        names = fact_entity_map.get(scored[i]["fact_id"], set())
+                        if names and dominant_ent not in names:
+                            fts = float(scored[i].get("fts_rank", 0))
+                            if fts > best_fts:
+                                best_fts = fts
+                                best_idx = i
+                    if best_idx >= 0:
+                        replacement = dict(scored[best_idx])
+                        # Replace the lowest-ranked dominant-entity fact in the window
+                        for i in range(top_n_e - 1, -1, -1):
+                            names = fact_entity_map.get(scored[i]["fact_id"], set())
+                            if dominant_ent in names:
+                                scored[i] = replacement
+                                scored.pop(best_idx)
+                                break
+                        # Re-sort the top slice
+                        tail = scored[top_n_e:]
+                        top_slice = scored[:top_n_e]
+                        top_slice.sort(key=lambda x: x["score"], reverse=True)
+                        scored = top_slice + tail
         return scored[:limit]
 
     # -- Internal pipeline helpers --------------------------------------------
