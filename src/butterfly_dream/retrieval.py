@@ -323,6 +323,45 @@ class ThreeDimRetriever:
 
         # Sort by score descending
         scored.sort(key=lambda x: x["score"], reverse=True)
+
+        # --- Category diversity re-ranking ---
+        # If the top N results are dominated by a single category, swap in
+        # the best-scoring result from a different category to ensure diversity.
+        # This prevents, e.g., all "goal" facts from crowding out "event" or
+        # "activity" facts that may be more relevant to the user's intent.
+        _DIVERSITY_WINDOW = 10
+        _DIVERSITY_THRESHOLD = 0.7
+        top_n = min(_DIVERSITY_WINDOW, len(scored), limit)
+        if top_n >= 4:
+            top_slice = scored[:top_n]
+            cat_counts: dict[str, int] = {}
+            for item in top_slice:
+                cat = item.get("category", "unknown") or "unknown"
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            dominant_cat, dominant_count = max(cat_counts.items(), key=lambda x: x[1])
+            if dominant_count / top_n >= _DIVERSITY_THRESHOLD:
+                # Find the highest-scoring fact from a different category
+                # from beyond the current top slice
+                best_idx, best_score = -1, -1.0
+                for i in range(top_n, len(scored)):
+                    cat = scored[i].get("category", "unknown") or "unknown"
+                    if cat != dominant_cat and scored[i]["score"] > best_score:
+                        best_idx, best_score = i, scored[i]["score"]
+                if best_idx >= 0:
+                    # Swap in the diversity fact and deduplicate
+                    replacement = dict(scored[best_idx])  # copy
+                    # Replace the lowest-ranked dominant-category fact
+                    for i in range(top_n - 1, -1, -1):
+                        cat = scored[i].get("category", "unknown") or "unknown"
+                        if cat == dominant_cat:
+                            scored[i] = replacement
+                            scored.pop(best_idx)  # remove original (shifts left if best_idx > i)
+                            break
+                    # Re-sort the top slice
+                    top_slice = scored[:top_n]
+                    tail = scored[top_n:]
+                    top_slice.sort(key=lambda x: x["score"], reverse=True)
+                    scored = top_slice + tail
         return scored[:limit]
 
     # -- Internal pipeline helpers --------------------------------------------
