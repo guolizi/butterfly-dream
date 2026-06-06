@@ -220,6 +220,8 @@ class ThreeDimRetriever:
         _TEMPORAL_BOOST = 0.15  # boost for precise-date facts on time queries
         is_temporal_query = bool(semantic_cats and "time" in semantic_cats)
         entity_fact_ids: set[int] = set()
+        entity_fact_map: dict[int, set[int]] = {}  # fact_id → set of entity_ids
+        query_entity_ids: set[int] = set()  # entity_ids mentioned in the query
         try:
             # Get all known entity names
             entity_rows = self.store.execute_query(
@@ -233,6 +235,23 @@ class ThreeDimRetriever:
                 ]
                 if matched_entities:
                     entity_fact_ids = self.store.get_fact_ids_for_entities(matched_entities)
+                    # Get entity_ids for matched names for mismatch detection
+                    q_placeholders = ",".join("?" for _ in matched_entities)
+                    id_rows = self.store.execute_query(
+                        f"SELECT entity_id FROM entities WHERE name IN ({q_placeholders})",
+                        tuple(matched_entities),
+                    )
+                    query_entity_ids = {r["entity_id"] for r in id_rows}
+                # Build fact_id → entity_ids map for all facts linked to entities
+                fe_rows = self.store.execute_query(
+                    "SELECT fact_id, entity_id FROM fact_entities"
+                )
+                for row in fe_rows:
+                    fid = row["fact_id"]
+                    eid = row["entity_id"]
+                    if fid not in entity_fact_map:
+                        entity_fact_map[fid] = set()
+                    entity_fact_map[fid].add(eid)
         except Exception:
             pass  # entity boost is best-effort
 
@@ -281,6 +300,20 @@ class ThreeDimRetriever:
             # Boost relevance if fact is linked to an entity mentioned in the query
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
                 boost += _ENTITY_BOOST
+
+            # Penalize facts linked to entities NOT mentioned in the query.
+            # When the query clearly names an entity (e.g. "Melanie"), facts about
+            # other entities (e.g. Caroline) should fall behind rather than compete
+            # on FTS5 relevance alone.
+            _ENTITY_MISMATCH_PENALTY = -0.3
+            fid = fact.get("fact_id")
+            if (
+                fid
+                and query_entity_ids
+                and fid in entity_fact_map
+                and not entity_fact_map[fid] & query_entity_ids
+            ):
+                boost += _ENTITY_MISMATCH_PENALTY
 
             # Boost relevance for time-related queries if fact has a precise date
             if is_temporal_query:
