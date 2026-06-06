@@ -28,6 +28,7 @@ except ImportError:
     import holographic as hrr  # type: ignore[no-redef]
 
 from .retrieval import tokenize, jaccard_similarity
+from nltk.stem import WordNetLemmatizer
 
 logger = logging.getLogger(__name__)
 
@@ -435,27 +436,60 @@ class MemoryStore:
         return {"fact_id": fact_id, "content": old_content, "importance": new_importance,
                 "is_persistent": bool(new_persistent), "merged": True, "merge_type": "exact"}
 
-    def _find_duplicate(self, content: str, threshold: float = 0.7) -> Optional[dict]:
-        """Check if a near-duplicate fact already exists via FTS5 + Jaccard.
+    # ── Language-aware dedup helpers ─────────────────────────────────
+    _re_cjk = re.compile(r'[\u4e00-\u9fff]')
+    _lemmatizer = None  # lazy init
 
-        Searches FTS5 for the new content, computes Jaccard similarity against
-        top results, and returns the first existing fact with similarity >= threshold.
+    @classmethod
+    def _is_chinese_text(cls, text: str) -> bool:
+        """Detect if text is primarily Chinese (any CJK character present)."""
+        return bool(cls._re_cjk.search(text))
+
+    @classmethod
+    def _tokenize_char2g(cls, text: str) -> set[str]:
+        """Character bigrams for Chinese near-duplicate detection."""
+        clean = re.sub(r'[^a-z0-9\u4e00-\u9fff\s]', '', text.lower())
+        clean = re.sub(r'\s+', ' ', clean).strip()
+        return set(clean[i:i+2] for i in range(len(clean)-1))
+
+    @classmethod
+    def _tokenize_lemma(cls, text: str) -> set[str]:
+        """Lemmatized token set for English near-duplicate detection."""
+        if cls._lemmatizer is None:
+            cls._lemmatizer = WordNetLemmatizer()
+        t = re.sub(r'[^a-zA-Z0-9+#]+', ' ', text.lower()).split()
+        lemmas = set()
+        for w in t:
+            lemmas.add(cls._lemmatizer.lemmatize(w, 'v'))
+            lemmas.add(cls._lemmatizer.lemmatize(w, 'n'))
+        return lemmas
+
+    def _find_duplicate(self, content: str, threshold: float = 0.7) -> Optional[dict]:
+        """Check if a near-duplicate fact already exists via FTS5 + language-aware Jaccard.
+
+        Uses lemmatized Jaccard (English, threshold=0.23) or char2g Jaccard
+        (Chinese, threshold=0.03), automatically detected from content.
 
         Returns dict with fact_id/content/importance/merged or None.
         """
-        query_tokens = tokenize(content)
+        is_cjk = self._is_chinese_text(content)
+        if is_cjk:
+            query_tokens = self._tokenize_char2g(content)
+            dedup_threshold = 0.03
+        else:
+            query_tokens = self._tokenize_lemma(content)
+            dedup_threshold = 0.23
         if len(query_tokens) < 3:
             return None  # Too short for meaningful dedup
 
         # Build a broad FTS5 query (OR) from key tokens to find candidates.
         # AND is too strict — similar facts may use synonyms ("likes" vs "prefers").
         # Jaccard check below ensures precision; FTS5 just gathers candidates.
-        import re as _re
-        safe = _re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
+        safe = re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
         # Jieba-segment CJK tokens to match FTS5 indexed tokens
         segmented = []
         for w in safe.split():
-            if _re.search(r'[\u4e00-\u9fff]', w):
+            if self._re_cjk.search(w):
                 segmented.extend(jieba.cut(w))
             else:
                 segmented.append(w)
@@ -474,9 +508,12 @@ class MemoryStore:
         ).fetchall()
 
         for row in rows:
-            existing_tokens = tokenize(row["content"])
+            if is_cjk:
+                existing_tokens = self._tokenize_char2g(row["content"])
+            else:
+                existing_tokens = self._tokenize_lemma(row["content"])
             sim = jaccard_similarity(query_tokens, existing_tokens)
-            if sim >= threshold:
+            if sim >= dedup_threshold:
                 return {
                     "fact_id": row["fact_id"],
                     "content": row["content"],
