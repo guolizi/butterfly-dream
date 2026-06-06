@@ -350,9 +350,11 @@ Review each fact you extracted. Check:
 5. **数字完整性检查:** Does the original turn mention any numbers (counts, ages, years, prices, frequencies)? Every number must appear in an extracted fact. "7 years" → fact says "7 years", not "for years". "3 kids" → fact says "3 children".
 
 6. **日期/时间完整性检查 (双向):** 
-   - **原始轮次检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer, last month, recently, a few weeks ago)? EVERY relative date in the conversation must be resolved to an ABSOLUTE date in a fact.
-   - **提取事实扫描:** After writing all facts, scan EVERY fact's content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session's reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
-   Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
+   - **原始轮次检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer, last month, recently, a few weeks ago, last year)? EVERY relative date in the conversation must be resolved to an ABSOLUTE date in a fact.
+   - **提取事实扫描:** After writing all facts, scan EVERY fact’s content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`, `this week`, `last year`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session’s reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
+   Use the conversation session’s timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
+   
+   ⚠️ **绝对日期优先于情感丰富度**: Adding emotional/cognitive content (Check 10, Check 11) is valuable, but do NOT replace a specific calendar date with a relative expression. If the conversation contains an absolute date (e.g. "August 23, 2023", "2022") AND an emotion, the fact MUST include BOTH the absolute date AND the emotion. Scanning "last year" → writing "in 2022" is correct. Writing "last year" alone is a violation even if you also add emotional content.
 
 7. **所有物/关系完整性检查:** Does the turn mention possessions, pets, family members with names? Each named possession/pet/family member must appear in a fact with its name. "I have a cat named Oliver" → extract "has a cat named Oliver", not just "has a cat".
 
@@ -369,14 +371,19 @@ Review each fact you extracted. Check:
     - "The sign was just a precaution" → existing cafe visit fact → enrich with "where a precautionary sign was posted"
     Do NOT create standalone facts for these incidental details. Merge only into closely related facts (same entity + same session context). If no related fact exists, skip the detail.
 
+
+13. **绝对日期不可丢失检查:** Re-read every fact you just wrote. Does any fact contain a relative date expression (`last year`, `last week`, `this week`, `yesterday`, `recently`, `a few weeks ago`, `last month`) WITHOUT also including the resolved absolute date? If yes, check what absolute date the conversation session suggests and REWRITE the fact to include the absolute date. This is a SEPARATE scan from Check 6 — Check 6 checks the conversation, this check checks the OUTPUT facts again. **Do NOT leave any fact with a bare relative date.** Example: "applied to adoption agencies this week" → "applied to adoption agencies during the week of August 23, 2023". Example: "attended a Pride festival together last year" → "attended a Pride festival together in 2022". Use the session’s timestamp to resolve.
+
+14. **范围完整性检查:** Does the conversation mention a person doing multiple activities that belong to the SAME broader category (e.g., both painting AND pottery under "creating art", both running AND swimming under "exercise", both violin AND guitar under "playing music")? If yes, do NOT narrow the fact to just one specific activity — either use the broader category name or list the specific activities. Example: person talks about painting, pottery, and drawing → do NOT write "creates pottery" → write "creates art (painting, pottery, drawing)" or "enjoys painting and pottery". Losing the broader category keyword can cause the fact to fail later keyword searches.
+
 === PHASE 3 (of 3): QUALITY — Format correctness ===
 
-13. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
-14. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
-15. Entities populated: Every fact has non-empty entities array with at least the primary subject.
-16. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
-17. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
-18. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
+15. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
+16. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
+17. Entities populated: Every fact has non-empty entities array with at least the primary subject.
+18. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
+19. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
+20. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
 
 If ANY check in any phase fails, FIX the output before responding. Do NOT output facts that violate these rules.
 
