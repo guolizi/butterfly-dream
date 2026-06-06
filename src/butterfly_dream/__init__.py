@@ -360,14 +360,23 @@ Review each fact you extracted. Check:
 
 9. **实体归属正确性检查:** For each extracted fact, does the subject entity match who actually said/did it? If Melanie says "I made a plate", the fact subject = Melanie, NOT Caroline.
 
+10. **情感反应提取复核:** For each event/activity fact you extracted, re-read the original turn. Was there an associated emotional reaction or feeling expressed by the speaker (e.g. "I felt tiny and in awe", "it was amazing", "I was scared", "that made me happy", "I loved it")? If the speaker expressed a clear emotion about the event, there MUST be a separate fact capturing that feeling/emotion. Do NOT merge emotion into the event fact. E.g. meteor shower event AND "felt in awe of the universe" must be two facts.
+
+11. **认知/常识/领悟检查:** Does the turn contain personal realizations ("I'm starting to realize that...", "I learned that...", "it made me think..."), value judgments ("self-care is important", "family matters most"), or common-sense observations ("life is precious", "it's not always easy", "change is hard")? These cognitive/reflective statements capture the person's worldview and character — they should be extracted as "preference" or "state" facts. Do NOT skip them just because they are not concrete events.
+
+12. **背景细节归并检查:** Does the turn contain incidental background details (signs, weather, decorations, pet behaviors, minor actions involving objects) that are related to a main entity or event already extracted? If a detail enriches understanding of an existing fact without changing its core topic, MERGE it into that fact's content by appending a brief clause. E.g.:
+    - "He hid his bone in my slipper!" → existing pet fact "Melanie has a cat named Oliver" → enrich to "Melanie has a cat named Oliver who once hid a bone in her slipper"
+    - "The sign was just a precaution" → existing cafe visit fact → enrich with "where a precautionary sign was posted"
+    Do NOT create standalone facts for these incidental details. Merge only into closely related facts (same entity + same session context). If no related fact exists, skip the detail.
+
 === PHASE 3 (of 3): QUALITY — Format correctness ===
 
-10. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
-11. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
-12. Entities populated: Every fact has non-empty entities array with at least the primary subject.
-13. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
-14. One topic per fact: Each fact is one coherent sentence about ONE subtopic.
-15. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
+13. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
+14. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
+15. Entities populated: Every fact has non-empty entities array with at least the primary subject.
+16. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
+17. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
+18. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
 
 If ANY check in any phase fails, FIX the output before responding. Do NOT output facts that violate these rules.
 
