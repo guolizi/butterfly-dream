@@ -754,12 +754,20 @@ class ThreeDimRetriever:
             base = t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
             syns = get_synonyms(t)
             if syns:
-                syn_terms = [
-                    s + '*' if len(s) >= 3 or re.search(r'[\u4e00-\u9fff]', s) else s
-                    for s in syns
-                ]
-                # Deduplicate: avoid repeating the base term as a synonym
-                syn_terms = [st for st in syn_terms if st != base]
+                # Filter out multi-word and hyphenated synonyms — they break FTS5
+                # syntax (spaces parsed as AND, hyphens as column subtraction).
+                safe_syns = [s for s in syns if ' ' not in s and '-' not in s]
+                if not safe_syns:
+                    syns = []
+                    syn_terms = []
+                else:
+                    syns = safe_syns
+                    syn_terms = [
+                        s + '*' if len(s) >= 3 or re.search(r'[\u4e00-\u9fff]', s) else s
+                        for s in syns
+                    ]
+                    # Deduplicate: avoid repeating the base term as a synonym
+                    syn_terms = [st for st in syn_terms if st != base]
                 if syn_terms:
                     terms.append(f'({base} OR ' + ' OR '.join(syn_terms) + ')')
                 else:

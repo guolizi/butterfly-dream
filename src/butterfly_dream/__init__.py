@@ -349,7 +349,10 @@ Review each fact you extracted. Check:
 
 5. **数字完整性检查:** Does the original turn mention any numbers (counts, ages, years, prices, frequencies)? Every number must appear in an extracted fact. "7 years" → fact says "7 years", not "for years". "3 kids" → fact says "3 children".
 
-6. **日期/时间完整性检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer)? EVERY relative date must be resolved to an ABSOLUTE date in a fact. Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
+6. **日期/时间完整性检查 (双向):** 
+   - **原始轮次检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer, last month, recently, a few weeks ago)? EVERY relative date in the conversation must be resolved to an ABSOLUTE date in a fact.
+   - **提取事实扫描:** After writing all facts, scan EVERY fact's content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session's reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
+   Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023".
 
 7. **所有物/关系完整性检查:** Does the turn mention possessions, pets, family members with names? Each named possession/pet/family member must appear in a fact with its name. "I have a cat named Oliver" → extract "has a cat named Oliver", not just "has a cat".
 
