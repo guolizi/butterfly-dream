@@ -438,26 +438,40 @@ class ThreeDimRetriever:
             if ent_counts:
                 dominant_ent, dominant_count = max(ent_counts.items(), key=lambda x: x[1])
                 if dominant_count / top_n_e >= _ENTITY_THRESHOLD:
-                    # Find the best (highest fts_rank) fact from beyond the window
-                    # that belongs to a DIFFERENT entity (no overlap with dominant_ent)
-                    best_idx = -1
-                    best_fts = -1.0
+                    # Collect all minority-entity facts from beyond the window,
+                    # sorted by full score (descending). Full score beats fts_rank
+                    # because fts_rank favors text frequency (e.g. "dancing" beats
+                    # "fashion") over query relevance.
+                    minority_facts = []
                     for i in range(top_n_e, len(scored)):
                         names = fact_entity_map.get(scored[i]["fact_id"], set())
                         if names and dominant_ent not in names:
-                            fts = float(scored[i].get("fts_rank", 0))
-                            if fts > best_fts:
-                                best_fts = fts
-                                best_idx = i
-                    if best_idx >= 0:
-                        replacement = dict(scored[best_idx])
-                        # Replace the lowest-ranked dominant-entity fact in the window
+                            minority_facts.append((i, dict(scored[i])))
+                    minority_facts.sort(key=lambda x: x[1]["score"], reverse=True)
+
+                    if minority_facts:
+                        # Swap in up to 2 minority facts (graceful: fewer if not enough)
+                        n_swap = min(2, len(minority_facts))
+                        swaps = minority_facts[:n_swap]
+
+                        # Find the lowest-ranked dominant-entity facts to replace
+                        replace_slots = []
                         for i in range(top_n_e - 1, -1, -1):
                             names = fact_entity_map.get(scored[i]["fact_id"], set())
                             if dominant_ent in names:
-                                scored[i] = replacement
-                                scored.pop(best_idx)
-                                break
+                                replace_slots.append(i)
+                                if len(replace_slots) >= n_swap:
+                                    break
+
+                        # Remove minority facts from beyond window (highest index first
+                        # to avoid shifting earlier indices)
+                        for idx, _ in sorted(swaps, key=lambda x: x[0], reverse=True):
+                            scored.pop(idx)
+
+                        # Place replacements at dominant slots
+                        for slot_idx, (_, m_fact) in zip(replace_slots, swaps):
+                            scored[slot_idx] = m_fact
+
                         # Re-sort the top slice
                         tail = scored[top_n_e:]
                         top_slice = scored[:top_n_e]
