@@ -371,7 +371,7 @@ class MemoryStore:
         _VALID_CATEGORIES = {
             "place", "time", "person", "event", "activity",
             "identity", "preference", "goal",
-            "project", "tool", "possession", "state", "general",
+            "project", "tool", "possession", "state", "opinion", "general",
         }
         if not isinstance(category, str) or category not in _VALID_CATEGORIES:
             category = "general"

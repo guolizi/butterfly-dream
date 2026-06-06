@@ -42,16 +42,17 @@ SCENARIO_WEIGHTS = {
 SEMANTIC_CAT_BOOST_MAP: dict[str, tuple[str, ...]] = {
     "time":        ("event", "activity"),
     "place":       ("place", "event", "activity"),
-    "person":      ("person", "identity"),
     "event":       ("event", "activity"),
     "activity":    ("activity", "event"),
-    "identity":    ("identity", "person"),
-    "preference":  ("preference", "goal"),
+    "identity":    ("identity", "person", "opinion"),
+    "preference":  ("preference", "goal", "opinion"),
     "goal":        ("goal", "preference"),
     "project":     ("project", "tool"),
     "tool":        ("tool", "project"),
     "possession":  ("possession",),
-    "state":       ("state", "preference"),
+    "state":       ("state", "preference", "opinion"),
+    "person":      ("person", "identity", "opinion"),
+    "opinion":     ("opinion", "preference", "state"),
 }
 
 
@@ -643,6 +644,8 @@ class ThreeDimRetriever:
               "any cars", "any property"], "possession"),
             (["how are you", "how do you feel", "what is your status",
               "what is your state", "how is it going"], "state"),
+            (["what do you think", "how do you feel about", "opinion",
+              "thoughts on", "say about"], "opinion"),
         ]
         # Chinese mappings
         ZH_MAP = [
@@ -665,6 +668,7 @@ class ThreeDimRetriever:
             (["有没有", "拥有", "有什么", "养了什么", "名下", "养了", "有只", "有只猫",
               "有只狗", "有辆车", "有套房"], "possession"),
             (["最近怎么样", "状态如何", "什么状态", "什么情况", "还好吗", "怎么样"], "state"),
+            (["觉得", "认为", "评价", "怎么看", "看法", "怎么说", "什么看法", "怎么觉得"], "opinion"),
         ]
 
         for keywords, cat in EN_MAP + ZH_MAP:
@@ -883,6 +887,10 @@ class ThreeDimRetriever:
             'very', 'also', 'some', 'any', 'all',
             'no', 'only', 'own', 'same', 'other', 'such',
             'further', 'once', 'again', 'further', 'even', 'still',
+            # English: question words — these are very common in QA queries but
+            # their prefix expansion (what*, who*, where*) matches almost everything
+            # starting with those letters, drowning out meaningful terms.
+            'what', 'who', 'where', 'when', 'why', 'how', 'which', 'whom', 'whose',
             # Chinese
             '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一',
             '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着',
@@ -906,7 +914,11 @@ class ThreeDimRetriever:
         terms = []
         for t in tokens_clean:
             base = t + '*' if len(t) >= 3 or re.search(r'[\u4e00-\u9fff]', t) else t
-            syns = get_synonyms(t)
+            # Short tokens (len < 3) don't benefit from synonym expansion.
+            # Single chars like "s" (from possessives: Gina's → s) get WordNet
+            # synonyms like second*, sec*, sulfur*, south*, ... that add massive
+            # noise to FTS5 queries without improving retrieval quality.
+            syns = get_synonyms(t) if len(t) >= 3 else []
             if syns:
                 # Filter out multi-word, hyphenated, or special-character synonyms
                 # — they break FTS5 syntax (spaces→AND, hyphens→column subtraction,

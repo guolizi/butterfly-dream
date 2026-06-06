@@ -303,6 +303,16 @@ Return a JSON array of objects, each with:
   - tool: tool/stack preferences ("uses vim", "prefers pytest")
   - possession: ownership with personal significance ("has a blue car", "owns a house", "has two cats"). Must be personal/family ownership with clear attributes or value. Exclude abstract concepts or trivial items.
   - state: ongoing conditions with contextual relevance ("computer is broken", "is sick", "on vacation"). Must be a continuing state (no inherent endpoint), not a one-time event. Exclude trivial temporary states ("busy today").
+  - opinion: evaluations, compliments, criticisms, and interpersonal judgments — what one person says about another's work/character/abilities (e.g. "Jon called Gina's store location perfect", "Caroline said Melanie's pottery was impressive"). These capture the speaker's assessment of someone/something else. **Do NOT use for self-descriptions** (those are preference/state). Extract only specific, substantive evaluations — skip generic praise ("nice!", "great").
+
+**Importance scoring for opinion facts:** Use the importance of the TOPIC as the primary anchor, then adjust:
+  - If the evaluation is about a core topic (career, identity, family, major project) → imp=5~7
+  - If the evaluation is about routine/hobby/mild interest → imp=4~5
+  - If the evaluation is about a minor/trivial topic → imp=3
+  - **Generic encouragement** ("great!", "awesome!", "you can do it!") with no substantive content → imp=2~3 or skip
+  - **Recommendations** ("you should read X", "try Y") → imp=5~7 (these are actionable info)
+  - **Relationship-defining** ("I'm always here for you", "you have my support") → imp=5~6 (reveals interpersonal dynamic)
+  Examples: evaluating "opening a store" (goal, imp=7) → opinion imp=6; "nice photo" (trivial) → imp=3 or skip.
   - general: none of the above (use sparingly)
 
 **Orthogonality rules for activity vs preference:**
@@ -401,7 +411,7 @@ Review each fact you extracted. Check:
 
 10. **情感反应提取复核:** For each event/activity fact you extracted, re-read the original turn. Was there an associated emotional reaction or feeling expressed by the speaker (e.g. "I felt tiny and in awe", "it was amazing", "I was scared", "that made me happy", "I loved it")? If the speaker expressed a clear emotion about the event, there MUST be a separate fact capturing that feeling/emotion. Do NOT merge emotion into the event fact. E.g. meteor shower event AND "felt in awe of the universe" must be two facts.
 
-11. **认知/常识/领悟检查:** Does the turn contain personal realizations ("I'm starting to realize that...", "I learned that...", "it made me think..."), value judgments ("self-care is important", "family matters most"), or common-sense observations ("life is precious", "it's not always easy", "change is hard")? These cognitive/reflective statements capture the person's worldview and character — they should be extracted as "preference" or "state" facts. Do NOT skip them just because they are not concrete events.
+11. **认知/常识/领悟检查:** Does the turn contain personal realizations ("I'm starting to realize that...", "I learned that...", "it made me think..."), value judgments ("self-care is important", "family matters most"), or common-sense observations ("life is precious", "it's not always easy", "change is hard")? These cognitive/reflective statements capture the person's worldview and character — they should be extracted as "preference", "state", or "opinion" facts. Do NOT skip them just because they are not concrete events.
 
 12. **背景细节归并检查:** Does the turn contain incidental background details (signs, weather, decorations, pet behaviors, minor actions involving objects) that are related to a main entity or event already extracted? If a detail enriches understanding of an existing fact without changing its core topic, MERGE it into that fact's content by appending a brief clause. E.g.:
     - "He hid his bone in my slipper!" → existing pet fact "Melanie has a cat named Oliver" → enrich to "Melanie has a cat named Oliver who once hid a bone in her slipper"
@@ -413,14 +423,18 @@ Review each fact you extracted. Check:
 
 14. **范围完整性检查:** Does the conversation mention a person doing multiple activities that belong to the SAME broader category (e.g., both painting AND pottery under "creating art", both running AND swimming under "exercise", both violin AND guitar under "playing music")? If yes, do NOT narrow the fact to just one specific activity — either use the broader category name or list the specific activities. Example: person talks about painting, pottery, and drawing → do NOT write "creates pottery" → write "creates art (painting, pottery, drawing)" or "enjoys painting and pottery". Losing the broader category keyword can cause the fact to fail later keyword searches.
 
+15. **人际评价检查:** Does any turn contain a specific evaluation, compliment, or judgment from ONE character about ANOTHER's work/character/abilities/achievements? (e.g. "perfect spot for your store", "looks great", "you'll do great with your dance studio", "hard work's paying off", "creating a special experience is the key", "I'm always here to support you"). These capture the interpersonal dynamic — how characters view and respond to each other. Each distinct evaluation MUST be extracted as a separate "opinion" fact. Do NOT merge multiple evaluations into a single "general" relationship summary (e.g. "they support each other"). Extract each substantive evaluation individually: e.g. "Jon called Gina's store location perfect" (opinion, imp=6), "Gina told Jon he will do great with his dance studio" (opinion, imp=5). Use the importance scoring guide above to set per-fact importance.
+    
+    ⚠️ **Do NOT merge evaluations into event/activity facts.** When someone says "You found the perfect spot!", this contains TWO facts: (a) the event "Gina found a store location", (b) the evaluation "Jon said the location is perfect". The event belongs in "event" or "goal", the evaluation belongs in "opinion" — extracted as separate facts. Don't let adjectives like "perfect", "great", "amazing" merge into the event description.
+
 === PHASE 3 (of 3): QUALITY — Format correctness ===
 
-15. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
-16. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
-17. Entities populated: Every fact has non-empty entities array with at least the primary subject.
-18. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
-19. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
-20. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
+16. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
+17. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
+18. Entities populated: Every fact has non-empty entities array with at least the primary subject.
+19. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
+20. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
+21. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
 
 If ANY check in any phase fails, FIX the output before responding. Do NOT output facts that violate these rules.
 
@@ -472,7 +486,7 @@ FACT_STORE_SCHEMA = {
                 "description": "Entity names for 'reason'.",
             },
             "fact_id": {"type": "integer", "description": "Fact ID for 'update'/'remove'."},
-            "category": {"type": "string", "enum": ["place", "time", "person", "event", "activity", "identity", "preference", "goal", "project", "tool", "possession", "state", "general"]},
+            "category": {"type": "string", "enum": ["place", "time", "person", "event", "activity", "identity", "preference", "goal", "project", "tool", "possession", "state", "opinion", "general"]},
             "tags": {"type": "string", "description": "Comma-separated tags."},
             "importance": {
                 "type": "integer", "description": "Importance 1-10 (used for 'add').",
@@ -814,7 +828,7 @@ def _call_extraction_llm(
         _VALID_CATEGORIES = {
             "place", "time", "person", "event", "activity",
             "identity", "preference", "goal",
-            "project", "tool", "possession", "state", "general",
+            "project", "tool", "possession", "state", "opinion", "general",
         }
         if category not in _VALID_CATEGORIES:
             category = "general"
