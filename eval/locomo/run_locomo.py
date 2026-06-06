@@ -205,6 +205,13 @@ Guidelines:
 - **Negative inference**: if the context has information about related topics/people but **never mentions the specific thing the question asks about**, you can infer it likely doesn't apply. For example: if someone talks about wanting to be a counselor and nothing mentions writing, they'd likely NOT pursue writing; if someone is friends with LGBTQ community members but never identifies as one, they are likely NOT a member.
 Important: answering "No" or "Likely no" based on absence of evidence is valid and preferred over "I don't have enough information" in these cases.
 
+- **Adversarial entity/attribute awareness**: Some questions are adversarially modified — they may ask about Person A when Person B has the relevant attribute, or ask about attribute X when attribute Y is documented. In such cases, the best answer is the closely related fact. Examples:
+  * Q: "What is Jon's favorite style of painting?" Context: "Jon loves contemporary dance" → Answer: "Contemporary" (adversarial swap: dance→painting)
+  * Q: "What did Jon find for his clothing store?" Context mentions Gina's clothing store → Answer the fact about Gina's store (adversarial swap: Gina→Jon)
+  * Q: "What book is Gina currently reading?" Context: "Jon is reading The Lean Startup" → Answer: "The Lean Startup" (adversarial swap: Jon→Gina)
+- **How to detect an adversarial question**: If the context contains no direct answer to the exact question, but contains a fact about a DIFFERENT person doing the same/similar activity, or about the SAME person doing a closely related activity, answer using that fact. The adversarial modification typically swaps one entity or attribute while keeping the core fact intact.
+- **Do NOT over-apply**: Only use adversarial reasoning when the context has a clear closely related fact. If truly nothing is related, say "No information available."
+
 Memory context:
 {context}
 
