@@ -188,10 +188,22 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
         return ("I don't have enough information to answer this question.", 0, [], search_time)
 
     # Use top 10 for LLM context (avoid noise from lower-ranked facts)
-    context_parts = [r.get("content", "") for r in results[:10] if r.get("content")]
+    context_parts = []
+    for r in results[:10]:
+        content = r.get("content", "")
+        if not content:
+            continue
+        date = r.get("content_date", "")
+        if date:
+            context_parts.append(f"[{date}] {content}")
+        else:
+            context_parts.append(content)
     context = "\n".join(context_parts)
-    # Log all top 20 retrieved facts
-    retrieved_facts = [{"rank": i+1, "score": round(r["score"], 4), "content": r["content"]} for i, r in enumerate(results)]
+    # Log all top 20 retrieved facts (with date for debugging)
+    retrieved_facts = [{
+        "rank": i+1, "score": round(r["score"], 4),
+        "content": r["content"], "content_date": r.get("content_date", "")
+    } for i, r in enumerate(results)]
     _log(f"Retrieved {len(results)} facts in {search_time*1000:.0f}ms for Q: {question[:80]}...")
     for rf in retrieved_facts[:5]:
         _log(f"  [{rf['rank']}] score={rf['score']:.4f} | {rf['content'][:90]}")
