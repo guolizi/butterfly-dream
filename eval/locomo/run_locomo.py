@@ -187,9 +187,9 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
     if not results:
         return ("I don't have enough information to answer this question.", 0, [], search_time)
 
-    # Use top 10 for LLM context (avoid noise from lower-ranked facts)
+    # Use top 15 for LLM context (avoid excluding valid facts at ranks 11-15)
     context_parts = []
-    for r in results[:10]:
+    for r in results[:15]:
         content = r.get("content", "")
         if not content:
             continue
