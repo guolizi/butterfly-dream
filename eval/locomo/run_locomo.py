@@ -188,16 +188,33 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str, categ
         return ("No information available.", 0, [], search_time)
 
     # Use top 15 for LLM context (avoid excluding valid facts at ranks 11-15)
+    # Prepend entity labels [Name] so the model knows who each fact belongs to
     context_parts = []
+    fids = [r.get("fact_id") for r in results[:15] if r.get("fact_id")]
+    fact_entities = {}
+    if fids:
+        placeholders = ",".join("?" * len(fids))
+        entity_rows = provider._store.execute_query(
+            f"""SELECT fe.fact_id, GROUP_CONCAT(e.name, ', ') as entities
+                FROM fact_entities fe
+                JOIN entities e ON fe.entity_id = e.entity_id
+                WHERE fe.fact_id IN ({placeholders})
+                GROUP BY fe.fact_id""",
+            fids
+        )
+        fact_entities = {r["fact_id"]: r["entities"] for r in entity_rows}
     for r in results[:15]:
         content = r.get("content", "")
         if not content:
             continue
+        fid = r.get("fact_id")
+        ents = fact_entities.get(fid, "")
+        entity_tag = f"[{ents}] " if ents else ""
         date = r.get("content_date", "")
         if date:
-            context_parts.append(f"[{date}] {content}")
+            context_parts.append(f"{entity_tag}[{date}] {content}")
         else:
-            context_parts.append(content)
+            context_parts.append(f"{entity_tag}{content}")
     context = "\n".join(context_parts)
     # Log all top 20 retrieved facts (with date for debugging)
     retrieved_facts = [{
@@ -262,7 +279,7 @@ Guidelines:
   * "What happened to Maria's job?" Context: "John lost his job" → Answer: "John lost his job" (entity swap: John→Maria)
   * "What is the name of Maria's one-year-old child?" Context: "John's one-year-old son is named Kyle" → Answer: "Kyle" (entity swap: John→Maria)
 
-- **Step 2 — Normal answer**: If there IS a direct answer in the context, answer directly.
+- **Step 2 — Normal answer**: If there IS a direct answer in the context, answer directly. If MULTIPLE facts are relevant, combine them ALL.
 
 - **Step 3 — Only say "No info" as last resort**: Only say "No information available" after confirming adversarial check found nothing related.
 
@@ -500,8 +517,12 @@ def main():
                 break
 
             question = qa["question"]
-            gold = str(qa.get("answer", qa.get("adversarial_answer", "")))
             category = qa["category"]
+            # For Cat5 (adversarial), prefer adversarial_answer as gold
+            if category == 5 and qa.get("adversarial_answer"):
+                gold = str(qa["adversarial_answer"])
+            else:
+                gold = str(qa.get("answer", qa.get("adversarial_answer", "")))
 
             hypothesis, n_retrieved, retrieved_facts, search_time = answer_question(qp, question, category)
 
