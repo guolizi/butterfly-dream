@@ -176,27 +176,32 @@ await agent.tools.fact_feedback(action="helpful", fact_id=1)
 | 完整评测体系 (检索+提取) | ❌ | ✅ |
 | 代码行数 (估算) | ~400 | ~1800+ |
 
-## 🧪 评测集
+## 🧪 评测
 
-评测包含 **检索** 和 **提取** 两个维度，覆盖中英文、多长度多领域场景。详见 [`eval/README.md`](eval/README.md)。
-评测包含 **检索** 和 **提取** 两个维度，覆盖中英文、多长度多领域场景。详见 [`eval/README.md`](eval/README.md)。
+评测体系包含 **业界标准基准评测** 和 **自有场景单元测试** 两部分。
 
-| 类型 | 场景数 | 查询数 | 说明 |
-|:----:|:------:|:------:|:-----|
-| 检索 | 77 | 151 | 黑盒端到端 |
-| 提取 | 20 | 95 | LLM 提取+检索 |
+### 业界标准基准 (eval/) <span id="benchmarks"></span>
 
-### 基线结果
+| 基准 | 来源 | 题数 | 类别 |
+|:----|:----:|:----:|:----|
+| **LoCoMo** | ACL 2024 | 1986 | 5 类：单跳 / 多跳 / 跨会话 / 时序推理 / 对抗 |
+| **LongMemEval** | ICLR 2025 | 500 | 时序推理 / 多会话 / 知识更新 |
+| **PersonaMem** | COLM 2025 | 589 | 偏好演化 / 事实回忆 / 泛化推理 |
 
-- **检索 R@1**：**0.670**（77 场景，151 查询，黑盒端到端）
-- **提取通过率**：**~62%**（20 场景，95 查询，LLM 非确定性 ±5-15%）
-- **与原版 Holographic 对比**：FTS5 AND 语义 + 停用词全灭 → Butterfly Dream 的 **OR 展开 + 前缀匹配 + jieba 分词** 解决。完整对比见 `eval/README.md` 和 `eval/bd_eval/en_compare.py`
+详见 [`eval/README.md`](eval/README.md)。
+
+### 自有场景单元测试 (tests/)
+
+提取+检索管道的黑盒测试，覆盖中英文单/多会话场景。详见 `tests/bd_scenarios.py`。
 
 ```bash
-# 快速运行
-python3 eval/bd_eval/run_eval.py              # 检索评测
-python3 eval/bd_eval/test_extraction.py        # 提取评测
-python3 eval/bd_eval/en_compare.py             # 与原版 Holographic 对比
+# 运行自有场景测试
+python3 -m pytest tests/test_bd_scenarios.py -v
+
+# 运行业界基准
+python3 eval/locomo/run_locomo.py              # LoCoMo
+python3 eval/longmemeval/run_longmemeval.py    # LongMemEval
+python3 eval/personamem/run_personamem.py      # PersonaMem
 ```
 
 ## 📄 许可证
