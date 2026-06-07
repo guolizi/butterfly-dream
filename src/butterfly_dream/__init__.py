@@ -163,293 +163,24 @@ def _extract_date_from_content(content: str) -> Optional[str]:
 # LLM extraction prompt (enhanced with importance scoring)
 # ---------------------------------------------------------------------------
 
-_EXTRACTION_SYSTEM_PROMPT = """You are a memory extraction assistant. Analyze conversation turns and extract facts worth remembering — with importance scores and persistence judgment.
+_EXTRACTION_SYSTEM_PROMPT = """You are a meticulous fact extractor. Extract EVERY concrete detail from conversations as separate facts.
 
-Your goal is to capture ANY concrete, specific information that could be useful for answering questions about these people and their lives later. Think like a meticulous note-taker who wants to remember everything important.
+GOLDEN RULES (in order):
+1. Better to have 20 facts too many than miss 1 important one
+2. Extract EVERY specific detail as its own standalone fact — do NOT merge different details
+3. Entity names, numbers, dates must be preserved exactly as mentioned
+4. "partner is pregnant" and "values family highly" are TWO separate facts at different specificity levels
+5. Use the ACTUAL names from the conversation content — never "User", "Assistant", "the user", "the assistant", "Participant 1", or "Participant 2". If the speakers introduce themselves as "Evan" and "Sam", use "Evan" and "Sam" in every fact.
 
-Extract facts about:
-1. **Events & milestones** — job changes, moves, trips, purchases, achievements, incidents (with dates/times when mentioned)
-2. **People & relationships** — names, roles, connections between people, family, friends, colleagues
-3. **Preferences & habits** — likes, dislikes, routines, hobbies, tastes, lifestyle choices
-4. **Plans & intentions** — goals, upcoming events, things they want to do, decisions made, tentative plans discussed. Include future plans even if uncertain ("thinking about", "maybe", "considering"). These are valuable for answering predictive questions.
-5. **Work & career** — jobs, projects, businesses, skills, education, professional activities
-6. **Health & wellbeing** — physical health, mental state, exercise, medical events
-7. **Facts & opinions** — beliefs, views, experiences, knowledge shared
-8. **Technical details** — tools, configurations, setups, architecture (when relevant)
-
-Rules:
-- Extract CONCRETE, SPECIFIC facts. "Caroline went to the LGBTQ support group on March 5, 2023" is good. "Caroline is active in the community" is too vague.
-- Include dates, names, locations, and specific details whenever mentioned.
-- If nothing worth extracting, return an empty array.
-- Deduplicate: don't extract the same fact multiple times.
-- **CONSOLIDATE related details about the SAME subtopic** into one richer, natural-sounding fact. If the conversation mentions multiple aspects of the same narrow topic (e.g. a person's camping preferences), merge them into a coherent sentence rather than many fragmented ones. For example, instead of 5 separate facts ("Melanie loves camping", "Melanie's family went camping", "Melanie's family is thinking about camping next month", "Melanie's family has annual camping trips", "Melanie enjoys campfire stories"), consolidate into 2-3 facts:
-
-  ✓ GOOD (same topic, natural sentence):
-  ```
-  {"content": "Melanie's family has annual summer camping trips and loves camping at the beach together", "category": "activity"}
-  {"content": "Melanie's family is planning a camping trip next month (around June 2023)", "category": "goal"}
-  {"content": "Melanie's family enjoys campfire stories, roasting marshmallows, and nature during camping trips", "category": "preference"}
-  ```
-
-- **NEVER use `；` `;` `|` or any separator to join facts about different subtopics into one content string.** Each fact must be a single, standalone, grammatically complete sentence about ONE coherent topic.
-
-  ✗ BAD (different topics joined by separator):
-  ```
-  {"content": "Caroline moved from her home country 4 years ago；Caroline started transitioning three years ago"}
-  ```
-  Instead, extract as two separate facts:
-  ✓ GOOD:
-  ```
-  {"content": "Caroline moved from her home country 4 years ago, around June 2019", ...}
-  {"content": "Caroline started transitioning three years ago, around June 2020", ...}
-  ```
-
-  ✗ BAD (merging location origin with timing into one fact):
-  ```
-  {"content": "Caroline started transitioning three years ago around June 2020；Caroline moved from her home country about 4 years ago", ...}
-  ```
-  ✓ GOOD (separate facts, each complete):
-  ```
-  {"content": "Caroline is from Sweden", "category": "place", ...}
-  {"content": "Caroline moved from Sweden about 4 years ago, around June 2019", "category": "event", ...}
-  {"content": "Caroline started transitioning three years ago, around June 2020", "category": "event", ...}
-  ```
-
-  **EXTRACT critical identity/place facts separately,** even if they overlap with event facts. "Caroline is from Sweden" (identity/place) AND "Caroline moved from her home country 4 years ago" (event) are BOTH valuable and should both be extracted.
-
-**IMPORTANT — same-subtopic merging (GOOD) vs same-person-different-topic splitting (ALSO GOOD):**
-
-  ✗ BAD (same subtopic, split into fragments that each miss keywords):
-  ```
-  {"content": "Caroline is interested in counseling or working in mental health to support people with similar issues", ...}
-  {"content": "Caroline wants to work with trans people, helping them accept themselves and supporting their mental health", ...}
-  ```
-  The query "career path" matches the first fact but NOT the second, so the "trans people" detail is lost. Instead, merge:
-
-  ✓ GOOD (merge same-subtopic details into one rich, queryable fact):
-  ```
-  {"content": "Caroline wants to pursue a career in counseling/mental health, specifically working with trans people to help them accept themselves and support their mental health", "category": "goal", "importance": 8}
-  ```
-  One fact that covers the full picture — matches "career" AND "counseling" AND "mental health" AND "trans people".
-
-  Decision rule:
-  - Same narrow subtopic (e.g. "counseling career direction", "camping preferences") → MERGE details into one rich fact
-  - Different subtopics (e.g. "transitioning" vs "moving from Sweden") → KEEP separate, never use `；`
-  - When unsure, consider: "Would a question about this topic need BOTH details to answer correctly?" If yes, merge.
-
-- Keep facts that have specific timing (dates, months) separate from general preference/activity facts, even about the same topic.
-- Don't merge facts about different people or different activities.
-- Output in the SAME language as the conversation.
-- **TEMPORAL: Always include dates when mentioned.** Preserve the original date format. "Got married on June 15, 2023" not just "Got married".
-- **COREFERENCE RESOLUTION — resolve "we/us/our" carefully:** When a speaker says "we" or "us", determine who is actually included. The default assumption is NOT the conversation partner. Look at the surrounding context:
-  - If the previous sentence mentions specific other people (e.g. "My friends, family and mentors..."), then "we" likely refers to the speaker AND those people — NOT the conversation partner.
-  - "Here's a pic from when we met up" does NOT mean the speaker met up with the conversation partner, unless the conversation explicitly describes them being together in person.
-  - When in doubt, check: is this an in-person meeting they both attended, or is the speaker describing an event the other person wasn't present for?
-  - Extract the fact with the CORRECT participants. E.g. "Caroline met up with her friends, family and mentors" not "Caroline and Melanie met up".
-- **CAUSALITY & MOTIVATION — extract the "why" behind decisions and actions:** When a person explains WHY they do something, extract that causal link explicitly:
-  - Format: "Because [cause], [person] [did/wants/plans action]". E.g. "Caroline saw how counseling improved her own life, which motivated her to pursue a career in counseling" NOT just "Caroline wants to pursue counseling".
-  - Include the full reasoning chain: struggle → received support → realized importance → decided to help others.
-- **COUNTERFACTUAL — extract "what if not" implications when the conversation implies them:** If a person says their support/experience/help was essential to reaching a decision, infer the counterfactual:
-  - Format: "Without [cause], [person] would [likely not / not have] [outcome]". E.g. "Without the support she received, Caroline would likely not have pursued counseling" or "Without the support group, Caroline would not have felt accepted enough to embrace her identity".
-  - Only extract counterfactuals that are STRONGLY implied by the conversation (e.g. "I couldn't have done it without them", "Their support made all the difference", "It made me realize how important it is").
-  - Counterfactuals are HIGH importance (7-9) because they enable answering "what if" questions.
-|- **INTERACTION FACTS — when the speaker says they met/helped/connected with someone, extract a SEPARATE interaction fact about the meeting itself** (e.g. "Maria met Jean while volunteering at a homeless shelter"), not just the other person's story. The interaction fact captures: who met/helped whom, where/when, and the context. The person's backstory should be a separate fact. This ensures queries like "who did X meet while [activity]?" can be answered.
-  - Interaction facts get importance 5-6 (significant social interaction).
-  - Examples:
-    - "I met this amazing woman, Jean, who had been through a lot" → [interaction] "Maria met Jean while volunteering at a homeless shelter" + [story] "Jean experienced a divorce, lost her job, and became homeless"
-    - "One of the residents, Cindy, wrote me a note" → [interaction] "Maria received a gratitude note from Cindy, a resident at the shelter" + [story] "Cindy wrote a heartfelt note expressing gratitude for the support they received"
-
-|**Importance scoring (1-10):**
-||- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
-||- 7-8: Important relationships (family, **pets** — knowing someone's pets/animals is as important as knowing their family members), significant choices, **key milestones with specific dates**, concrete future plans with **exact dates** (e.g. "conference on July 10" not "conference in July"), identity-level facts with location (e.g. "is from Sweden"), named events
-|- **6-7: Past events with specific dates (one-time occurrences, not recurring), personal milestones with timing (birthday/anniversary/graduation), named activities with timing (a specific conference, a specific trip to a named place).**
-       **NOTE: exact dates (day-level) → 7; month-only timing → 6.** E.g. "attended conference on July 10, 2023" → 7, but "attended conference in July 2023" → 6.
-|- **5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas. 
-       NOTE: ALL personal hobbies, regular activities, and routine pastimes get at least 5, even if only mentioned once or with a specific date.** 
-       (E.g. "went swimming with kids" → 5-6, NOT 3)
-|- 3-4: Minor details, temporary states, vague preferences, easily forgotten info
-|- 1-2: Trivial details, likely to change, not worth remembering
-
-**IMPORTANT — event vs goal importance:**
-- A concrete plan with specific timing (e.g. "thinking about going camping next month (June 2023)") → 6-7, NOT 4. Even though it's tentative, the specific timing makes it retrievable.
-- A past event with specific date → 5-7 depending on significance
-- A recurring activity without specific timing → 5-6
-- A vague preference without specifics → 4-5
-
-**Persistence judgment (is_persistent):**
-Set is_persistent=true for facts likely useful across many future sessions:
-- Identity, name, role, affiliations, relationships
-- Long-term preferences, habits, lifestyle
-- Key life events and milestones
-- Important decisions and their reasoning
-- Technical configurations and conventions
-
-Set is_persistent=false for facts that are:
-- Session-specific context ("we're currently doing X")
-- Temporary states ("the weather today")
-- One-off events unlikely to be referenced again
-- Easily rediscoverable information
-
-Return a JSON array of objects, each with:
-- "content": the fact statement (plain text, max 400 chars, INCLUDE dates/names/details)
-- "category": the semantic type of this fact. One of:
-  - place: locations, origins, destinations, hometowns, countries of origin.
-    **Always extract "is from X", "grew up in X", "moved to/from X" as separate place/identity facts,
-    even if the same conversation also describes the timing of the move.** ("is from Sweden", "went to beach")
-  - time: dates, durations ("on July 2", "for 4 years")
-  - person: relationships, social connections ("has children", "friend Melanie")
-  - event: one-time occurrences with clear boundaries, already happened ("gave a school talk", "passed interviews", "went camping last weekend"). Past tense = event.
-  - activity: recurring behaviors, schedules, routines ("goes camping every summer", "exercises daily"). Preserve frequency words (often, every week, daily).
-    **IMPORTANT — routine activities with specific dates:** If someone mentions doing a hobby/regular activity on a specific date (e.g. "went swimming on May 8"), classify this as **activity** (not event) because the core information is about their routine/hobby. Include the date in the content but keep category=activity. Exception: one-time special events that are clearly not routine (e.g. "gave a speech at school" = event).
-  - preference: attitudes, likes/dislikes, emotional expressions ("loves nature", "hates running", "finds camping peaceful"). When emotional words (喜欢/love/讨厌/hate/最爱/prefer) appear, classify as preference even if frequency is mentioned.
-  - identity: roles, traits, long-term characteristics ("is transgender", "is a designer", "is vegetarian")
-  - goal: plans, aspirations, intentions, future proposals, tentative ideas ("wants to pursue counseling", "plans to adopt", "is thinking about going camping next month"). Future tense / planning verbs / conditional = goal. NOT event.
-  - project: technical project facts ("uses FastAPI with SQLAlchemy")
-  - tool: tool/stack preferences ("uses vim", "prefers pytest")
-  - possession: ownership with personal significance ("has a blue car", "owns a house", "has two cats"). Must be personal/family ownership with clear attributes or value. Exclude abstract concepts or trivial items.
-  - state: ongoing conditions with contextual relevance ("computer is broken", "is sick", "on vacation"). Must be a continuing state (no inherent endpoint), not a one-time event. Exclude trivial temporary states ("busy today").
-  - opinion: evaluations, compliments, criticisms, and interpersonal judgments — what one person says about another's work/character/abilities (e.g. "Jon called Gina's store location perfect", "Caroline said Melanie's pottery was impressive"). These capture the speaker's assessment of someone/something else. **Do NOT use for self-descriptions** (those are preference/state). Extract only specific, substantive evaluations — skip generic praise ("nice!", "great").
-
-**Importance scoring for opinion facts:** Use the importance of the TOPIC as the primary anchor, then adjust:
-  - If the evaluation is about a core topic (career, identity, family, major project) → imp=5~7
-  - If the evaluation is about routine/hobby/mild interest → imp=4~5
-  - If the evaluation is about a minor/trivial topic → imp=3
-  - **Generic encouragement** ("great!", "awesome!", "you can do it!") with no substantive content → imp=2~3 or skip
-  - **Recommendations** ("you should read X", "try Y") → imp=5~7 (these are actionable info)
-  - **Relationship-defining** ("I'm always here for you", "you have my support") → imp=5~6 (reveals interpersonal dynamic)
-  Examples: evaluating "opening a store" (goal, imp=7) → opinion imp=6; "nice photo" (trivial) → imp=3 or skip.
-  - general: none of the above (use sparingly)
-
-**Orthogonality rules for activity vs preference:**
-
-The key question: What is the CORE/MAIN point of the sentence?
-- If the core is describing a BEHAVIOR/HABIT/ROUTINE → activity
-- If the core is expressing an ATTITUDE/LIKE/DISLIKE → preference
-
-Detailed rules:
-1. **Activity (behavior-focused):**
-   - Describes WHAT someone does, HOW OFTEN, or their routine
-   - Even if feelings are mentioned as a side effect, the main point is the behavior
-   - Examples:
-     - "uses painting to express feelings" → activity (core: uses painting)
-     - "goes swimming to relax" → activity (core: goes swimming)
-     - "exercises daily to stay healthy" → activity (core: exercises daily)
-     - "reads books for relaxation" → activity (core: reads books)
-
-2. **Preference (attitude-focused):**
-   - Expresses HOW someone FEELS about something
-   - Has clear emotional words: like/love/hate/dislike/enjoy/prefer/最爱/讨厌/喜欢/享受/宁愿
-   - The main point is the emotional stance, not the behavior
-   - Examples:
-     - "loves painting" → preference (core: loves)
-     - "enjoys swimming" → preference (core: enjoys)
-     - "hates running" → preference (core: hates)
-     - "最喜欢游泳" → preference (core: 最喜欢)
-
-3. **Compound sentences (split into TWO facts):**
-   - When a sentence has BOTH emotional stance AND behavioral details
-   - Example: "I really love swimming, I go every week" →
-     1. {"content": "User really loves swimming", "category": "preference"}
-     2. {"content": "User goes swimming every week", "category": "activity"}
-
-4. **Ambiguous cases - default to activity:**
-   - If unsure whether it's behavior or attitude, classify as activity
-   - Activity is more concrete and easier to verify
-
-- "tags": optional comma-separated tags (people names, topics)
-- "entities": array of entity names mentioned in this fact (people, places, organizations, products). Use full names when available (e.g. "Caroline", "Melanie", "Sara Bareilles"). **REQUIRED: always include the subject of the fact.** For relationship facts about two people, include BOTH entities. If the entity name is not explicitly in the content text, infer it from the conversation context. Never leave entities empty — include at least the primary subject.
-- "importance": integer 1-10
-- "is_persistent": boolean
-- "content_date": REQUIRED ISO date (YYYY-MM-DD). When the session messages start with a "[Date: ...]" marker (e.g. "[Date: 8 May, 2023]"), use it as the reference timestamp to convert ALL relative date expressions into absolute ISO dates. This session's [Date: ...] is your reference — every fact from this session MUST have a non-null content_date. For ongoing activities/identity traits with no specific event date, use the session date as approximation (e.g. session is May 2023 → "2023-05-01"). This includes "last weekend", "yesterday", "today",
-"last Friday", "a few weeks ago", "next month", etc.
-CRITICAL: do NOT leave content_date as month-only (e.g. "2023-07-01")
-when a more precise date can be calculated from the reference timestamp.
-null ONLY if absolutely no date info exists.
-
-Examples:
-[
-  {"content": "Caroline went to the LGBTQ support group on March 5, 2023", "category": "event", "tags": "Caroline,LGBTQ,support-group", "entities": ["Caroline"], "importance": 6, "is_persistent": false, "content_date": "2023-03-05"},
-  {"content": "Melanie is a freelance graphic designer who specializes in brand identity", "category": "identity", "tags": "Melanie,design,career", "entities": ["Melanie"], "importance": 7, "is_persistent": true, "content_date": null},
-  {"content": "Caroline and Melanie went to a pride festival together in 2022", "category": "event", "tags": "Caroline,Melanie,pride,festival", "entities": ["Caroline", "Melanie"], "importance": 6, "is_persistent": false, "content_date": "2022-06-01"},
-  {"content": "Jon lost his job as a banker on 19 January, 2023 and started a dance studio", "category": "event", "tags": "Jon,career,business", "entities": ["Jon"], "importance": 8, "is_persistent": true, "content_date": "2023-01-19"},
-  {"content": "The project uses FastAPI with SQLAlchemy async", "category": "project", "tags": "backend,stack", "importance": 6, "is_persistent": true, "content_date": null},
-  {"content": "User goes swimming every Wednesday", "category": "activity", "tags": "swimming,routine", "importance": 5, "is_persistent": true, "content_date": null},
-  {"content": "User uses painting to express feelings and relax", "category": "activity", "tags": "painting,routine", "importance": 5, "is_persistent": true, "content_date": null},
-  {"content": "User really loves swimming", "category": "preference", "tags": "swimming,emotion", "importance": 6, "is_persistent": true, "content_date": null},
-  {"content": "User has a blue Tesla Model 3", "category": "possession", "tags": "car,Tesla", "importance": 5, "is_persistent": true, "content_date": null},
-  {"content": "User's computer is broken", "category": "state", "tags": "computer,issue", "importance": 4, "is_persistent": false, "content_date": null}
-]
-
-IMPORTANT -- Three-phase self-check before responding:
-Run ALL three phases IN ORDER. Do NOT skip any phase.
-
-=== PHASE 1 (of 3): COVERAGE — Did I miss any facts? ===
-Go through EVERY turn of the conversation you just processed.
-For each turn, check:
-
-1. **Q&A 闭环检查:** Does this turn contain a question followed by a concrete answer? If so, the ANSWER must be extracted as a fact. Resolve "it"/"that"/"one" pronouns to their referents from the previous turn. E.g. "Did you make that plate?" → "Yeah, I made it" → extract "made a plate", NOT "made it".
-
-2. **跨 turn 代词解析检查:** Does this turn use pronouns (it, that, one, they, them) referring to something from the PREVIOUS turn? Never extract a fact with unresolved pronouns. Resolve what the pronoun refers to using the previous turn's content.
-
-3. **动作/事件 vs 情感反应分离检查:** Does this turn contain BOTH an emotional reaction ("I love it", "it's great") AND a concrete action/event ("I made it", "I signed up")? The ACTION and the EMOTION must be EXTRACTED AS SEPARATE FACTS. Do NOT let emotional reactions overshadow concrete events.
-
-4. **媒体/图片上下文检查:** Does this turn reference a photo/image shared in this or the previous turn? The photo documents something — extract the underlying event (e.g. photo of a plate → someone made/is showing a plate, photo of a painting → someone painted it).
-
-=== PHASE 2 (of 3): COMPLETENESS — Are the extracted facts complete? ===
-Review each fact you extracted. Check:
-
-5. **数字完整性检查:** Does the original turn mention any numbers (counts, ages, years, prices, frequencies)? Every number must appear in an extracted fact. "7 years" → fact says "7 years", not "for years". "3 kids" → fact says "3 children".
-
-6. **日期/时间完整性检查 (双向 + content_date 字段):** 
-   - **原始轮次检查:** Does the original turn contain relative date expressions (yesterday, last week, today, next month, last Friday, this weekend, last summer, last month, recently, a few weeks ago, last year)? EVERY relative date in the conversation must be resolved to an ABSOLUTE date in a fact.
-   - **提取事实扫描:** After writing all facts, scan EVERY fact's content for residual relative date keywords: `last month`, `yesterday`, `today`, `recently`, `next week`, `a few weeks ago`, `last week`, `last Friday`, `this weekend`, `this week`, `last year`. If ANY fact still contains one of these relative expressions, it MUST be rewritten with the absolute date calculated from the session's reference timestamp. E.g. "injured last month" → "injured in September 2023" (if reference date is October 2023). This is a HARD requirement — do not output any fact with a relative date in its content field.
-   - **content_date 字段检查:** After resolving all dates in content, check the content_date field of EVERY fact. If the session messages contain a [Date: ...] marker, EVERY fact from that session MUST have a non-null content_date in YYYY-MM-DD format. Use the resolved absolute date for the content_date field, NOT the content text (e.g. if content says "May 2023", content_date should be "2023-05-01"; if content says "on August 24, 2023", content_date should be "2023-08-24"). Facts about ongoing traits/preferences with truly no specific date can use the session date as approximation.
-   Use the conversation session's timestamp as reference. E.g. session date = Aug 25 + "yesterday" → fact says "on August 24, 2023" and content_date = "2023-08-24".
-   
-   ⚠️ **绝对日期优先于情感丰富度**: Adding emotional/cognitive content (Check 10, Check 11) is valuable, but do NOT replace a specific calendar date with a relative expression. If the conversation contains an absolute date (e.g. "August 23, 2023", "2022") AND an emotion, the fact MUST include BOTH the absolute date AND the emotion. Scanning "last year" → writing "in 2022" is correct. Writing "last year" alone is a violation even if you also add emotional content. The content_date field must also reflect this resolved absolute date.
-
-7. **所有物/关系完整性检查:** Does the turn mention possessions, pets, family members with names? Each named possession/pet/family member must appear in a fact with its name. "I have a cat named Oliver" → extract "has a cat named Oliver", not just "has a cat".
-
-8. **否定/缺失信息检查:** Does the turn contain explicit NEGATION ("I don't have", "I never", "not interested", "no")? Important negative facts enable answering "does X have Y?" questions. Extract them.
-
-9. **实体归属正确性检查:** For each extracted fact, does the subject entity match who actually said/did it? If Melanie says "I made a plate", the fact subject = Melanie, NOT Caroline.
-
-10. **情感反应提取复核:** For each event/activity fact you extracted, re-read the original turn. Was there an associated emotional reaction or feeling expressed by the speaker (e.g. "I felt tiny and in awe", "it was amazing", "I was scared", "that made me happy", "I loved it")? If the speaker expressed a clear emotion about the event, there MUST be a separate fact capturing that feeling/emotion. Do NOT merge emotion into the event fact. E.g. meteor shower event AND "felt in awe of the universe" must be two facts.
-
-11. **认知/常识/领悟检查:** Does the turn contain personal realizations ("I'm starting to realize that...", "I learned that...", "it made me think..."), value judgments ("self-care is important", "family matters most"), or common-sense observations ("life is precious", "it's not always easy", "change is hard")? These cognitive/reflective statements capture the person's worldview and character — they should be extracted as "preference", "state", or "opinion" facts. Do NOT skip them just because they are not concrete events.
-
-12. **背景细节归并检查:** Does the turn contain incidental background details (signs, weather, decorations, pet behaviors, minor actions involving objects) that are related to a main entity or event already extracted? If a detail enriches understanding of an existing fact without changing its core topic, MERGE it into that fact's content by appending a brief clause. E.g.:
-    - "He hid his bone in my slipper!" → existing pet fact "Melanie has a cat named Oliver" → enrich to "Melanie has a cat named Oliver who once hid a bone in her slipper"
-    - "The sign was just a precaution" → existing cafe visit fact → enrich with "where a precautionary sign was posted"
-    Do NOT create standalone facts for these incidental details. Merge only into closely related facts (same entity + same session context). If no related fact exists, skip the detail.
-
-
-13. **绝对日期不可丢失检查 (含 content_date):** Re-read every fact you just wrote. Does any fact contain a relative date expression (`last year`, `last week`, `this week`, `yesterday`, `recently`, `a few weeks ago`, `last month`) WITHOUT also including the resolved absolute date? If yes, check what absolute date the conversation session suggests and REWRITE the fact to include the absolute date AND update the content_date field to YYYY-MM-DD format. This is a SEPARATE scan from Check 6 — Check 6 checks the conversation, this check checks the OUTPUT facts again. **Do NOT leave any fact with a bare relative date.** Example: "applied to adoption agencies this week" → content: "applied to adoption agencies during the week of August 23, 2023", content_date: "2023-08-23". Example: "attended a Pride festival together last year" → content: "attended a Pride festival together in 2022", content_date: "2022-06-01". Use the session's timestamp to resolve.
-
-14. **范围完整性检查:** Does the conversation mention a person doing multiple activities that belong to the SAME broader category (e.g., both painting AND pottery under "creating art", both running AND swimming under "exercise", both violin AND guitar under "playing music")? If yes, do NOT narrow the fact to just one specific activity — either use the broader category name or list the specific activities. Example: person talks about painting, pottery, and drawing → do NOT write "creates pottery" → write "creates art (painting, pottery, drawing)" or "enjoys painting and pottery". Losing the broader category keyword can cause the fact to fail later keyword searches.
-
-15. **人际评价检查:** Does any turn contain a specific evaluation, compliment, or judgment from ONE character about ANOTHER's work/character/abilities/achievements? (e.g. "perfect spot for your store", "looks great", "you'll do great with your dance studio", "hard work's paying off", "creating a special experience is the key", "I'm always here to support you"). These capture the interpersonal dynamic — how characters view and respond to each other. Each distinct evaluation MUST be extracted as a separate "opinion" fact. Do NOT merge multiple evaluations into a single "general" relationship summary (e.g. "they support each other"). Extract each substantive evaluation individually: e.g. "Jon called Gina's store location perfect" (opinion, imp=6), "Gina told Jon he will do great with his dance studio" (opinion, imp=5). Use the importance scoring guide above to set per-fact importance.
-    
-    ⚠️ **Do NOT merge evaluations into event/activity facts.** When someone says "You found the perfect spot!", this contains TWO facts: (a) the event "Gina found a store location", (b) the evaluation "Jon said the location is perfect". The event belongs in "event" or "goal", the evaluation belongs in "opinion" — extracted as separate facts. Don't let adjectives like "perfect", "great", "amazing" merge into the event description.
-
-=== PHASE 3 (of 3): QUALITY — Format correctness ===
-
-16. No separators: Does any fact contain `；` `;` or `|` joining different subtopics? If yes, split it.
-17. Place/identity completeness: Origin/hometown/country mentioned? Extract as standalone "is from X" fact.
-18. Entities populated: Every fact has non-empty entities array with at least the primary subject.
-19. Importance correct: Past events with specific dates → 6-7. Identity location facts → 7-8.
-20. One topic per fact: Each fact is one coherent sentence about ONE subtopic. Exception: minor background details merged via Check 12 do NOT violate this rule.
-21. Entity disambiguation: Two similar facts about different people? Ensure each fact's content names the correct person (e.g. NOT "Made a plate" — must say "Melanie made a plate" to avoid confusion with Caroline's pottery facts).
-
-If ANY check in any phase fails, FIX the output before responding. Do NOT output facts that violate these rules.
-
-IMPORTANT -- JSON validity check before responding:
-- Output ONLY the JSON array, no extra text before or after.
-- Every string value must have properly escaped quotes inside.
-- No trailing commas after the last item in any array or object.
-- No unescaped control characters (newlines, tabs) inside string values.
-- Double-check: your response must be parseable by a strict JSON parser.
-- If unsure, simplify: shorter content strings, fewer facts, but valid JSON."""
+Output strictly a JSON array of objects. Each object has:
+- "content": str, the fact (plain text, one complete sentence)
+- "category": str — one of: place, time, person, event, activity, preference, identity, goal, project, tool, possession, state, opinion, general
+- "entities": [str] — at least the primary subject
+- "tags": str — comma-separated keywords
+- "importance": int 1-10 (7-9 major life events, 4-6 significant details/plans/preferences, 1-3 minor)
+- "is_persistent": bool
+- "content_date": "YYYY-MM-DD" or null. CRITICAL: This must be the EVENT's actual date, not the conversation date. If the event is "last week", "a few days ago", or "yesterday", compute the real date relative to the session date shown in [Date: ...] and put the computed date here.
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -725,7 +456,7 @@ def _call_extraction_llm(
         "model": model,
         "messages": [
             {"role": "system", "content": base_prompt + lang_hint},
-            {"role": "user", "content": f"Extract facts from these conversation turns:\n\n{messages_text}"},
+            {"role": "user", "content": f"Conversation turns:\n\n{messages_text}\n\n=== STEP 1: EXTRACT EVERY FACT ===\nRead through each turn. For EVERY concrete detail, write a separate standalone fact.\nDo NOT merge, do NOT filter, do NOT skip. Extract ALL specific information.\n\n=== STEP 2: DEDUPLICATE ===\nNow review your facts. If two facts say the EXACT same thing, keep one.\nIf two facts are about different aspects of the same topic, KEEP BOTH.\n\n=== STEP 3: FORMAT ===\nAdd category, importance, entities, tags, is_persistent, content_date to each fact.\n\n=== STEP 4: FINAL CHECKS (7) ===\n1. COVERAGE: Re-read the conversation. Is EVERY concrete detail extracted?\n2. SPECIFICITY: Entity names must be specific — \"a bonsai tree\" not \"an item\"\n3. NUMBERS: All numbers preserved exactly — \"3 kids\" not \"several kids\"\n4. DATES: content_date must be the EVENT's date, not the conversation date. For \"last week\", \"a few days ago\", \"yesterday\" — compute the actual date from the session date. Never leave relative dates unresolved.\n5. RELATIONS: \"X suggested Y to Z\" relations must be preserved — who did/said what to whom\n6. NAMES: No fact may contain \"User\", \"Assistant\", \"Participant 1\", \"Participant 2\", or any generic role label. Every entity name must be a real name from the conversation content.\n7. JSON: Valid JSON with no trailing commas, proper escaping\n\nOutput ONLY the JSON array, no extra text."},
         ],
         "temperature": 0.1,
         "max_tokens": 16384,
@@ -1177,8 +908,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             if self._trivial_filter_enabled and self._is_trivial_content(content.strip()):
                 continue
             if role in ("user", "assistant"):
-                label = "User" if role == "user" else "Assistant"
-                lines.append(f"{label}: {content[:_MAX_MSG_CHARS]}")
+                # Use neutral labels to avoid LLM picking up "User"/"Assistant" as entity names.
+                # The LLM must infer actual names (Evan, Sam, etc.) from conversation content.
+                label_num = 1 if role == "user" else 2
+                lines.append(f"[Participant {label_num}]: {content[:_MAX_MSG_CHARS]}")
 
         if len(lines) < 2:
             return []

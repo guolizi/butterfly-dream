@@ -252,6 +252,95 @@
 
 ---
 
+## 系统性限制：FTS5 词袋模型无法处理语义理解
+
+**根因**: 当前检索链路是 `问题文本 → FTS5（词袋匹配）→ 评分（rel×rec×imp）`，本质在**词层面**匹配。查询和事实的措辞由不同 LLM 调用产生，当用词不一致时 FTS5 无能为力。这不是加同义词或调权重能根本解决的问题。
+
+**影响**: 所有涉及「查询措辞 ≠ 提取措辞」或「一词多义」的题目都会失败。目前 conv-41 已发现 3 题（1 分），conv-26/30 也有类似题。
+
+**共同改进方向（待优化）**:
+- (A) LLM query rewrite：检索前加 LLM 调用，将查询扩展为多组消歧/同义关键词
+- (B) Answer prompt 内嵌 rewrite：不单独加 LLM 调用，在 answer prompt 让 LLM 先用关键词检索
+- (C) Embedding 双路检索：事实入库时存 embedding，查询时语义召回 + FTS5 混合
+- (D) Extraction 措辞规范：规范化地理/实体等信息的提取格式（如 "has been to [place]"）
+
+**当前检索耗时**: 平均 157ms（中位 146ms），加 LLM rewrite 预估 ~300-500ms。
+
+---
+
+### Q8 (conv-41): child 歧义——childhood vs children
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What items does John mention having as a child? |
+| Gold | A doll, a film camera |
+| 关键事实 | [38] John remembers a childhood doll (imp=5, preference) |
+|  | [24] John remembers using a film camera as a kid (imp=5, preference) |
+|  | [53] John enjoys taking beach photographs with his childhood film camera (imp=5, preference) |
+| FTS5 排名 | doll[38] rank 4/50 (fts_rank=0.495), camera[53] rank 8/50 (0.441), camera[24] rank 14/50 (0.381) |
+| 最终排名 | doll[38] rank **18**, camera[53] rank **21**, camera[24] rank **24** |
+| 模型回答 | "No information available." |
+| 得分 | 1 |
+
+**机制**: 查询词 `child` 同时匹配 `childhood`（正确）和 `children`/`kids`（噪声——"son named Kyle"、"has children" 等）。正确事实 imp=5 被孩子事实 imp=6-7 压过。FTS5 无法在词层面区分「童年」vs「孩子」两个语义。
+
+---
+
+### Q22 (conv-41): 「been to [area]」与「went on a road trip exploring…」的词汇鸿沟
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What areas of the U.S. has John been to or is planning to go to? |
+| Gold | Pacific northwest, east coast |
+| 关键事实 | [108] John went on a road trip in 2022 exploring the Pacific Northwest coast... (imp=6, event) |
+|  | [127] John is planning a trip to the East Coast (imp=5, goal) |
+| East Coast 检索 | FTS5 ✅ rank ~28/50 (overlap: {john, planning, to, is, the} = 5/8) → 最终 rank **13** |
+| Pacific NW 检索 | FTS5 ❌ **不在前50名** (overlap: {john, the} = 仅2/16) |
+| 模型回答 | "No information available." |
+| 得分 | 1 |
+
+**机制**: 提取 LLM 写成 "went on a road trip exploring the Pacific Northwest coast"，查询 LLM 问 "areas of the U.S. has John been to"。FTS5 只有 {john, the} 两个 token 共通，Pacific NW 事实完全不在候选池。
+
+---
+
+### Q26 (conv-41): 「European countries」与「Spain」/「London」的语义鸿沟
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What European countries has Maria been to? |
+| Gold | Spain, England |
+| 证据 | D13:24 Maria: "took a solo trip...in Spain"；D8:15-17 Maria: "trip to England...It was in London." |
+| Spain 事实 | [149] Maria took a solo trip to Spain in 2022 (imp=7) |
+| London 事实 | [89] Maria visited London a few years ago... (imp=5) ← 提取丢掉了 "England" 这个词 |
+| Spain 检索 | FTS5 rank **0.0012**（最后一名），overlap: {maria, to} = 仅2/7 |
+| London 检索 | FTS5 ❌ **不在前50名**，overlap: {maria} = 仅1/21 |
+| 模型回答 | "No information available." |
+| 得分 | 1 |
+
+**机制双层暴击**:
+1. **提取弄丢 "England"**：原文 "trip to England" 被提取改写成 "visited London"，FTS5 找不到 `England`
+2. **词汇鸿沟**：查询 `European countries` / `been to` 与事实 `Spain` / `trip` / `London` 完全无共通 token
+
+---
+
+### Q12 (conv-41): 提取焦点偏差——交互相关事实被故事内容淹没
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What people has Maria met and helped while volunteering? |
+| Gold | David, Jean, Cindy, Laura |
+| 证据 | D7:5 "While **volunteering** yesterday, I **met**...**Jean**"；D6:5 "conversation with **David**"；D27:8 "resident **Cindy**"；D21:19 "resident **Laura**" |
+| 提取事实 | [67] conversation with David (⚠️ 关键词不全) / [57] Jean experienced divorce (❌ 无 met/volunteering) / [269] Cindy wrote note (❌) / [193] Laura wrote letter (❌) |
+| FTS5 | ❌ **全部 6 条不在 top-50** — overlap 最少才 0/14 |
+| 模型回答 | "No information available." |
+| 得分 | 1 |
+
+**机制**: 提取 LLM 倾向于提取"对方的故事内容"而非"说话者与对方的交互关系"。Jean 的原文同时有 `met` + `volunteering` + `Jean` 三个查询词，但提取只写了 "Jean experienced a divorce"。David/Cindy/Laura 同理。
+
+**修复**: ✅ **已修复** (commit `f07ebe1`) — 在 extraction prompt 新增 **INTERACTION FACTS** 规则，要求遇到 met/helped/connected 场景时独立提取一条交互关系事实（如 "Maria met Jean while volunteering at a homeless shelter"），对方的故事作为独立事实。需重跑 extraction 后验证效果。
+
+---
+
 ## Q56 (conv-26): 查询类型检测 + 动态 3D 权重调整
 
 | 字段 | 内容 |

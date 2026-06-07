@@ -302,6 +302,11 @@ class ThreeDimRetriever:
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
                 boost += _ENTITY_BOOST
 
+            # Save query relevance before entity mismatch penalty for diversity re-ranking.
+            # Entity diversity needs to evaluate minority facts by how well they match the
+            # query, not by how penalized they are for belonging to a different entity.
+            _query_relevance = min(1.0, round(relevance * boost, 4))
+
             # Penalize facts linked to entities NOT mentioned in the query.
             # When the query clearly names an entity (e.g. "Melanie"), facts about
             # other entities (e.g. Caroline) should fall behind rather than compete
@@ -352,6 +357,7 @@ class ThreeDimRetriever:
                 "_relevance": round(relevance, 4),
                 "_recency": round(recency, 4),
                 "_importance": round(importance, 4),
+                "_query_relevance": _query_relevance,
                 "score": round(score, 4),
             })
 
@@ -363,7 +369,8 @@ class ThreeDimRetriever:
         # the best-scoring result from a different category to ensure diversity.
         # This prevents, e.g., all "goal" facts from crowding out "event" or
         # "activity" facts that may be more relevant to the user's intent.
-        _DIVERSITY_WINDOW = 10
+        # Window tracks the return size so diversity covers all returned facts.
+        _DIVERSITY_WINDOW = limit
         _DIVERSITY_THRESHOLD = 0.7
         top_n = min(_DIVERSITY_WINDOW, len(scored), limit)
         if top_n >= 4:
@@ -403,8 +410,16 @@ class ThreeDimRetriever:
         # FTS5-ranked fact about a DIFFERENT entity from beyond the window.
         # This uses actual entity tagging, not substring matching on content.
         # Helps adversarial questions where the query entity is swapped.
-        _ENTITY_WINDOW = 10
-        _ENTITY_THRESHOLD = 0.7
+        # Window tracks the return size so diversity covers all returned facts.
+        _ENTITY_WINDOW = limit
+        # Tiered threshold: small result sets need more dominance to justify a swap;
+        # large result sets can tolerate lower thresholds for better diversity.
+        if limit <= 5:
+            _ENTITY_THRESHOLD = 1.0
+        elif limit <= 10:
+            _ENTITY_THRESHOLD = 0.7
+        else:
+            _ENTITY_THRESHOLD = 0.6
         top_n_e = min(_ENTITY_WINDOW, len(scored), limit)
         if top_n_e >= 4:
             top_slice = scored[:top_n_e]
@@ -440,19 +455,20 @@ class ThreeDimRetriever:
                 dominant_ent, dominant_count = max(ent_counts.items(), key=lambda x: x[1])
                 if dominant_count / top_n_e >= _ENTITY_THRESHOLD:
                     # Collect all minority-entity facts from beyond the window,
-                    # sorted by full score (descending). Full score beats fts_rank
-                    # because fts_rank favors text frequency (e.g. "dancing" beats
-                    # "fashion") over query relevance.
+                    # sorted by query relevance (descending), which excludes entity
+                    # mismatch penalty. Using raw score would penalize minority-entity
+                    # facts twice — first in ranking position, then in selection priority.
                     minority_facts = []
                     for i in range(top_n_e, len(scored)):
                         names = fact_entity_map.get(scored[i]["fact_id"], set())
                         if names and dominant_ent not in names:
                             minority_facts.append((i, dict(scored[i])))
-                    minority_facts.sort(key=lambda x: x[1]["score"], reverse=True)
+                    minority_facts.sort(key=lambda x: x[1].get("_query_relevance", 0), reverse=True)
 
                     if minority_facts:
-                        # Swap in up to 2 minority facts (graceful: fewer if not enough)
-                        n_swap = min(2, len(minority_facts))
+                        # Swap in proportion to result set size (ceil(limit × 20%)),
+                        # so larger result sets get more diversity correction.
+                        n_swap = min(max(1, math.ceil(limit * 0.2)), len(minority_facts))
                         swaps = minority_facts[:n_swap]
 
                         # Find the lowest-ranked dominant-entity facts to replace

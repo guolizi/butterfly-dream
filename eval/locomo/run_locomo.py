@@ -175,7 +175,7 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
         _log(f"Failed sessions: {', '.join(failed_sessions)}", "error")
 
 
-def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tuple:
+def answer_question(provider: ButterflyDreamMemoryProvider, question: str, category: int = 0) -> tuple:
     """Search memory and generate an answer. Returns (answer, n_facts_retrieved, retrieved_facts)."""
     from butterfly_dream.retrieval import ThreeDimRetriever
 
@@ -185,7 +185,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
     search_time = time.perf_counter() - t0
 
     if not results:
-        return ("I don't have enough information to answer this question.", 0, [], search_time)
+        return ("No information available.", 0, [], search_time)
 
     # Use top 15 for LLM context (avoid excluding valid facts at ranks 11-15)
     context_parts = []
@@ -209,11 +209,50 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str) -> tu
         _log(f"  [{rf['rank']}] score={rf['score']:.4f} | {rf['content'][:90]}")
     if len(retrieved_facts) > 5:
         _log(f"  ... {len(retrieved_facts)-5} more facts")
-    return (_generate_answer(question, context), len(context_parts), retrieved_facts, search_time)
+    return (_generate_answer(question, context, category), len(context_parts), retrieved_facts, search_time)
 
 
-def _generate_answer(question: str, context: str) -> str:
-    """Use LLM to generate an answer via eval_utils.call_llm()."""
+def _generate_answer(question: str, context: str, category: int = 0) -> str:
+    """Use LLM to generate an answer via eval_utils.call_llm().
+    
+    Routes to different prompts based on question category:
+    - Cat5 (adversarial/temporal): adversarial detection prompt
+    - Others (Cat1-4): simple direct answer + inference prompt
+    """
+    if category == 5:
+        return _generate_adversarial_answer(question, context)
+    return _generate_simple_answer(question, context)
+
+
+def _generate_simple_answer(question: str, context: str) -> str:
+    """CoT prompt: think step by step, then answer concisely."""
+    prompt = f"""You are analyzing facts from a conversation between two people. Answer the question based on the context.
+
+Think step by step:
+1. What exactly does the question ask for?
+2. Read through each fact carefully — which ones are relevant?
+3. Do those facts directly answer it, or can you make a reasonable inference?
+4. What is the complete and accurate answer?
+
+Be thorough — scan ALL facts before deciding. Facts may describe things differently than the question uses, so make reasonable connections. The answer is almost always in the context if you look carefully.
+
+Memory context:
+{context}
+
+Question: {question}
+
+Let me go through the facts step by step:"""
+
+    messages = [
+        {"role": "system", "content": "You analyze facts carefully and reason step by step before answering. End your answer with 'Answer: <concise answer>' on a new line."},
+        {"role": "user", "content": prompt},
+    ]
+    result = call_llm("answer", messages=messages, max_tokens=1024)
+    return result if result else "No information available."
+
+
+def _generate_adversarial_answer(question: str, context: str) -> str:
+    """Adversarial detection prompt for Cat5 (temporal reasoning = adversarial swaps)."""
     prompt = f"""Based on the following memory context about a conversation between two people, answer the question.
 
 Guidelines:
@@ -464,7 +503,7 @@ def main():
             gold = str(qa.get("answer", qa.get("adversarial_answer", "")))
             category = qa["category"]
 
-            hypothesis, n_retrieved, retrieved_facts, search_time = answer_question(qp, question)
+            hypothesis, n_retrieved, retrieved_facts, search_time = answer_question(qp, question, category)
 
             score = 0
             if not args.no_judge:
