@@ -253,6 +253,11 @@ Rules:
   - Format: "Without [cause], [person] would [likely not / not have] [outcome]". E.g. "Without the support she received, Caroline would likely not have pursued counseling" or "Without the support group, Caroline would not have felt accepted enough to embrace her identity".
   - Only extract counterfactuals that are STRONGLY implied by the conversation (e.g. "I couldn't have done it without them", "Their support made all the difference", "It made me realize how important it is").
   - Counterfactuals are HIGH importance (7-9) because they enable answering "what if" questions.
+|- **INTERACTION FACTS — when the speaker says they met/helped/connected with someone, extract a SEPARATE interaction fact about the meeting itself** (e.g. "Maria met Jean while volunteering at a homeless shelter"), not just the other person's story. The interaction fact captures: who met/helped whom, where/when, and the context. The person's backstory should be a separate fact. This ensures queries like "who did X meet while [activity]?" can be answered.
+  - Interaction facts get importance 5-6 (significant social interaction).
+  - Examples:
+    - "I met this amazing woman, Jean, who had been through a lot" → [interaction] "Maria met Jean while volunteering at a homeless shelter" + [story] "Jean experienced a divorce, lost her job, and became homeless"
+    - "One of the residents, Cindy, wrote me a note" → [interaction] "Maria received a gratitude note from Cindy, a resident at the shelter" + [story] "Cindy wrote a heartfelt note expressing gratitude for the support they received"
 
 |**Importance scoring (1-10):**
 ||- 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
