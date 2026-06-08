@@ -29,7 +29,7 @@ echo "  源:     $SRC_DIR"
 echo "  目标:   $DST_DIR"
 echo ""
 
-# 只复制 .py 源文件
+# 复制 .py 源文件和 README.md
 PY_FILES=$(find "$SRC_DIR" -maxdepth 1 -name '*.py' | sort)
 FILE_COUNT=0
 for f in $PY_FILES; do
@@ -43,6 +43,13 @@ done
 if [ -f "$SRC_DIR/../plugin.yaml" ] && [ ! -f "$DST_DIR/plugin.yaml" ]; then
   cp "$SRC_DIR/../plugin.yaml" "$DST_DIR/plugin.yaml"
   echo "  ✓ plugin.yaml (新)"
+  FILE_COUNT=$((FILE_COUNT + 1))
+fi
+
+# 复制 README.md（always overwrite — docs should stay in sync）
+if [ -f "$SRC_DIR/README.md" ]; then
+  cp "$SRC_DIR/README.md" "$DST_DIR/README.md"
+  echo "  ✓ README.md"
   FILE_COUNT=$((FILE_COUNT + 1))
 fi
 
