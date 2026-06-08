@@ -139,6 +139,13 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
             _log(f"  [{idx+1}/{total}] {sname}: empty session, skipped", "warning")
             continue
 
+        # Set session date so extraction LLM can resolve relative dates
+        sess_num = sname.split("_")[1]
+        date_key = f"session_{sess_num}_date_time"
+        sess_date = conv.get(date_key, "")
+        if sess_date:
+            provider._session_date = sess_date[:10]
+
         before = provider._store.count_facts() if provider._store else 0
         n_turns = len(session_msgs)
         session_ok = False

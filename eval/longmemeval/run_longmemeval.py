@@ -62,6 +62,11 @@ def process_sessions(provider: ButterflyDreamMemoryProvider, sessions: list,
     """
     for si, session in enumerate(sessions):
         sess_date = haystack_dates[si] if haystack_dates and si < len(haystack_dates) else ""
+
+        # Set session date so extraction LLM can resolve relative dates
+        if sess_date:
+            provider._session_date = sess_date
+
         session_msgs = []
         for turn in session:
             content = turn["content"]

@@ -709,6 +709,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         self._reflection_enabled = self._config.get("reflection", True)
         self._extraction_count = 0
 
+        # Session date for extraction context (None = auto-detect datetime.now)
+        self._session_date: Optional[str] = None
+
         # Turn-based sync_turn extraction
         self._extract_interval = int(self._config.get("extract_interval", 20))
         self._turn_counter = 0
@@ -1080,6 +1083,12 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return []
 
         lines = []
+        
+        # Session date header: helps LLM resolve relative dates ("yesterday", "last week")
+        from datetime import datetime as _dt
+        session_date_str = self._session_date or _dt.now().strftime("%Y-%m-%d")
+        lines.append(f"[Session date: {session_date_str}]")
+        
         for msg in messages:
             role = msg.get("role", "")
             content = msg.get("content", "")
