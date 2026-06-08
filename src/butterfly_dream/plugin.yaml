@@ -1,12 +1,10 @@
-name: butterfly-dream
-description: "3-Dimensional memory — Relevance × Recency × Importance"
+name: butterfly_dream
 version: 0.1.0
-author: guolizi
-homepage: https://github.com/guolizi/butterfly-dream
-requires: []
-memory_provider: true
+description: "Butterfly Dream — 3D memory with HRR-based compositional retrieval, LLM extraction, trust scoring, and multi-media support."
 hooks:
   - on_session_end
+  - on_session_switch
   - on_pre_compress
   - on_memory_write
+  - sync_turn
   - shutdown
