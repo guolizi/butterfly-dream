@@ -641,6 +641,10 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         self._reflection_enabled = self._config.get("reflection", True)
         self._extraction_count = 0
 
+        # Turn-based sync_turn extraction
+        self._extract_interval = int(self._config.get("extract_interval", 20))
+        self._turn_counter = 0
+
         # Thread safety for async extraction state
         self._extraction_lock = threading.Lock()
         # Track async extraction threads for safe shutdown
@@ -680,6 +684,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             {"key": "min_trust_threshold", "description": "Minimum trust threshold for retrieval", "default": "0.3"},
             {"key": "recency_half_life_days", "description": "Days for recency score to decay by half", "default": "30"},
             {"key": "hrr_dim", "description": "HRR vector dimensions", "default": "1024"},
+            {"key": "extract_interval", "description": "Extract facts every N turns via sync_turn (0=disable)", "default": "20"},
             {"key": "compression", "description": "Media compression settings (YAML block: enabled, image.quality, video.bitrate, etc.)", "default": "{enabled: true}"},
         ]
 
@@ -734,6 +739,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         )
         self._session_id = session_id
         self._last_extracted_idx = 0
+        self._turn_counter = 0
 
     def system_prompt_block(self) -> str:
         if not self._store:
@@ -777,8 +783,42 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return ""
 
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages: list | None = None) -> None:
-        """No-op: extraction is async (pre-compress and session-end only)."""
-        pass
+        """Batch extraction every N turns (config: extract_interval, default 20).
+
+        Runs async extraction on unprocessed messages when the turn counter
+        reaches the interval boundary. Designed for high-volume conversations
+        where on_pre_compress/on_session_end alone would miss too much.
+        """
+        if not self._llm_extract_enabled or not self._store or not messages:
+            return
+        self._turn_counter += 1
+        if self._turn_counter % self._extract_interval != 0:
+            return
+
+        # Get unprocessed messages since last extraction
+        with self._extraction_lock:
+            new_msgs = messages[self._last_extracted_idx:]
+        if len(new_msgs) < 2:
+            return
+
+        # Mark consumed before async thread to prevent duplicate work
+        with self._extraction_lock:
+            self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
+        msgs_copy = list(new_msgs)
+
+        def _extract_async():
+            try:
+                facts = self._run_llm_extraction(msgs_copy)
+                if facts:
+                    logger.info("ButterflyDream sync_turn extracted %d facts (interval=%d)",
+                                len(facts), self._extract_interval)
+            except Exception as e:
+                logger.debug("ButterflyDream sync_turn extraction failed: %s", e)
+
+        t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-sync")
+        self._extract_threads.append(t)
+        self._extract_threads[:] = [t for t in self._extract_threads if t.is_alive()]
+        t.start()
 
     def on_pre_compress(self, messages: list) -> str:
         """Extract facts before context compression discards messages — includes importance scoring."""
@@ -860,6 +900,27 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
                 self._extract_threads.append(t)
                 t.start()
+
+    def on_session_switch(
+        self,
+        new_session_id: str,
+        *,
+        parent_session_id: str = "",
+        reset: bool = False,
+        **kwargs,
+    ) -> None:
+        """Reset extraction counters on session switch.
+
+        On /reset or /new (reset=True), zero out both the turn counter and
+        the extraction index so the next sync_turn boundary starts fresh.
+        On /resume or /branch (reset=False), keep counters — the same logical
+        conversation continues under a new session id.
+        """
+        if reset:
+            with self._extraction_lock:
+                self._turn_counter = 0
+                self._last_extracted_idx = 0
+            logger.debug("ButterflyDream session_switch(reset=True): counters reset")
 
     def on_memory_write(self, action: str, target: str, content: str) -> None:
         """Mirror built-in memory writes as facts with default importance."""

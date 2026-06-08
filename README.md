@@ -74,11 +74,12 @@ plugins:
       recency_weight: 0.3
       importance_weight: 0.3
     recency_half_life_days: 30
+    extract_interval: 20          # 每 20 轮通过 sync_turn 提取一次（0=关闭）
     min_trust_threshold: 0.3
     default_trust: 0.5
 ```
 
-> 💡 **提示**：启用 `llm_extract: true` 后，LLM 会在每次对话压缩时自动提取事实。确保 `extraction_model` 填写的是有 JSON mode 支持的模型。
+> 💡 **提示**：启用 `llm_extract: true` 后，LLM 会在每次对话压缩时自动提取事实，同时每 `extract_interval` 轮通过 `sync_turn` 钩子做定期提取。确保 `extraction_model` 填写的是有 JSON mode 支持的模型。
 
 ### 依赖
 
