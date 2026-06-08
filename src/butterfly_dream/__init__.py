@@ -747,7 +747,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
     def get_config_schema(self):
         from hermes_constants import display_hermes_home
-        _default_db = f"{display_hermes_home()}/butterfly_memory.db"
+        _default_db = f"{display_hermes_home()}/memories/butterfly_memory.db"
         return [
             {"key": "db_path", "description": "SQLite database path", "default": _default_db},
             {"key": "llm_extract", "description": "LLM-based fact extraction with importance scoring", "default": "true", "choices": ["true", "false"]},
@@ -768,7 +768,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         # Prefer kwargs hermes_home for proper profile isolation, fall back to
         # get_hermes_home() for backwards compatibility.
         _hermes_home = str(kwargs.get("hermes_home")) if kwargs.get("hermes_home") else str(get_hermes_home())
-        _default_db = _hermes_home + "/butterfly_memory.db"
+        _default_db = _hermes_home + "/memories/butterfly_memory.db"
         db_path = self._config.get("db_path", _default_db)
         # Expand $HERMES_HOME
         if isinstance(db_path, str):
