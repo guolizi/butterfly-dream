@@ -782,6 +782,19 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             logger.debug("ButterflyDream prefetch failed: %s", e)
             return ""
 
+    def _start_extract_thread(self, target, name):
+        """Safely start and track a daemon extraction thread.
+
+        Starts the thread first so a failed start() won't leave a zombie
+        entry in _extract_threads. Prunes finished threads under lock to
+        prevent unbounded list growth.
+        """
+        t = threading.Thread(target=target, daemon=True, name=name)
+        t.start()
+        with self._extraction_lock:
+            self._extract_threads.append(t)
+            self._extract_threads[:] = [t for t in self._extract_threads if t.is_alive()]
+
     def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages: list | None = None) -> None:
         """Batch extraction every N turns (config: extract_interval, default 20).
 
@@ -791,19 +804,20 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         """
         if not self._llm_extract_enabled or not self._store or not messages:
             return
-        self._turn_counter += 1
-        if self._turn_counter % self._extract_interval != 0:
-            return
 
-        # Get unprocessed messages since last extraction
+        # Read+write _last_extracted_idx under a single lock to keep
+        # state consistent with on_pre_compress / on_session_end.
         with self._extraction_lock:
+            if self._extract_interval <= 0:
+                return
+            self._turn_counter += 1
+            if self._turn_counter % self._extract_interval != 0:
+                return
             new_msgs = messages[self._last_extracted_idx:]
-        if len(new_msgs) < 2:
-            return
-
-        # Mark consumed before async thread to prevent duplicate work
-        with self._extraction_lock:
+            if len(new_msgs) < 2:
+                return
             self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
+
         msgs_copy = list(new_msgs)
 
         def _extract_async():
@@ -815,17 +829,19 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             except Exception as e:
                 logger.debug("ButterflyDream sync_turn extraction failed: %s", e)
 
-        t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-sync")
-        self._extract_threads.append(t)
-        self._extract_threads[:] = [t for t in self._extract_threads if t.is_alive()]
-        t.start()
+        self._start_extract_thread(_extract_async, "butterfly-sync")
 
     def on_pre_compress(self, messages: list) -> str:
-        """Extract facts before context compression discards messages — includes importance scoring."""
+        """Extract facts before context compression discards messages — includes importance scoring.
+
+        Returns "" because Butterfly Dream stores facts into its own DB rather
+        than contributing text to the compression summary prompt. The extracted
+        facts are available to the agent via normal 3D retrieval on subsequent turns.
+        """
         if not self._llm_extract_enabled or not self._store or not messages:
             return ""
-        # Synchronously mark messages as consumed (async thread may not finish before
-        # on_session_end fires, avoiding duplicate extraction of the same range).
+        # Mark consumed before async thread; under same lock as sync_turn/on_session_end
+        # to keep _last_extracted_idx consistent.
         with self._extraction_lock:
             self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
         msgs_copy = list(messages)
@@ -838,11 +854,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             except Exception as e:
                 logger.debug("ButterflyDream pre-compress extraction failed: %s", e)
 
-        t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-compress")
-        self._extract_threads.append(t)
-        # Prune finished threads to avoid unbounded growth
-        self._extract_threads[:] = [t for t in self._extract_threads if t.is_alive()]
-        t.start()
+        self._start_extract_thread(_extract_async, "butterfly-compress")
         return ""
 
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
@@ -870,14 +882,12 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         if not self._store or not messages:
             return
         if self._llm_extract_enabled:
-            # Read _last_extracted_idx under lock for consistent state
+            # Read+write _last_extracted_idx under a single lock
             with self._extraction_lock:
                 new_msgs = messages[self._last_extracted_idx:]
-            if new_msgs:
-                # Synchronously mark all messages as consumed before the async thread
-                # fires, preventing a concurrent on_pre_compress from re-processing.
-                with self._extraction_lock:
+                if new_msgs:
                     self._last_extracted_idx = max(self._last_extracted_idx, len(messages))
+            if new_msgs:
                 msgs_copy = list(new_msgs)
 
                 def _extract_async():
@@ -897,9 +907,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     except Exception as e:
                         logger.debug("ButterflyDream session-end extraction failed: %s", e)
 
-                t = threading.Thread(target=_extract_async, daemon=True, name="butterfly-close")
-                self._extract_threads.append(t)
-                t.start()
+                self._start_extract_thread(_extract_async, "butterfly-close")
 
     def on_session_switch(
         self,
@@ -938,10 +946,12 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
 
     def shutdown(self) -> None:
         # Wait for async extraction threads to finish (they may be writing to the store)
-        for t in self._extract_threads:
+        with self._extraction_lock:
+            threads = list(self._extract_threads)
+            self._extract_threads.clear()
+        for t in threads:
             if t.is_alive():
                 t.join(timeout=5)
-        self._extract_threads.clear()
         if self._store:
             self._store.close()
         self._store = None
