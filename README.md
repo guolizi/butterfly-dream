@@ -75,6 +75,7 @@ plugins:
       importance_weight: 0.3
     recency_half_life_days: 30
     extract_interval: 20          # 每 20 轮通过 sync_turn 提取一次（0=关闭）
+    debug_logging: false          # 开启检索查询的 debug 日志
     min_trust_threshold: 0.3
     default_trust: 0.5
 ```

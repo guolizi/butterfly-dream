@@ -115,11 +115,13 @@ class ThreeDimRetriever:
         hrr_weight: float = 0.3,
         hrr_dim: int = 1024,
         custom_weights: dict | None = None,
+        debug_logging: bool = False,
     ):
         self.store = store
         self.half_life_days = half_life_days
         self.hrr_dim = hrr_dim
         self._custom_weights = custom_weights
+        self._debug_logging = debug_logging
 
         # Auto-redistribute weights if numpy unavailable
         if hrr_weight > 0 and not hrr._HAS_NUMPY:
@@ -161,6 +163,14 @@ class ThreeDimRetriever:
         Returns:
             List of fact dicts with 'score' field, sorted descending.
         """
+        import time as _time
+        _t0 = _time.time()
+        if self._debug_logging:
+            logger.debug(
+                "search: query='%.100s' limit=%d scenario=%s",
+                query, limit, scenario,
+            )
+
         # Resolve weights — merge scenario presets with instance custom weights
         base = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["balanced"])
         if scenario == "custom" and self._custom_weights:
@@ -206,6 +216,8 @@ class ThreeDimRetriever:
                     seen_ids.add(c["fact_id"])
 
         if not candidates:
+            if self._debug_logging:
+                logger.debug("search: 0 candidates (query='%.100s')", query)
             return []
 
         # Stage 2: Score on all three dimensions
@@ -499,7 +511,14 @@ class ThreeDimRetriever:
                         top_slice = scored[:top_n_e]
                         top_slice.sort(key=lambda x: x["score"], reverse=True)
                         scored = top_slice + tail
-        return scored[:limit]
+        result = scored[:limit]
+        if self._debug_logging:
+            _elapsed = (_time.time() - _t0) * 1000
+            logger.debug(
+                "search: %d candidates \u2192 %d returned in %.0fms (query='%.100s')",
+                len(candidates), len(result), _elapsed, query,
+            )
+        return result
 
     # -- Internal pipeline helpers --------------------------------------------
 

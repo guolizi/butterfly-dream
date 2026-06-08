@@ -645,6 +645,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         self._extract_interval = int(self._config.get("extract_interval", 20))
         self._turn_counter = 0
 
+        # Debug logging toggle (butterfly config, not hermes global)
+        self._debug_logging = self._config.get("debug_logging", False)
+
         # Thread safety for async extraction state
         self._extraction_lock = threading.Lock()
         # Track async extraction threads for safe shutdown
@@ -685,6 +688,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             {"key": "recency_half_life_days", "description": "Days for recency score to decay by half", "default": "30"},
             {"key": "hrr_dim", "description": "HRR vector dimensions", "default": "1024"},
             {"key": "extract_interval", "description": "Extract facts every N turns via sync_turn (0=disable)", "default": "20"},
+            {"key": "debug_logging", "description": "Enable debug logs for search/query pipeline", "default": "false", "choices": ["true", "false"]},
             {"key": "compression", "description": "Media compression settings (YAML block: enabled, image.quality, video.bitrate, etc.)", "default": "{enabled: true}"},
         ]
 
@@ -736,6 +740,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             half_life_days=half_life,
             hrr_dim=hrr_dim,
             custom_weights=custom_weights,
+            debug_logging=self._config.get("debug_logging", False),
         )
         self._session_id = session_id
         self._last_extracted_idx = 0
@@ -777,6 +782,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 trust = r.get("trust_score", 0.5)
                 imp = r.get("importance", 5)
                 lines.append(f"- [{trust:.1f} trust | {imp:.0f} imp] {r.get('content', '')}")
+            if self._debug_logging:
+                logger.debug(
+                    "prefetch: %d facts for query='%.80s'",
+                    len(results), query,
+                )
             return "## 🦋 Butterfly Dream Memory\n" + "\n".join(lines)
         except Exception as e:
             logger.debug("ButterflyDream prefetch failed: %s", e)
@@ -1223,6 +1233,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             query, min_trust=min_trust, limit=limit, scenario=scenario,
             persistent_only=persistent_only,
         )
+        if self._debug_logging:
+            logger.debug(
+                "handle_search: query='%.80s' limit=%d scenario=%s → %d results",
+                query, limit, scenario, len(results),
+            )
         return json.dumps(results, default=str)
 
     def _handle_probe(self, args: dict) -> str:
@@ -1231,6 +1246,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return json.dumps({"error": "entity is required"})
         limit = int(args.get("limit", 20))
         facts = self._store.get_entity_facts(entity, limit=limit)
+        if self._debug_logging:
+            logger.debug(
+                "handle_probe: entity='%.60s' limit=%d → %d facts",
+                entity, limit, len(facts),
+            )
         return json.dumps(facts, default=str)
 
     def _handle_related(self, args: dict) -> str:
@@ -1239,6 +1259,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return json.dumps({"error": "entity is required"})
         depth = int(args.get("depth", 2))
         relations = self._store.get_related_entities(entity, depth=depth)
+        if self._debug_logging:
+            logger.debug(
+                "handle_related: entity='%.60s' depth=%d → %d relations",
+                entity, depth, len(relations),
+            )
         return json.dumps(relations, default=str)
 
     def _handle_reason(self, args: dict) -> str:
@@ -1256,6 +1281,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             else:
                 shared &= fact_ids
         if not shared:
+            if self._debug_logging:
+                logger.debug(
+                    "handle_reason: entities=%s → 0 shared facts",
+                    entities[:5],
+                )
             return json.dumps([])
         # Fetch full facts
         results = []
@@ -1263,6 +1293,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             fact = self._store.get_fact(fid)
             if fact:
                 results.append(fact)
+        if self._debug_logging:
+            logger.debug(
+                "handle_reason: entities=%s → %d shared facts",
+                entities[:5], len(results),
+            )
         return json.dumps(results, default=str)
     def _handle_contradict(self, args: dict) -> str:
         """Find facts with conflicting claims (same entity, opposing content).
@@ -1294,6 +1329,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     "fact_id_b": id2,
                     "content_b": c2,
                 })
+        if self._debug_logging:
+            logger.debug(
+                "handle_contradict: %d pairs checked, %d contradictions found",
+                len(pairs), len(contradict_pairs),
+            )
         return json.dumps(contradict_pairs[:20], default=str)
 
     @staticmethod
@@ -1378,6 +1418,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         min_importance = float(args.get("min_importance", 0))
         facts = self._store.get_entity_timeline(entity, limit=limit,
                                                 min_importance=min_importance)
+        if self._debug_logging:
+            logger.debug(
+                "handle_timeline: entity='%.60s' limit=%d → %d facts",
+                entity, limit, len(facts),
+            )
         return json.dumps(facts, default=str)
 
     def _handle_summarize(self, args: dict) -> str:
@@ -1387,6 +1432,11 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return json.dumps({"error": "entity is required for summarize"})
         limit = int(args.get("limit", 50))
         summary = self._store.get_entity_summary(entity, limit=limit)
+        if self._debug_logging:
+            logger.debug(
+                "handle_summarize: entity='%.60s' limit=%d → %d fields",
+                entity, limit, len(summary),
+            )
         return json.dumps(summary, default=str)
 
     def _handle_fact_feedback(self, args: dict) -> str:
