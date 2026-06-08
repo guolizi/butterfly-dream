@@ -848,15 +848,40 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             )
             if not results:
                 return ""
+
+            # Look up entity labels for retrieved facts (same format as eval)
+            fids = tuple(r["fact_id"] for r in results if r.get("fact_id"))
+            fact_entities: dict[int, str] = {}
+            if fids and self._store:
+                placeholders = ",".join("?" * len(fids))
+                entity_rows = self._store.execute_query(
+                    f"""SELECT fe.fact_id, GROUP_CONCAT(e.name, ', ') as entities
+                        FROM fact_entities fe
+                        JOIN entities e ON fe.entity_id = e.entity_id
+                        WHERE fe.fact_id IN ({placeholders})
+                        GROUP BY fe.fact_id""",
+                    fids,
+                )
+                fact_entities = {r["fact_id"]: r["entities"] for r in entity_rows}
+
             lines = []
             for r in results:
-                trust = r.get("trust_score", 0.5)
-                imp = r.get("importance", 5)
-                lines.append(f"- [{trust:.1f} trust | {imp:.0f} imp] {r.get('content', '')}")
+                content = r.get("content", "")
+                if not content:
+                    continue
+                fid = r.get("fact_id")
+                ents = fact_entities.get(fid, "")
+                entity_tag = f"[{ents}] " if ents else ""
+                date = r.get("content_date", "")
+                if date:
+                    lines.append(f"{entity_tag}[{date}] {content}")
+                else:
+                    lines.append(f"{entity_tag}{content}")
+
             if self._debug_logging:
                 self._dlog.debug(
                     "prefetch: %d facts for query='%.80s'",
-                    len(results), query,
+                    len(lines), query,
                 )
             return "## 🦋 Butterfly Dream Memory\n" + "\n".join(lines)
         except Exception as e:
