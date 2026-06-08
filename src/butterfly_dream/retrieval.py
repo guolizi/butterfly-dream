@@ -116,12 +116,14 @@ class ThreeDimRetriever:
         hrr_dim: int = 1024,
         custom_weights: dict | None = None,
         debug_logging: bool = False,
+        dlog: logging.Logger | None = None,
     ):
         self.store = store
         self.half_life_days = half_life_days
         self.hrr_dim = hrr_dim
         self._custom_weights = custom_weights
         self._debug_logging = debug_logging
+        self._dlog = dlog or logger
 
         # Auto-redistribute weights if numpy unavailable
         if hrr_weight > 0 and not hrr._HAS_NUMPY:
@@ -166,7 +168,7 @@ class ThreeDimRetriever:
         import time as _time
         _t0 = _time.time()
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "search: query='%.100s' limit=%d scenario=%s",
                 query, limit, scenario,
             )
@@ -217,7 +219,7 @@ class ThreeDimRetriever:
 
         if not candidates:
             if self._debug_logging:
-                logger.debug("search: 0 candidates (query='%.100s')", query)
+                self._dlog.debug("search: 0 candidates (query='%.100s')", query)
             return []
 
         # Stage 2: Score on all three dimensions
@@ -514,8 +516,8 @@ class ThreeDimRetriever:
         result = scored[:limit]
         if self._debug_logging:
             _elapsed = (_time.time() - _t0) * 1000
-            logger.debug(
-                "search: %d candidates \u2192 %d returned in %.0fms (query='%.100s')",
+            self._dlog.debug(
+                "search: %d candidates → %d returned in %.0fms (query='%.100s')",
                 len(candidates), len(result), _elapsed, query,
             )
         return result

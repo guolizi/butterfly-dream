@@ -63,6 +63,10 @@ butterfly-dream/
 
 # Debug/temp analysis scripts
 _debug_*.py
+
+# Runtime logs (butterfly.log written at $HERMES_HOME/logs/)
+logs/
+<MagicMock*
 eval/locomo/_debug_*.py
 eval/locomo/_analyze_*.py
 eval/locomo/_deep_dive_*.py

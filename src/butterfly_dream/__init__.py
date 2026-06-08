@@ -387,18 +387,86 @@ _REFLECTION_FREQUENCY = 5  # Run reflection every N extraction cycles
 
 
 def _load_plugin_config() -> dict:
-    """Load butterfly-dream config from config.yaml."""
+    """Load butterfly-dream config.
+
+    Priority:
+    1. $HERMES_HOME/butterfly_config.yaml  (dedicated butterfly config)
+    2. config.yaml → plugins.butterfly-dream  (legacy hermes config, backward compat)
+
+    Returns flat dict of merged config values (dedicated wins on overlap).
+    """
     from hermes_constants import get_hermes_home
-    config_path = get_hermes_home() / "config.yaml"
-    if not config_path.exists():
-        return {}
+    hermes_home = get_hermes_home()
+    config = {}
+
+    # 1. Try dedicated butterfly config file
+    dedicated_path = hermes_home / "butterfly_config.yaml"
+    if dedicated_path.exists():
+        try:
+            import yaml
+            with open(dedicated_path, encoding="utf-8-sig") as f:
+                config = yaml.safe_load(f) or {}
+        except Exception:
+            logger.debug("ButterflyDream: failed to load %s", dedicated_path)
+
+    # 2. Legacy fallback: hermes config.yaml → plugins.butterfly-dream
+    legacy_path = hermes_home / "config.yaml"
+    if legacy_path.exists():
+        try:
+            import yaml
+            with open(legacy_path, encoding="utf-8-sig") as f:
+                all_config = yaml.safe_load(f) or {}
+            legacy = cfg_get(all_config, "plugins", "butterfly-dream", default={}) or {}
+            # Merge: dedicated values override legacy for same keys,
+            # but legacy-only keys are preserved
+            merged = dict(legacy)
+            merged.update(config)
+            config = merged
+        except Exception:
+            pass
+
+    return config
+
+
+# ---------------------------------------------------------------------------
+# Dedicated butterfly debug logger (writes to $HERMES_HOME/logs/butterfly.log)
+# ---------------------------------------------------------------------------
+
+_butterfly_logger: logging.Logger | None = None
+
+
+def _init_butterfly_logger(log_dir: str) -> logging.Logger:
+    """Initialize the dedicated butterfly debug logger.
+
+    Writes DEBUG+ to ``<log_dir>/butterfly.log`` with a clean
+    timestamp|LEVEL|message format, completely separate from Hermes logging.
+    Safe to call multiple times — only the first call sets up the handler.
+    """
+    global _butterfly_logger
+    if _butterfly_logger is not None:
+        return _butterfly_logger
+
+    _butterfly_logger = logging.getLogger("butterfly")
+    _butterfly_logger.propagate = False
+
     try:
-        import yaml
-        with open(config_path, encoding="utf-8-sig") as f:
-            all_config = yaml.safe_load(f) or {}
-        return cfg_get(all_config, "plugins", "butterfly-dream", default={}) or {}
+        from pathlib import Path
+        log_path = Path(log_dir) / "butterfly.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        fh = logging.FileHandler(str(log_path), encoding="utf-8")
+        fh.setLevel(logging.DEBUG)
+        fmt = logging.Formatter(
+            "%(asctime)s|%(levelname)s|%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        fh.setFormatter(fmt)
+        _butterfly_logger.addHandler(fh)
+        _butterfly_logger.setLevel(logging.DEBUG)
     except Exception:
-        return {}
+        _butterfly_logger.addHandler(logging.NullHandler())
+        _butterfly_logger.setLevel(logging.DEBUG)
+
+    return _butterfly_logger
 
 
 def _resolve_provider_credentials(provider: str) -> tuple[str, str]:
@@ -735,12 +803,15 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             hrr_dim=hrr_dim,
             compression_config=self._config.get("compression", None),
         )
+        # Initialize dedicated butterfly debug logger
+        self._dlog = _init_butterfly_logger(_hermes_home + "/logs")
         self._retriever = ThreeDimRetriever(
             store=self._store,
             half_life_days=half_life,
             hrr_dim=hrr_dim,
             custom_weights=custom_weights,
             debug_logging=self._config.get("debug_logging", False),
+            dlog=self._dlog,
         )
         self._session_id = session_id
         self._last_extracted_idx = 0
@@ -783,7 +854,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 imp = r.get("importance", 5)
                 lines.append(f"- [{trust:.1f} trust | {imp:.0f} imp] {r.get('content', '')}")
             if self._debug_logging:
-                logger.debug(
+                self._dlog.debug(
                     "prefetch: %d facts for query='%.80s'",
                     len(results), query,
                 )
@@ -1234,7 +1305,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             persistent_only=persistent_only,
         )
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_search: query='%.80s' limit=%d scenario=%s → %d results",
                 query, limit, scenario, len(results),
             )
@@ -1247,7 +1318,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         limit = int(args.get("limit", 20))
         facts = self._store.get_entity_facts(entity, limit=limit)
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_probe: entity='%.60s' limit=%d → %d facts",
                 entity, limit, len(facts),
             )
@@ -1260,7 +1331,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         depth = int(args.get("depth", 2))
         relations = self._store.get_related_entities(entity, depth=depth)
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_related: entity='%.60s' depth=%d → %d relations",
                 entity, depth, len(relations),
             )
@@ -1282,7 +1353,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                 shared &= fact_ids
         if not shared:
             if self._debug_logging:
-                logger.debug(
+                self._dlog.debug(
                     "handle_reason: entities=%s → 0 shared facts",
                     entities[:5],
                 )
@@ -1294,7 +1365,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             if fact:
                 results.append(fact)
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_reason: entities=%s → %d shared facts",
                 entities[:5], len(results),
             )
@@ -1330,7 +1401,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                     "content_b": c2,
                 })
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_contradict: %d pairs checked, %d contradictions found",
                 len(pairs), len(contradict_pairs),
             )
@@ -1419,7 +1490,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         facts = self._store.get_entity_timeline(entity, limit=limit,
                                                 min_importance=min_importance)
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_timeline: entity='%.60s' limit=%d → %d facts",
                 entity, limit, len(facts),
             )
@@ -1433,7 +1504,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         limit = int(args.get("limit", 50))
         summary = self._store.get_entity_summary(entity, limit=limit)
         if self._debug_logging:
-            logger.debug(
+            self._dlog.debug(
                 "handle_summarize: entity='%.60s' limit=%d → %d fields",
                 entity, limit, len(summary),
             )

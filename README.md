@@ -58,7 +58,33 @@ pip install butterfly-dream
 
 ## ⚙️ 配置
 
-在 `config.yaml` 中启用：
+Butterfly Dream 支持两种配置方式（**推荐使用独立配置**）：
+
+### 方式一：独立配置文件（推荐）
+
+创建 `$HERMES_HOME/butterfly_config.yaml`，只放 butterfly-dream 专属配置：
+
+```yaml
+# ~/.hermes/butterfly_config.yaml
+db_path: $HERMES_HOME/butterfly_memory.db
+llm_extract: true
+extraction_model:
+  provider: deepseek
+  model: deepseek-v4-flash
+retrieval:
+  relevance_weight: 0.4
+  recency_weight: 0.3
+  importance_weight: 0.3
+recency_half_life_days: 30
+extract_interval: 20          # 每 20 轮通过 sync_turn 提取一次（0=关闭）
+debug_logging: false          # 开启后写入 ~/.hermes/logs/butterfly.log
+min_trust_threshold: 0.3
+default_trust: 0.5
+```
+
+### 方式二：Hermes 全局配置（向后兼容）
+
+在 `$HERMES_HOME/config.yaml` 中放入 `plugins.butterfly-dream` 下：
 
 ```yaml
 plugins:
@@ -74,13 +100,13 @@ plugins:
       recency_weight: 0.3
       importance_weight: 0.3
     recency_half_life_days: 30
-    extract_interval: 20          # 每 20 轮通过 sync_turn 提取一次（0=关闭）
-    debug_logging: false          # 开启检索查询的 debug 日志
+    extract_interval: 20
+    debug_logging: false
     min_trust_threshold: 0.3
     default_trust: 0.5
 ```
 
-> 💡 **提示**：启用 `llm_extract: true` 后，LLM 会在每次对话压缩时自动提取事实，同时每 `extract_interval` 轮通过 `sync_turn` 钩子做定期提取。确保 `extraction_model` 填写的是有 JSON mode 支持的模型。
+> 💡 **提示**：两种方式同时存在时，独立配置文件中的值**覆盖** Hermes 全局配置中的同名键。不重要的配置（`debug_logging`、`extract_interval` 等）建议放独立配置文件，Hermes 的 `config.yaml` 只保留必要的启动项。
 
 ### 依赖
 
