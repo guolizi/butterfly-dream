@@ -60,3 +60,21 @@ eval/runs/
 
 # Accidental nested repo dir
 butterfly-dream/
+
+# Debug/temp analysis scripts
+_debug_*.py
+eval/locomo/_debug_*.py
+eval/locomo/_analyze_*.py
+eval/locomo/_deep_dive_*.py
+eval/locomo/_check_db.py
+eval/locomo/_categorize_failures.py
+eval/locomo/_compare_*.py
+eval/locomo/_report_*.py
+eval/locomo/_run_*.py
+eval/locomo/_trace_*.py
+eval/locomo/rerun_cat2.py
+eval/locomo/run_conv50.py
+eval/locomo/_rerun_*.py
+eval/locomo/conv50_*.json
+eval/locomo/cat2_fix_result.json
+eval/locomo/extraction_temperature_notes.md

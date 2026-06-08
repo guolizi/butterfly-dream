@@ -3,7 +3,9 @@
 > *"昔者庄周梦为蝴蝶，栩栩然蝴蝶也。"*
 > 记忆如蝶，翩跹于时间、意义与关联的多维空间。
 
-**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，基于 Holographic 的 HRR 向量引擎和 SQLite 存储层，**完整实现了从 LLM 自动提取到三维检索的全链路**：重要性评分、分类标签、中文分词、实体关系图、事实合并、多媒体存储、反射/熔断/过滤等。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
+**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，**完整实现了从 LLM 自动提取到三维检索的全链路**：重要性评分、分类标签、中文分词、实体关系图、事实合并、多媒体存储、反射/熔断/过滤等。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
+
+> 🤝 感谢 [Holographic](https://github.com/nousresearch/hermes-agent) 项目的参考实现，为 Butterfly Dream 的早期版本提供了宝贵基础。
 
 ## ✨ 特性
 
@@ -75,7 +77,7 @@ plugins:
       relevance_weight: 0.4
       recency_weight: 0.3
       importance_weight: 0.3
-      recency_half_life_days: 30
+    recency_half_life_days: 30
     min_trust_threshold: 0.3
     default_trust: 0.5
 ```
@@ -86,6 +88,7 @@ plugins:
 
 ```bash
 pip install numpy          # HRR 向量编码（可选，但强烈推荐）
+pip install nltk           # WordNet 词形还原（FTS5 查询扩展）
 pip install Pillow         # 图片压缩缩略图
 pip install ffmpeg-python  # 音视频压缩
 pip install jieba          # 中文分词（FTS5 全文搜索）
@@ -105,7 +108,7 @@ Butterfly Dream 使用 SQLite FTS5 作为全文搜索引擎。FTS5 默认的 `un
 - 英中混合 `"love 猫咪"` → 英文和中文 token 均可独立搜索 ✓
 - 单一 jieba 复合词（如 `"喝咖啡"`）按完整词索引，子串 `"咖啡"` 无法命中——但 Agent 搜索时知道完整概念，可搜 `"喝咖啡"` 或 `"coffee"`
 
-> ⚠️ jieba 首次加载约需 0.6 秒（载入词典），后续调用几乎无开销。首次初始化 `MemoryStore` 时会有一次载入延迟，不影响后续搜索性能。
+> ⚠️ jieba 首次加载约需 0.6 秒（载入词典），NLTK WordNet 首次使用约需 2 秒（载入语料库），合计约 **2.6 秒**冷启动时间。首次初始化 `MemoryStore` 时会有一次载入延迟，后续搜索不受影响。
 
 ## 🧠 三维检索使用示例
 
@@ -144,38 +147,6 @@ await agent.tools.fact_store(action="summarize", entity="VS Code")
 await agent.tools.fact_feedback(action="helpful", fact_id=1)
 ```
 
-## 📊 与上游 Holographic 的功能对比
-
-| 特性 | Holographic main | **Butterfly Dream** |
-|:-----|:---------------:|:------------------:|
-| HRR 向量编码 | ✅ | ✅ |
-| SQLite 持久存储 | ✅ | ✅ |
-| 实体自动提取 (regex) | ✅ | ✅ (增强 CJK 括号) |
-| **LLM 自动提取** | ❌ | ✅ |
-| **重要性评分 (1-10)** | ❌ | ✅ |
-| **分类标签 (category/tags)** | ❌ | ✅ |
-| **三维检索 (相关×时效×重要)** | ❌ | ✅ |
-| **OR 语义 + 前缀匹配 FTS5** | ❌ | ✅ |
-| **jieba 中文分词** | ❌ | ✅ |
-| 实体关系图 | ❌ | ✅ |
-| 多跳推理 | ❌ | ✅ |
-| 事实合并 (精确+语义) | ❌ | ✅ |
-| 指数衰减时效 | ❌ | ✅ |
-| 信任度反馈训练 | ❌ | ✅ |
-| 琐事消息过滤 | ❌ | ✅ |
-| 熔断保护 | ❌ | ✅ |
-| 线程安全 | ❌ | ✅ |
-| 异步提取 (+ 压缩触发) | ❌ | ✅ |
-| 反思 (元认知) | ❌ | ✅ |
-| 多媒体 (图片/音频/视频) | ❌ | ✅ |
-| 自动压缩 (图片/视频/音频) | ❌ | ✅ |
-| 持久标记 | ❌ | ✅ |
-| 跨源去重 | ❌ | ✅ |
-| 时间线查询 | ❌ | ✅ |
-| 实体摘要卡 (零 LLM 成本) | ❌ | ✅ |
-| 完整评测体系 (检索+提取) | ❌ | ✅ |
-| 代码行数 (估算) | ~400 | ~1800+ |
-
 ## 🧪 评测
 
 评测体系包含 **业界标准基准评测** 和 **自有场景单元测试** 两部分。
@@ -189,6 +160,18 @@ await agent.tools.fact_feedback(action="helpful", fact_id=1)
 | **PersonaMem** | COLM 2025 | 589 | 偏好演化 / 事实回忆 / 泛化推理 |
 
 详见 [`eval/README.md`](eval/README.md)。
+
+### ⚡ 性能
+
+| 指标 | LoCoMo | LongMemEval | PersonaMem |
+|:----|:-----:|:----------:|:---------:|
+| 平均分 (1-5) | **3.27** | TBD | TBD |
+| 准确率 (≥4) | **54.4%** | TBD | TBD |
+| 平均检索时间 | **~12ms**/query | — | — |
+
+- 评测模型：**GPT-OSS-120B**（OpenRouter free）—— 提取 + 回答 + 评判均使用同一模型
+- 检索管线在 646 条事实库中平均 **12ms** 完成 FTS5 搜索 + 三维评分 + 多样性重排序（预热后）
+- 冷启动（NLTK WordNet + jieba 词典首次加载）约 **2.6s**，后续搜索不受影响
 
 ### 自有场景单元测试 (tests/)
 

@@ -61,18 +61,18 @@ def _now() -> datetime:
 
 
 def _parse_datetime(dt_str: Optional[str]) -> Optional[datetime]:
-    """Parse SQLite datetime string to datetime object."""
+    """Parse SQLite datetime string to datetime object. Uses fromisoformat (30x faster than strptime in Python 3.11+)."""
     if not dt_str:
         return None
     try:
-        # Handle 'YYYY-MM-DD HH:MM:SS' format (SQLite default, UTC)
-        if "+" in dt_str or "Z" in dt_str or "T" in dt_str:
-            # ISO 8601 with timezone
-            from datetime import timezone as tz
-            return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        else:
-            # SQLite default: no timezone → assume UTC
-            return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        # Python 3.11+ fromisoformat handles both:
+        #   '2023-10-19 14:30:00' (SQLite default) and
+        #   '2023-10-19T14:30:00+00:00' (ISO 8601)
+        s = dt_str.replace("Z", "+00:00")
+        if "T" not in s and "+" not in s:
+            # SQLite default format: no TZ → assume UTC
+            return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+        return datetime.fromisoformat(s)
     except (ValueError, TypeError):
         return None
 
@@ -256,6 +256,12 @@ class ThreeDimRetriever:
         except Exception:
             pass  # entity boost is best-effort
 
+        # Pre-compute query HRR vector once (was inside loop × 60!)
+        try:
+            _qvec = hrr.encode_text(query, self.hrr_dim) if self.hrr_weight > 0 else None
+        except Exception:
+            _qvec = None
+
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
             tag_tokens = self._tokenize(fact.get("tags", ""))
@@ -266,11 +272,10 @@ class ThreeDimRetriever:
             fts_score = fact.get("fts_rank", 0.0)
 
             # HRR similarity
-            if self.hrr_weight > 0 and fact.get("hrr_vector"):
+            if self.hrr_weight > 0 and fact.get("hrr_vector") and _qvec is not None:
                 try:
                     fact_vec = hrr.bytes_to_phases(fact["hrr_vector"])
-                    query_vec = hrr.encode_text(query, self.hrr_dim)
-                    hrr_sim = (hrr.similarity(query_vec, fact_vec) + 1.0) / 2.0
+                    hrr_sim = (hrr.similarity(_qvec, fact_vec) + 1.0) / 2.0
                 except Exception:
                     hrr_sim = 0.5
             else:

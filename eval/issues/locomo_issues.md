@@ -361,10 +361,75 @@
 ```
 |**Importance scoring (1-10):**
 - 7-8: Important relationships (family, **pets** — knowing someone's pets/animals is as important as knowing their family members)...
-```
+---
+
+## Q3 (conv-41): 上位词「martial arts」vs 下位词「kickboxing/taekwondo」
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What martial arts has John done? |
+| Gold | Kickboxing, Taekwondo |
+| FTS5查询 | (martial* OR soldierly* OR warlike*) OR (arts* OR humanities* OR artistry*) OR (John* OR toilet* OR bathroom*) |
+| DB关键事实 | [34] John does **kickboxing** / [6] John practices **kickboxing** / [33] John is going to do some **taekwondo** |
+| 误导事实 | [449] John asked Maria if the place she mentioned was a **martial arts** place or a yoga studio ✅ 匹配 martial*+art*+John* |
+| Gold FTS5排名 | #4, #25, #26（在候选池内） |
+| 最终排名 | 掉出 top-15（3D排序被挤出） |
+| 模型回答 | "No martial arts are mentioned" |
+| 得分 | 1 |
+
+**根因**: 查询用上位词"martial arts"，DB存下位词"kickboxing/taekwondo"。WordNet同义词展开（soldierly/warlike/humanities）无法桥接此鸿沟。gold 事实仅靠 John*（1个词）匹配，而误导事实同时匹配 martial*+art*+John*（3个词），BM25 更高。虽然 gold 在候选池内，但 3D 排序后掉出 top-15。
 
 ---
 
+## Q43 (conv-42): 泛指词「movies」vs 具体片名「Little Women/Lord of the Rings」
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What movies have both Joanna and Nate seen? |
+| Gold | "Little Women", "Lord of the Rings" |
+| FTS5查询 | (movies* OR movie* OR film* OR picture*) OR Joanna* OR Nate* OR see* |
+| DB关键事实 | [59] Joanna recommended the movie "**Little Women**" to Nate / [196] Joanna watched "**The Lord of the Rings**" Trilogy / [418] Nate watched "**Little Women**" recently |
+| Gold FTS5排名 | #53 (BM25=-3.66), #66 (BM25=-3.40) — 候选池外 ❌ |
+| 竞争事实 | [D8] "Joanna asked Nate if he had **seen** any good **movies** lately" → 命中 movie*+see*+人名（5词）BM25=-11.63 |
+| 模型回答 | "No specific movies are identified" |
+| 得分 | 1 |
+
+**根因**: 查询用泛指词"movies"，但期待的具体片名"Little Women"和"Lord of the Rings"不在查询中。gold 事实只匹配 movie+人名（2-3词），而竞争事实（如"asked if he had seen any good movies lately"）匹配 movie*+see*+人名（5词），BM25 远高于 gold 事实。gold 事实排名 #53/#66，被候选池（45条）截断。
+
+---
+
+## Q52 (conv-42): 别名/用词不一致「get Tilly」vs「gave stuffed animal puppy」
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | When did Nate get Tilly for Joanna? |
+| Gold | 25 May, 2022 |
+| FTS5查询 | Nate* OR (get* OR receive* OR obtain* OR acquire*) OR Tilly* OR Joanna* |
+| DB关键事实 | [265] Nate **gave** Joanna a **stuffed animal puppy** as a **gift** on **25 May 2022** |
+| Gold FTS5排名 | ❌ 不在 top-200（仅匹配 Nate*+Joanna* 2个词） |
+| 模型回答 | "The timing is not stated" |
+| 得分 | 1 |
+
+**根因**: 三层语义鸿沟叠加：① `get*` 不匹配 "gave"（不同词根）；② 问题说 "Tilly" 但事实写 "stuffed animal puppy"（提取时未用昵称）；③ gold 事实没有 "get"/"receive"/"Tilly" 任何关键词，仅靠 Nate*+Joanna* 匹配，在几百条同类事实中 BM25 平局，完全无法区分。
+
+---
+
+## Q57 (conv-42): 误导事实「stuffed animal puppy」干扰正确「turtles」证据
+
+| 字段 | 内容 |
+|---|---|
+| 问题 | What animal do both Nate and Joanna like? |
+| Gold | Turtles. |
+| FTS5查询 | (animal* OR beast* OR creature*) OR both* OR Nate* OR Joanna* OR (like* OR wish* OR care* OR similar*) |
+| DB乌龟事实 | [D15] Nate **likes** holding his **turtles**（like*+Nate* 2词）BM25=-4.17 |
+| DB乌龟事实 | [D19] Joanna wishes she could get two **turtles**（Joanna*+wish* 2词）BM25=-4.37 |
+| 误导事实 | [D12] Nate gave Joanna a **stuffed animal** puppy（animal*+Joanna*+Nate* **3词**）BM25=-4.88 |
+| Gold FTS5排名 | #15, #19, #22（在候选池内 ✅） |
+| 最终排名 | 误导事实排进 top-3，乌龟事实掉出 top-15 |
+| 模型回答 | "Both like dogs (a puppy)" ❌ |
+| 得分 | 1 |
+
+**根因**: 乌龟事实只匹配 like*/人名（1-2词），而 stuffed animal 事实匹配 animal*+人名（3个词）。3D排序后误导事实排名更高（#3），模型根据检索到的"stuffed animal puppy"错误推断两人都喜欢狗。这是第一个 gold 在候选池内但因**误导事实干扰**导致答错的案例。
 ```
 ## Q{题号} (conv-{id}): {简述}
 
