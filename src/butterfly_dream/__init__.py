@@ -716,6 +716,9 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         # Debug logging toggle (butterfly config, not hermes global)
         self._debug_logging = self._config.get("debug_logging", False)
 
+        # Prefetch limit: how many facts to inject into system prompt per turn
+        self._prefetch_limit = int(self._config.get("prefetch_limit", 10))
+
         # Thread safety for async extraction state
         self._extraction_lock = threading.Lock()
         # Track async extraction threads for safe shutdown
@@ -757,6 +760,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             {"key": "hrr_dim", "description": "HRR vector dimensions", "default": "1024"},
             {"key": "extract_interval", "description": "Extract facts every N turns via sync_turn (0=disable)", "default": "20"},
             {"key": "debug_logging", "description": "Enable debug logs for search/query pipeline", "default": "false", "choices": ["true", "false"]},
+            {"key": "prefetch_limit", "description": "Number of facts to inject into system prompt each turn", "default": "10"},
             {"key": "compression", "description": "Media compression settings (YAML block: enabled, image.quality, video.bitrate, etc.)", "default": "{enabled: true}"},
         ]
 
@@ -844,7 +848,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             return ""
         try:
             results = self._retriever.search(
-                query, min_trust=self._min_trust, limit=5, scenario="balanced",
+                query, min_trust=self._min_trust, limit=self._prefetch_limit, scenario="balanced",
             )
             if not results:
                 return ""
