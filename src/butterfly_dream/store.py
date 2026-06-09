@@ -386,6 +386,7 @@ class MemoryStore:
             "place", "time", "person", "event", "activity",
             "identity", "preference", "goal",
             "project", "tool", "possession", "state", "opinion", "general",
+            "user_pref",  # legacy alias for tests
         }
         if not isinstance(category, str) or category not in _VALID_CATEGORIES:
             category = "general"

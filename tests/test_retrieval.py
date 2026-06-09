@@ -248,10 +248,10 @@ class TestSanitizeFTSQuery:
 
     def test_synonym_expansion(self):
         from butterfly_dream.retrieval import ThreeDimRetriever
-        # "children" has synonyms: student, youth, teen, kid
+        # "children" → lemmatized to "child" → WordNet synsets include: kid, youngster, minor, ...
         result = ThreeDimRetriever._sanitize_fts_query("help children")
         assert "children" in result
-        assert "student" in result or "youth" in result
+        assert "kid" in result or "youngster" in result
         # Should contain OR groups
         assert "OR" in result
 
