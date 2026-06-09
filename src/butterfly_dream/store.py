@@ -1604,6 +1604,72 @@ class MemoryStore:
                 "relation_types": {r["relation"]: r["cnt"] for r in relation_types},
             }
 
+    def match_abstract_entities(
+        self, query_vec, *,
+        threshold: float = 0.50,
+    ) -> list[dict]:
+        """Match query embedding against abstract entities (step-back).
+
+        Args:
+            query_vec: Query embedding vector (512-dim float32 numpy array).
+            threshold: Minimum cosine similarity (default 0.50).
+
+        Returns:
+            Sorted list of {entity_id, name, similarity, member_entities}.
+        """
+        from .embedding import get_embedding_service, EmbeddingService
+        svc = get_embedding_service()
+
+        rows = self.execute_query(
+            "SELECT entity_id, name, embedding FROM entities "
+            "WHERE entity_type = 'abstract' AND embedding IS NOT NULL"
+        )
+        if not rows:
+            return []
+
+        abstract_ids: list[int] = []
+        abstract_names: list[str] = []
+        abstract_vecs: list[np.ndarray] = []
+        for r in rows:
+            blob = r["embedding"]
+            if blob is None:
+                continue
+            vec = EmbeddingService.deserialize(bytes(blob))
+            if vec is not None:
+                abstract_ids.append(r["entity_id"])
+                abstract_names.append(r["name"])
+                abstract_vecs.append(vec)
+
+        if not abstract_vecs:
+            return []
+
+        scores = EmbeddingService.cosine_similarity_batch(query_vec, abstract_vecs)
+
+        matches = []
+        for eid, name, score in zip(abstract_ids, abstract_names, scores):
+            if score >= threshold:
+                # Get member concrete entities via cluster_members
+                members = self._conn.execute(
+                    """SELECT e.entity_id, e.name
+                       FROM cluster_members cm
+                       JOIN clusters c ON cm.cluster_id = c.cluster_id
+                       JOIN entities e ON cm.entity_id = e.entity_id
+                       WHERE c.name = ?""",
+                    (name,),
+                ).fetchall()
+                matches.append({
+                    "entity_id": eid,
+                    "name": name,
+                    "similarity": round(score, 4),
+                    "member_entities": [
+                        {"entity_id": m["entity_id"], "name": m["name"]}
+                        for m in members
+                    ],
+                })
+
+        matches.sort(key=lambda x: x["similarity"], reverse=True)
+        return matches
+
     # -- Entity clustering ----------------------------------------------------
 
     def create_cluster(

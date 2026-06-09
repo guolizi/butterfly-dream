@@ -154,6 +154,8 @@ class ThreeDimRetriever:
         persistent_only: bool = False,
         fts_mode: str = "or",
         use_graph_expansion: bool = True,
+        use_step_back: bool = True,
+        step_back_threshold: float = 0.50,
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -167,6 +169,10 @@ class ThreeDimRetriever:
             recency_weight: Override recency weight for this call.
             relevance_weight: Override relevance weight for this call.
             importance_weight: Override importance weight for this call.
+            use_step_back: Enable step-back via abstract entity embedding matching
+                          (default True).
+            step_back_threshold: Min cosine similarity for abstract entity matching
+                                (default 0.50).
 
         Returns:
             List of fact dicts with 'score' field, sorted descending.
@@ -223,12 +229,7 @@ class ThreeDimRetriever:
                     candidates.append(c)
                     seen_ids.add(c["fact_id"])
 
-        if not candidates:
-            if self._debug_logging:
-                self._dlog.debug("search: 0 candidates (query='%.100s')", query)
-            return []
-
-        # Stage 1.75: Graph-based entity expansion (v2)
+        # Stage 1.5: Entity lookup + graph-based entity expansion (v2)
         # If entities mentioned in query have co_occur relations, add facts
         # about their graph neighbors to the candidate pool.
         # Entity name lookup happens here (needed for both graph expansion
@@ -269,6 +270,36 @@ class ThreeDimRetriever:
         except Exception:
             pass
 
+        # Stage 1.6: Step-back — match abstract entities via query embedding
+        step_back_entities: list[str] = []
+        if use_step_back:
+            try:
+                from .embedding import get_embedding_service as _sb_svc
+                _sb_embed = _sb_svc().encode_one(query)
+                if _sb_embed is not None:
+                    _abstract_matches = self.store.match_abstract_entities(
+                        _sb_embed, threshold=step_back_threshold,
+                    )
+                    if _abstract_matches:
+                        for _am in _abstract_matches:
+                            for _m in _am["member_entities"]:
+                                _m_name = _m["name"]
+                                if _m_name not in matched_entities:
+                                    matched_entities.append(_m_name)
+                                    step_back_entities.append(_m_name)
+                        # Recompute entity_fact_ids with expanded entities
+                        if matched_entities:
+                            entity_fact_ids = self.store.get_fact_ids_for_entities(matched_entities)
+                        if self._debug_logging:
+                            self._dlog.debug(
+                                "search: step-back matched %d abstract entities → %d concrete entities: %s",
+                                len(_abstract_matches),
+                                len(step_back_entities),
+                                step_back_entities,
+                            )
+            except Exception:
+                pass
+
         if use_graph_expansion and matched_entities:
             try:
                 graph_result = self.store.expand_entities_for_retrieval(
@@ -295,6 +326,12 @@ class ThreeDimRetriever:
                         )
             except Exception:
                 pass  # graph expansion is best-effort
+
+        # Early return if still no candidates after FTS5, category, step-back, and graph expansion
+        if not candidates:
+            if self._debug_logging:
+                self._dlog.debug("search: 0 candidates after all stages (query='%.100s')", query)
+            return []
 
         # Stage 2: Score on all three dimensions
         query_tokens = self._tokenize(query)
