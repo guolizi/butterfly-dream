@@ -201,7 +201,8 @@ class TestScenarioPipeline:
             "reflection": False,
         }
         provider = ButterflyDreamMemoryProvider(config)
-        provider.initialize(session_id="test-bd-scenarios")
+        hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+        provider.initialize(session_id="test-bd-scenarios", hermes_home=hermes_home)
         assert provider._store is not None
 
         # Mock the LLM extraction
@@ -251,7 +252,8 @@ class TestScenarioPipeline:
             "reflection": False,
         }
         provider = ButterflyDreamMemoryProvider(config)
-        provider.initialize(session_id="test-content")
+        hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+        provider.initialize(session_id="test-content", hermes_home=hermes_home)
         assert provider._store is not None
 
         with patch.object(provider, "_run_llm_extraction") as mock_extract:
@@ -285,7 +287,8 @@ class TestMultiSession:
             "reflection": False,
         }
         provider = ButterflyDreamMemoryProvider(config)
-        provider.initialize(session_id="test-multi")
+        hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+        provider.initialize(session_id="test-multi", hermes_home=hermes_home)
         assert provider._store is not None
 
         # Collect ALL conversations from ALL multi-session scenarios
@@ -335,7 +338,8 @@ class TestRealExtraction:
             "reflection": False,
         }
         provider = ButterflyDreamMemoryProvider(config)
-        provider.initialize(session_id="test-integration")
+        hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+        provider.initialize(session_id="test-integration", hermes_home=hermes_home)
         assert provider._store is not None
 
         # Real extraction call

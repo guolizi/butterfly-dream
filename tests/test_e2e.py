@@ -61,7 +61,8 @@ def provider(db_path: str) -> ButterflyDreamMemoryProvider:
         "reflection": True,
     }
     p = ButterflyDreamMemoryProvider(config)
-    p.initialize(session_id="test-e2e")
+    hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+    p.initialize(session_id="test-e2e", hermes_home=hermes_home)
     yield p
     p.shutdown()
 

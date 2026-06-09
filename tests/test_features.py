@@ -485,7 +485,8 @@ class TestStorageRetrieval:
             "reflection": False,
         }
         provider = ButterflyDreamMemoryProvider(config)
-        provider.initialize(session_id="test-storage-retrieval")
+        hermes_home = os.path.join(os.path.dirname(__file__), "..", ".test_hermes")
+        provider.initialize(session_id="test-storage-retrieval", hermes_home=hermes_home)
         return provider
 
     def _mock_llm_response(self, provider, facts: list):

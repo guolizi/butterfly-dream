@@ -1103,6 +1103,19 @@ class MemoryStore:
             self._conn.commit()
             return {"fact_id": fact_id, "trust_score": trust, "importance": importance}
 
+    def increment_retrieval_count(self, fact_ids: list[int]) -> None:
+        """Increment retrieval_count for the given fact IDs (best-effort)."""
+        if not fact_ids:
+            return
+        placeholders = ",".join("?" * len(fact_ids))
+        with self._lock:
+            self._conn.execute(
+                f"UPDATE facts SET retrieval_count = retrieval_count + 1 "
+                f"WHERE fact_id IN ({placeholders})",
+                tuple(fact_ids),
+            )
+            self._conn.commit()
+
     # -- Entity management -----------------------------------------------------
 
     def _extract_entities(self, text: str) -> list[str]:
