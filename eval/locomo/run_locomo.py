@@ -58,6 +58,29 @@ def _log(msg: str, level: str = "info"):
     print(f"  {msg}")
 
 
+def _run_clustering_after_extraction(store):
+    """Run v2 entity clustering after extraction to build three-layer ontology.
+
+    Creates abstract entities + includes edges for semantic reasoning.
+    Safe to call even if no clusters are found.
+    """
+    if store is None:
+        print("  ⚠️  No store available, skipping clustering")
+        return
+    try:
+        from butterfly_dream.clustering import compute_clusters
+        t0 = time.perf_counter()
+        clusters = compute_clusters(store, threshold=0.55, min_cluster_size=2)
+        if clusters:
+            for c in clusters:
+                print(f"  🏷️  Cluster '{c['name']}' ({c['size']} members, coherence={c['coherence']})")
+        else:
+            print("  🏷️  No clusters found (entities too diverse or <2 per group)")
+        _log(f"Clustering done: {len(clusters)} clusters in {time.perf_counter()-t0:.2f}s")
+    except Exception as e:
+        print(f"  ⚠️  Clustering error (non-fatal): {e}")
+        _log(f"Clustering skipped: {e}", "warning")
+
 
 CAT_NAMES = {
     1: "single-session single-hop",
@@ -512,6 +535,9 @@ def main():
             n_facts = qp._store.count_facts() if qp._store else 0
             extract_time = time.perf_counter() - t0
             print(f"  ✅ Extracted {n_facts} facts in {extract_time:.1f}s")
+
+        # ── V2: Run entity clustering to build three-layer ontology ──
+        _run_clustering_after_extraction(qp._store)
 
         # Answer QAs
         conv_correct = 0

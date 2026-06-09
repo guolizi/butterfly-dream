@@ -461,10 +461,21 @@ class MemoryStore:
         # Re-encode HRR to reflect updated importance/trust
         hrr_vector = self._encode_hrr(old_content)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
+        # Re-compute neural embedding (best-effort) for merged facts
+        embed_blob = None
+        try:
+            from .embedding import get_embedding_service
+            svc = get_embedding_service()
+            vec = svc.encode_one(old_content)
+            if vec is not None:
+                embed_blob = svc.serialize(vec)
+        except Exception:
+            pass
         self._conn.execute(
             """UPDATE facts SET importance=?, trust_score=?, tags=?,
-               is_persistent=?, hrr_vector=?, updated_at=datetime('now') WHERE fact_id=?""",
-            (new_importance, new_trust, merged_tags, new_persistent, hrr_blob, fact_id),
+               is_persistent=?, hrr_vector=?, embedding=COALESCE(?, embedding),
+               updated_at=datetime('now') WHERE fact_id=?""",
+            (new_importance, new_trust, merged_tags, new_persistent, hrr_blob, embed_blob, fact_id),
         )
         self._conn.commit()
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
@@ -630,13 +641,24 @@ class MemoryStore:
         # Re-encode HRR with merged content
         hrr_vector = self._encode_hrr(merged_content, entities)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
+        # Re-compute neural embedding (best-effort) for merged content
+        embed_blob = None
+        try:
+            from .embedding import get_embedding_service
+            svc = get_embedding_service()
+            vec = svc.encode_one(merged_content)
+            if vec is not None:
+                embed_blob = svc.serialize(vec)
+        except Exception:
+            pass
 
         self._conn.execute(
             """UPDATE facts SET content=?, category=?, tags=?, importance=?,
-               trust_score=?, is_persistent=?, hrr_vector=?, updated_at=datetime('now')
+               trust_score=?, is_persistent=?, hrr_vector=?, embedding=COALESCE(?, embedding),
+               updated_at=datetime('now')
                WHERE fact_id=?""",
             (merged_content, category, merged_tags, new_importance,
-             new_trust, new_persistent, hrr_blob, fact_id),
+             new_trust, new_persistent, hrr_blob, embed_blob, fact_id),
         )
 
         # Log the merge

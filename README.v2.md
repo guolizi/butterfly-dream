@@ -74,15 +74,87 @@ L3: includes 关系（entity_relations, relation='includes'）
 
 ### 表结构
 
-```sql
--- entities 表中 entity_type 字段现在被正确使用
-SELECT name, entity_type FROM entities;
--- 跳绳     → unknown   （具体）
--- 运动爱好   → abstract  （抽象）
+v2 中以下表是核心，所有列名均使用 `*_id` 模式（`fact_id`, `entity_id`, `cluster_id`, `relation_id` 等）：
 
--- 聚类信息存 clusters / cluster_members（用于管理后台）
--- 检索走 entities + includes 边
+```sql
+-- facts 表 — 核心事实存储（v2 新增 embedding 列）
+CREATE TABLE facts (
+    fact_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    content          TEXT NOT NULL UNIQUE,         -- 事实文本
+    category         TEXT DEFAULT 'general',       -- place/time/person/event/activity/identity/...
+    tags             TEXT DEFAULT '',              -- 逗号分隔关键词
+    importance       REAL DEFAULT 5.0,             -- 1.0 ~ 10.0
+    trust_score      REAL DEFAULT 0.5,
+    retrieval_count  INTEGER DEFAULT 0,            -- 检索次数统计
+    helpful_count    INTEGER DEFAULT 0,            -- 有用反馈统计
+    is_persistent    INTEGER DEFAULT 0,            -- 1 = 长期记忆，不会被预取过滤
+    content_date     TEXT,                         -- 事件日期 (YYYY-MM-DD)
+    created_at       TEXT DEFAULT (datetime('now')),
+    updated_at       TEXT DEFAULT (datetime('now')),
+    hrr_vector       BLOB,                         -- v1 旧编码（回退用）
+    embedding        BLOB                          -- 🔥 v2 主力 — bge-small-zh 512-dim float32
+);
+
+-- entities 表 — 实体（L1 具体 + L2 抽象）
+CREATE TABLE entities (
+    entity_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,               -- 实体名
+    entity_type TEXT DEFAULT 'unknown',             -- 'unknown'（具体）或 'abstract'（抽象）
+    aliases     TEXT DEFAULT '',                    -- 预留别名字段（当前未使用）
+    created_at  TEXT DEFAULT (datetime('now')),
+    embedding   BLOB                               -- 🔥 v2 — 实体名嵌入向量
+);
+
+-- entity_relations 表 — 关系边（L3：co_occur + includes）
+CREATE TABLE entity_relations (
+    relation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id   INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
+    target_id   INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
+    relation    TEXT DEFAULT 'related_to',          -- 'co_occur' | 'includes'
+    weight      REAL DEFAULT 1.0,
+    created_at  TEXT DEFAULT (datetime('now')),
+    UNIQUE(source_id, target_id, relation)
+);
+
+-- clusters 表 — 聚类管理（后台管理用，检索走 entities + includes 边）
+CREATE TABLE clusters (
+    cluster_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name         TEXT NOT NULL UNIQUE,
+    cluster_type TEXT DEFAULT 'auto' CHECK(cluster_type IN ('auto', 'manual', 'abstract')),
+    member_count INTEGER DEFAULT 0,
+    centroid     BLOB,                              -- 聚类中心向量
+    coherence    REAL DEFAULT 0.0,
+    created_at   TEXT DEFAULT (datetime('now')),
+    updated_at   TEXT DEFAULT (datetime('now'))
+);
+
+-- cluster_members 表 — 聚类成员关系
+CREATE TABLE cluster_members (
+    cluster_id INTEGER NOT NULL REFERENCES clusters(cluster_id) ON DELETE CASCADE,
+    entity_id  INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
+    similarity REAL DEFAULT 0.0,                    -- 成员-中心相似度
+    PRIMARY KEY (cluster_id, entity_id)
+);
+
+-- fact_entities 表 — 事实↔实体关联
+CREATE TABLE fact_entities (
+    fact_id   INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    entity_id INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
+    PRIMARY KEY (fact_id, entity_id)
+);
+
+-- merge_log 表 — 事实合并审计
+CREATE TABLE merge_log (
+    merge_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    kept_fact_id     INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+    absorbed_fact_id INTEGER REFERENCES facts(fact_id) ON DELETE CASCADE,
+    merged_content   TEXT,
+    merge_reason     TEXT DEFAULT 'auto',
+    created_at       TEXT DEFAULT (datetime('now'))
+);
 ```
+
+> 注：`merge` 路径（`_merge_exact_match` / `_merge_semantic`）也会自动计算 embedding（`COALESCE(?, embedding)`），确保合并后的事实也有向量用于检索。
 
 ---
 
@@ -374,16 +446,24 @@ store.add_fact(
 **Step 1 — 写入 `facts` 表**
 
 ```sql
-INSERT INTO facts (content, category, importance, hrr_vector, embedding)
-VALUES ('小明喜欢跳绳…', 'preference', 7.0, <hrr>, <bge-embedding>);
+INSERT INTO facts (content, category, tags, importance, is_persistent, content_date, hrr_vector, embedding)
+VALUES ('小明喜欢跳绳…', 'preference', '小明,跳绳,运动', 7.0, 1, '2023-01-19', <hrr>, <bge-embedding>);
 ```
 
-`facts` 表现在同时存两个编码：
+`facts` 表字段说明（v2 新增字段加 🔥 标记）：
 
-| 列 | 值 | 说明 |
+| 列 | 类型 | 说明 |
 |---|---|---|
-| `hrr_vector` | 8192 bytes | v1 旧编码（回退用） |
-| `embedding` | 2048 bytes | **v2 主力** — bge-small-zh 512-dim float32 |
+| `fact_id` | INTEGER | 主键自增 |
+| `content` | TEXT | 事实文本，UNIQUE |
+| `category` | TEXT | 分类（place/time/person/event/activity/identity/preference/...） |
+| `tags` | TEXT | 逗号分隔关键词 |
+| `importance` | REAL | 1.0 ~ 10.0 |
+| `trust_score` | REAL | 信任度，默认 0.5 |
+| `is_persistent` | INTEGER | 1 = 长期记忆 |
+| `content_date` | TEXT | 事件日期 YYYY-MM-DD |
+| `hrr_vector` | BLOB | 8192 bytes — v1 旧编码（回退用） |
+| `embedding` 🔥 | BLOB | 2048 bytes — **v2 主力** — bge-small-zh 512-dim float32 |
 
 **Step 2 — `_link_entities()` 创建/关联实体**
 
