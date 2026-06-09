@@ -63,12 +63,19 @@ def _run_clustering_after_extraction(store):
 
     Creates abstract entities + includes edges for semantic reasoning.
     Safe to call even if no clusters are found.
+    First removes any existing clusters (when reusing a DB with --db-dir).
     """
     if store is None:
         print("  ⚠️  No store available, skipping clustering")
         return
     try:
         from butterfly_dream.clustering import compute_clusters
+        # Remove existing clusters first (idempotent — DB may have old clusters)
+        store.execute_query("DELETE FROM cluster_members")
+        store.execute_query("DELETE FROM clusters")
+        store.execute_query("DELETE FROM entity_relations WHERE relation = 'includes'")
+        store.execute_query("DELETE FROM entities WHERE entity_type = 'abstract'")
+        store._conn.commit()
         t0 = time.perf_counter()
         clusters = compute_clusters(store, threshold=0.55, min_cluster_size=2)
         if clusters:

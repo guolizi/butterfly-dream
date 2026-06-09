@@ -54,7 +54,7 @@ def compute_clusters(
     embed_svc = get_embedding_service()
 
     rows = store.execute_query(
-        "SELECT entity_id, name, embedding FROM entities WHERE embedding IS NOT NULL"
+        "SELECT entity_id, name, embedding FROM entities WHERE embedding IS NOT NULL AND entity_type != 'abstract'"
     )
     if len(rows) < min_cluster_size:
         logger.info("clustering: only %d entities with embeddings, skipping", len(rows))
@@ -214,8 +214,8 @@ def _auto_cluster_name(member_names: list[str], centroid_idx: int) -> str:
         if len(prefix) >= 2:
             base = prefix
 
-    # If name already contains '类' or 'cluster', don't append
-    if any(c in base for c in ("类", "cluster", "Cluster")):
+    # If name already contains '类' or 'cluster' or 'category', don't append again
+    if any(c in base for c in ("类", "cluster", "Cluster", "category", "Category")):
         return base
 
     # Chinese name → append 类
