@@ -153,6 +153,7 @@ class ThreeDimRetriever:
         importance_weight: Optional[float] = None,
         persistent_only: bool = False,
         fts_mode: str = "or",
+        use_graph_expansion: bool = True,
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -227,23 +228,16 @@ class ThreeDimRetriever:
                 self._dlog.debug("search: 0 candidates (query='%.100s')", query)
             return []
 
-        # Stage 2: Score on all three dimensions
-        query_tokens = self._tokenize(query)
-        scored = []
-
-        # Semantic category boost: facts matching detected categories get a relevance bump
-        _CAT_BOOST = 0.15  # boost for matching semantic category
-
-        # Entity boost: find entities mentioned in the query
-        _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
-        # Temporal boost: for time-related queries, boost facts with precise dates
-        _TEMPORAL_BOOST = 0.15  # boost for precise-date facts on time queries
-        is_temporal_query = bool(semantic_cats and "time" in semantic_cats)
+        # Stage 1.75: Graph-based entity expansion (v2)
+        # If entities mentioned in query have co_occur relations, add facts
+        # about their graph neighbors to the candidate pool.
+        # Entity name lookup happens here (needed for both graph expansion
+        # and the entity boost below).
+        matched_entities: list[str] = []
         entity_fact_ids: set[int] = set()
-        entity_fact_map: dict[int, set[int]] = {}  # fact_id → set of entity_ids
-        query_entity_ids: set[int] = set()  # entity_ids mentioned in the query
+        entity_fact_map: dict[int, set[int]] = {}
+        query_entity_ids: set[int] = set()
         try:
-            # Get all known entity names
             entity_rows = self.store.execute_query(
                 "SELECT name FROM entities"
             )
@@ -273,7 +267,55 @@ class ThreeDimRetriever:
                         entity_fact_map[fid] = set()
                     entity_fact_map[fid].add(eid)
         except Exception:
-            pass  # entity boost is best-effort
+            pass
+
+        if use_graph_expansion and matched_entities:
+            try:
+                graph_result = self.store.expand_entities_for_retrieval(
+                    matched_entities,
+                    max_depth=2,
+                    max_results=limit * 2,
+                    min_weight=0.3,
+                )
+                graph_facts = graph_result.get("facts", [])
+                if graph_facts:
+                    seen_ids = {c.get("fact_id") for c in candidates}
+                    added = 0
+                    for gf in graph_facts:
+                        if gf.get("fact_id") not in seen_ids:
+                            gf["fts_rank"] = 0.0
+                            gf["_graph_expanded"] = True
+                            candidates.append(gf)
+                            seen_ids.add(gf["fact_id"])
+                            added += 1
+                    if self._debug_logging and added:
+                        self._dlog.debug(
+                            "search: graph expansion added %d facts (entities=%s)",
+                            added, matched_entities,
+                        )
+            except Exception:
+                pass  # graph expansion is best-effort
+
+        # Stage 2: Score on all three dimensions
+        query_tokens = self._tokenize(query)
+        scored = []
+
+        # Semantic category boost: facts matching detected categories get a relevance bump
+        _CAT_BOOST = 0.15  # boost for matching semantic category
+
+        # Entity boost: find entities mentioned in the query
+        _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
+        # Temporal boost: for time-related queries, boost facts with precise dates
+        _TEMPORAL_BOOST = 0.15  # boost for precise-date facts on time queries
+        is_temporal_query = bool(semantic_cats and "time" in semantic_cats)
+
+        # entity_fact_ids / entity_fact_map / query_entity_ids / matched_entities
+        # are already populated in Stage 1.75 (graph expansion section above).
+        # Keep empty fallbacks in case that block failed:
+        if not matched_entities:
+            entity_fact_ids = set()
+            entity_fact_map = {}
+            query_entity_ids = set()
 
         # Pre-compute query HRR vector once (was inside loop × 60!)
         try:

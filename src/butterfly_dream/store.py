@@ -777,7 +777,7 @@ class MemoryStore:
         )
         fact_id = cursor.lastrowid
         if entities:
-            self._link_entities(fact_id, entities)
+            self._link_entities(fact_id, entities, importance)
         self._conn.commit()
         return {"fact_id": fact_id, "content": content, "importance": importance,
                 "is_persistent": is_persistent, "merged": False}
@@ -1171,8 +1171,17 @@ class MemoryStore:
             and e.lower() not in _STOP_ENTITIES
         ]
 
-    def _link_entities(self, fact_id: int, entity_names: list[str]) -> None:
-        """Associate entities with a fact, creating them if needed."""
+    def _link_entities(self, fact_id: int, entity_names: list[str],
+                       importance: float = 5.0) -> None:
+        """Associate entities with a fact, creating them if needed.
+
+        Also extracts co-occurrence relations between entity pairs:
+        every pair of entities appearing in the same fact gets a 'co_occur'
+        relation in the entity_relations table, with weight proportional to
+        the fact's importance.
+        """
+        if not entity_names:
+            return
         for name in entity_names:
             # Upsert entity
             self._conn.execute(
@@ -1202,6 +1211,31 @@ class MemoryStore:
                     "INSERT OR IGNORE INTO fact_entities (fact_id, entity_id) VALUES (?, ?)",
                     (fact_id, row[0]),
                 )
+
+        # ── Co-occurrence relation extraction ──
+        # Get entity IDs for all names in one query
+        placeholders = ",".join("?" for _ in entity_names)
+        rows = self._conn.execute(
+            f"SELECT entity_id FROM entities WHERE name IN ({placeholders})",
+            entity_names,
+        ).fetchall()
+        eids = [r["entity_id"] for r in rows]
+        if len(eids) >= 2:
+            norm_weight = min(importance / 10.0, 1.0)  # normalize to [0, 1]
+            # For each unordered pair, upsert a 'co_occur' relation
+            for i in range(len(eids)):
+                for j in range(i + 1, len(eids)):
+                    src, tgt = eids[i], eids[j]
+                    # Co-occurrence is undirected — canonicalise src < tgt
+                    if src > tgt:
+                        src, tgt = tgt, src
+                    self._conn.execute(
+                        """INSERT INTO entity_relations (source_id, target_id, relation, weight)
+                           VALUES (?, ?, 'co_occur', ?)
+                           ON CONFLICT(source_id, target_id, relation)
+                           DO UPDATE SET weight = MIN(weight + ?, 10.0)""",
+                        (src, tgt, norm_weight, norm_weight * 0.5),
+                    )
 
     def get_entity_facts(self, entity_name: str, limit: int = 20) -> list[dict]:
         """Get all facts linked to an entity."""
@@ -1288,6 +1322,266 @@ class MemoryStore:
                         results.append({"source": name, "target": related_name, "depth": d + 1})
                         queue.append((related_name, d + 1))
             return results
+
+    # -- Entity relation graph queries (via entity_relations) -------------------
+
+    def get_entity_neighbors(self, entity_name: str,
+                              relation: str = 'co_occur',
+                              min_weight: float = 0.0) -> list[dict]:
+        """Return direct neighbors of an entity in the relation graph.
+
+        Queries the entity_relations table — unlike get_related_entities
+        (which finds entities sharing facts), this follows stored relations
+        such as 'co_occur', giving semantically weighted adjacency.
+
+        Args:
+            entity_name: Source entity name.
+            relation: Relation type filter ('co_occur', or '' for all).
+            min_weight: Minimum relation weight.
+
+        Returns:
+            List of {entity_id, name, relation, weight, direction}.
+        """
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT entity_id FROM entities WHERE name = ?", (entity_name,)
+            ).fetchone()
+            if not row:
+                return []
+            eid = row["entity_id"]
+            rel_filter = "AND er.relation = ?" if relation else ""
+            params: tuple = (eid,)
+            if relation:
+                params = (eid, relation)
+            rows = self._conn.execute(
+                f"""SELECT e.entity_id, e.name, er.relation, er.weight
+                    FROM entity_relations er
+                    JOIN entities e ON e.entity_id =
+                        CASE WHEN er.source_id = ? THEN er.target_id
+                             ELSE er.source_id END
+                    WHERE (er.source_id = ? OR er.target_id = ?)
+                    AND er.weight >= ?
+                    {rel_filter}
+                    ORDER BY er.weight DESC""",
+                (eid, eid, eid, min_weight) if not relation else
+                (eid, eid, eid, min_weight, relation),
+            ).fetchall()
+            result = []
+            for r in rows:
+                result.append({
+                    "entity_id": r["entity_id"],
+                    "name": r["name"],
+                    "relation": r["relation"],
+                    "weight": r["weight"],
+                })
+            return result
+
+    def expand_entities_for_retrieval(self, entity_names: list[str],
+                                       max_depth: int = 2,
+                                       max_results: int = 50,
+                                       relation: str = 'co_occur',
+                                       min_weight: float = 0.0) -> dict:
+        """BFS graph expansion: from seed entities, traverse entity_relations
+        to find reachable entities and their linked facts.
+
+        Returns facts from expanded entity set for multi-hop retrieval.
+
+        Args:
+            entity_names: Seed entity names.
+            max_depth: Max BFS hops (default 2 — covers indirect relations).
+            max_results: Max total facts to return.
+            relation: Relation filter.
+            min_weight: Minimum relation weight.
+
+        Returns:
+            dict with:
+              - entities: list of {name, depth, path_from_seed}
+              - facts: list of fact dicts from expanded entity set
+              - expansions: number of additional entities found via graph
+        """
+        if not entity_names:
+            return {"entities": [], "facts": [], "expansions": 0}
+
+        with self._lock:
+            # ── BFS through entity_relations ──
+            visited: set[str] = set()
+            queue: deque = deque()
+            expansion_results: list[dict] = []  # {name, depth, source}
+
+            for name in entity_names:
+                if name not in visited:
+                    visited.add(name)
+                    queue.append((name, 0, None))  # (name, depth, source)
+
+            while queue:
+                name, depth, source = queue.popleft()
+                if depth > 0:
+                    expansion_results.append({
+                        "name": name, "depth": depth,
+                        "reached_via": source,
+                    })
+                if depth >= max_depth:
+                    continue
+
+                # Find neighbors via entity_relations
+                row = self._conn.execute(
+                    "SELECT entity_id FROM entities WHERE name = ?", (name,)
+                ).fetchone()
+                if not row:
+                    continue
+                eid = row["entity_id"]
+                rel_filter = "AND er.relation = ?" if relation else ""
+                params: tuple = (eid, eid, eid, min_weight)
+                if relation:
+                    params = (eid, eid, eid, min_weight, relation)
+
+                neighbors = self._conn.execute(
+                    f"""SELECT DISTINCT e.name
+                        FROM entity_relations er
+                        JOIN entities e ON e.entity_id =
+                            CASE WHEN er.source_id = ? THEN er.target_id
+                                 ELSE er.source_id END
+                        WHERE (er.source_id = ? OR er.target_id = ?)
+                        AND er.weight >= ?
+                        {rel_filter}""",
+                    params,
+                ).fetchall()
+
+                for nb in neighbors:
+                    nb_name = nb[0]
+                    if nb_name not in visited:
+                        visited.add(nb_name)
+                        queue.append((nb_name, depth + 1, name))
+
+            # Separate seed from expanded
+            seed_set = set(entity_names)
+            expanded = [e for e in expansion_results if e["name"] not in seed_set]
+
+            if not expanded:
+                return {"entities": [{"name": n, "depth": 0} for n in entity_names],
+                        "facts": [], "expansions": 0}
+
+            # ── Gather facts from expanded entities ──
+            expanded_names = [e["name"] for e in expanded]
+            all_names = list(seed_set) + expanded_names
+            placeholders = ",".join("?" for _ in all_names)
+            rows = self._conn.execute(
+                f"""SELECT DISTINCT f.* FROM facts f
+                    JOIN fact_entities fe ON f.fact_id = fe.fact_id
+                    JOIN entities e ON fe.entity_id = e.entity_id
+                    WHERE e.name IN ({placeholders})
+                    ORDER BY f.importance DESC, f.trust_score DESC
+                    LIMIT ?""",
+                (*all_names, max_results),
+            ).fetchall()
+            facts = [{key: r[key] for key in r.keys()} for r in rows]
+
+            return {
+                "entities": [{"name": n, "depth": 0} for n in entity_names]
+                           + expanded,
+                "facts": facts,
+                "expansions": len(expanded),
+            }
+
+    def get_relation_path(self, source_name: str, target_name: str,
+                           max_depth: int = 5) -> list[dict]:
+        """BFS path finding between two entities in the relation graph.
+
+        Returns the shortest path(s) as a list of hops, or empty list
+        if no path exists within max_depth.
+
+        Each hop: {source, target, relation, weight, depth}.
+        """
+        if source_name == target_name:
+            return [{"source": source_name, "target": target_name,
+                     "relation": "self", "weight": 1.0, "depth": 0}]
+
+        with self._lock:
+            # Get source entity ID
+            src_row = self._conn.execute(
+                "SELECT entity_id FROM entities WHERE name = ?", (source_name,)
+            ).fetchone()
+            tgt_row = self._conn.execute(
+                "SELECT entity_id FROM entities WHERE name = ?", (target_name,)
+            ).fetchone()
+            if not src_row or not tgt_row:
+                return []
+            src_eid, tgt_eid = src_row["entity_id"], tgt_row["entity_id"]
+
+            # BFS tracking predecessor and relation
+            visited: dict[int, Optional[tuple[int, str, float]]] = {src_eid: None}
+            queue: deque = deque([(src_eid, 0)])
+            found = False
+
+            while queue and not found:
+                cur, depth = queue.popleft()
+                if depth >= max_depth:
+                    continue
+                # Get all neighbors from entity_relations
+                rows = self._conn.execute(
+                    """SELECT er.source_id, er.target_id, er.relation, er.weight
+                       FROM entity_relations er
+                       WHERE er.source_id = ? OR er.target_id = ?""",
+                    (cur, cur),
+                ).fetchall()
+                for r in rows:
+                    neighbor = r["target_id"] if r["source_id"] == cur else r["source_id"]
+                    if neighbor not in visited:
+                        visited[neighbor] = (cur, r["relation"], r["weight"])
+                        if neighbor == tgt_eid:
+                            found = True
+                            break
+                        queue.append((neighbor, depth + 1))
+
+            if not found:
+                return []
+
+            # Reconstruct path
+            path: list[dict] = []
+            cur = tgt_eid
+            while visited.get(cur) is not None:
+                prev, rel, weight = visited[cur]  # type: ignore
+                # Get names
+                prev_name = self._conn.execute(
+                    "SELECT name FROM entities WHERE entity_id = ?", (prev,)
+                ).fetchone()[0]
+                cur_name = self._conn.execute(
+                    "SELECT name FROM entities WHERE entity_id = ?", (cur,)
+                ).fetchone()[0]
+                path.insert(0, {
+                    "source": prev_name, "target": cur_name,
+                    "relation": rel, "weight": weight,
+                    "depth": len(path),
+                })
+                cur = prev
+            return path
+
+    def get_entity_graph_stats(self) -> dict:
+        """Return basic statistics about the entity relation graph."""
+        with self._lock:
+            total_relations = self._conn.execute(
+                "SELECT COUNT(*) FROM entity_relations"
+            ).fetchone()[0]
+            active_entities = self._conn.execute(
+                "SELECT COUNT(DISTINCT entity_id) FROM ("
+                "SELECT source_id AS entity_id FROM entity_relations "
+                "UNION "
+                "SELECT target_id AS entity_id FROM entity_relations"
+                ")"
+            ).fetchone()[0]
+            avg_weight = self._conn.execute(
+                "SELECT AVG(weight) FROM entity_relations"
+            ).fetchone()[0]
+            relation_types = self._conn.execute(
+                "SELECT relation, COUNT(*) as cnt FROM entity_relations "
+                "GROUP BY relation ORDER BY cnt DESC"
+            ).fetchall()
+            return {
+                "total_relations": total_relations,
+                "active_entities": active_entities,
+                "avg_weight": round(avg_weight or 0, 3),
+                "relation_types": {r["relation"]: r["cnt"] for r in relation_types},
+            }
 
     # -- Entity summary (S6.4) -------------------------------------------------
 
