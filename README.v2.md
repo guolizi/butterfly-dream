@@ -312,6 +312,183 @@ store.create_cluster(
 
 ---
 
+## 🗄️ 数据库设计
+
+### 表全景
+
+| 表 | 写入时机 | 读取时机 | v2 新增 |
+|----|---------|---------|--------|
+| `facts` | `add_fact()` | `search()` FTS5 + 评分 | `embedding` 列 |
+| `facts_fts` | 同步 trigger | `MATCH` 查询 | — |
+| `entities` | `_link_entities()` / `create_cluster()` | 实体匹配 + step-back + PPR | `embedding` 列 + `entity_type='abstract'` |
+| `fact_entities` | `_link_entities()` | 实体→事实关联 | — |
+| `entity_relations` | `_link_entities()` (co_occur) / `create_cluster()` (includes) | PPR + BFS 图展开 | `includes` 关系类型 |
+| `clusters` | `create_cluster()` | 管理后台 + `match_abstract_entities()` 查成员 | ✅ **新表** |
+| `cluster_members` | `create_cluster()` | `match_abstract_entities()` 查成员 | ✅ **新表** |
+| `media_attachments` | 多媒体写入 | 多媒体检索 | — |
+| `merge_log` | 事实合并 | 审计 | — |
+
+### 实体关系图（三层本体）
+
+```
+                       ┌───────────────────┐
+                       │    运动爱好        │  L2 抽象实体
+                       │  (type=abstract)   │    entity_type='abstract'
+                       │  embedding=<centr> │
+                       └────────┬──────────┘
+                    includes/   │   \includes
+                     weight=0.62│    \weight=0.58
+                               │     \
+                    ┌──────────▼┐    ┌▼──────────┐
+                    │  跳绳      │    │  游泳      │  L1 具体实体
+                    │(entity #11)│    │(entity #13)│    entity_type='unknown'
+                    └─────┬─────┘    └────┬───────┘
+                          │  co_occur    │
+                    0.7   │/0.7   0.6\  │/0.6
+                          │/           \│/
+                    ┌─────▼─────┐    ┌───▼───────┐
+                    │  小明      │    │  小红      │
+                    │(entity #10)│    │(entity #12)│
+                    └─────┬─────┘    └─────┬─────┘
+                          │                │
+                     fact_entities    fact_entities
+                          │                │
+                    ┌─────▼─────┐    ┌─────▼─────────┐
+                    │ 事实#42    │    │ 事实#43        │
+                    │ 小明喜欢   │    │ 小红喜欢       │
+                    │ 跳绳...    │    │ 玩乐高拼图     │
+                    └───────────┘    └───────────────┘
+```
+
+### 写入流程：`add_fact("小明喜欢跳绳…")`
+
+```python
+store.add_fact(
+    content="小明喜欢跳绳，这是一项他很喜欢的运动",
+    category="preference",
+    importance=7.0,
+    entities=["小明", "跳绳"],  # ← 外部传入或 LLM 提取
+)
+```
+
+**Step 1 — 写入 `facts` 表**
+
+```sql
+INSERT INTO facts (content, category, importance, hrr_vector, embedding)
+VALUES ('小明喜欢跳绳…', 'preference', 7.0, <hrr>, <bge-embedding>);
+```
+
+`facts` 表现在同时存两个编码：
+
+| 列 | 值 | 说明 |
+|---|---|---|
+| `hrr_vector` | 8192 bytes | v1 旧编码（回退用） |
+| `embedding` | 2048 bytes | **v2 主力** — bge-small-zh 512-dim float32 |
+
+**Step 2 — `_link_entities()` 创建/关联实体**
+
+```python
+for name in entity_names:  # ["小明", "跳绳"]
+    # 2a) INSERT OR IGNORE INTO entities (name)
+    # 2b) 新实体 → 立即算 embedding
+    vec = bge-small-zh.encode("小明")  # → 512-dim
+    UPDATE entities SET embedding=? WHERE name='小明';
+    # entity_type stays 'unknown' — only clusters write 'abstract'
+
+    # 2c) 关联事实↔实体
+    INSERT OR IGNORE INTO fact_entities (fact_id, entity_id)
+    VALUES (42, 10);   -- 事实42 → 小明
+    INSERT OR IGNORE INTO fact_entities (fact_id, entity_id)
+    VALUES (42, 11);   -- 事实42 → 跳绳
+
+# 2d) 共现关系提取
+INSERT INTO entity_relations (source_id, target_id, relation, weight)
+VALUES (10, 11, 'co_occur', 0.7)   -- importance 7.0/10 = 0.7
+ON CONFLICT UPDATE weight = MIN(weight + 0.35, 10.0);
+```
+
+### 聚类流程：`compute_clusters()`
+
+```python
+from butterfly_dream.clustering import compute_clusters
+clusters = compute_clusters(store, threshold=0.55, min_cluster_size=2)
+```
+
+```
+Step 1 — 加载所有有 embedding 的实体
+  SELECT ... FROM entities WHERE embedding IS NOT NULL
+  → ["小明"(10), "小红"(12), "跳绳"(11), "游泳"(13)]
+
+Step 2 — 全对 cosine 相似度矩阵
+  cos(小明, 小红) = 0.62 ≥ 0.55 ✅ → 同一聚类
+
+Step 3 — 连通分量 → 找到聚类
+  聚类1: [小明, 小红] (coherence=0.62)
+
+Step 4 — 自动命名（成员中最中心的 + "类"后缀）
+  小明 vs 小红 → "小明" 是 centroid → "小明类"
+
+Step 5 — 写入 create_cluster()
+```
+
+`create_cluster()` 内部：
+
+```sql
+-- 5a) clusters 表（后台管理）
+INSERT INTO clusters (name, cluster_type, member_count, centroid, coherence)
+VALUES ('小明类', 'auto', 2, <centroid>, 0.60);
+
+-- 5b) entities 表 → 抽象实体（L2）
+INSERT OR IGNORE INTO entities (name, entity_type, embedding)
+VALUES ('小明类', 'abstract', <centroid>);
+-- entity_type = 'abstract'  ✅
+
+-- 5c) cluster_members 表
+INSERT OR IGNORE INTO cluster_members (cluster_id, entity_id, similarity)
+VALUES (1, 10, 0.62), (1, 12, 0.58);
+
+-- 5d) entity_relations → includes 边（L3）
+INSERT INTO entity_relations (source_id, target_id, relation, weight)
+VALUES (18, 10, 'includes', 0.62),  -- 小明类 → 小明
+       (18, 12, 'includes', 0.58);  -- 小明类 → 小红
+```
+
+### 检索流程：`search("有什么运动推荐")`
+
+```
+query → bge-small-zh → qvec(512-dim)
+
+Stage 1   — FTS5 全文搜索        (fts_rank)
+Stage 1.5 — 语义分类候选         (category filter)
+Stage 1.6 — Step-back 抽象匹配   (qvec vs abstract entities)
+Stage 1.75 — PPR 图展开          (graph distance weighting)
+Stage 2   — 三维评分             (rel × rec × imp × trust × ppr_boost)
+```
+
+PPR 画像（种子=跳绳, α=0.85）：
+
+```
+  跳绳(seed) ppr=0.860 → boost=0.93×
+  小明(1-hop) ppr=0.069 → boost=0.53×
+  游泳(2-hop) ppr=0.009 → boost=0.50×
+```
+
+### v2 编码链路
+
+```
+事实文本 ──bge-small-zh──→ embedding(512-dim) ──serialize──→ facts.embedding (BLOB)
+实体名称 ──bge-small-zh──→ embedding(512-dim) ──serialize──→ entities.embedding (BLOB)
+聚类 centroid ──均值合并──→ embedding(512-dim) ──serialize──→ clusters.centroid + 抽象实体.embedding
+
+查询文本 ──bge-small-zh──→ qvec(512-dim)
+  ├── FTS5 命中 → fts_rank（传统全文）
+  ├── vs 事实 embedding → embed_sim（语义相似度）
+  └── vs 抽象实体 embedding → step-back（写意查询兜底）
+         └── includes → 具体实体 → PPR → 距离加权事实
+```
+
+---
+
 ## 开发者
 
 - **guolizi** — 架构设计 & 实现
