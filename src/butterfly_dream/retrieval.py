@@ -15,6 +15,8 @@ import math
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
+import numpy as np
+
 if TYPE_CHECKING:
     from .store import MemoryStore
 
@@ -110,9 +112,10 @@ class ThreeDimRetriever:
         store: MemoryStore,
         *,
         half_life_days: float = 30.0,
-        fts_weight: float = 0.4,
-        jaccard_weight: float = 0.3,
-        hrr_weight: float = 0.3,
+        fts_weight: float = 0.35,
+        jaccard_weight: float = 0.20,
+        embed_weight: float = 0.35,  # neural embedding (bge-small-zh)
+        hrr_weight: float = 0.10,     # fallback HRR for pre-v2 facts
         hrr_dim: int = 1024,
         custom_weights: dict | None = None,
         debug_logging: bool = False,
@@ -126,13 +129,15 @@ class ThreeDimRetriever:
         self._dlog = dlog or logger
 
         # Auto-redistribute weights if numpy unavailable
-        if hrr_weight > 0 and not hrr._HAS_NUMPY:
-            fts_weight = 0.6
-            jaccard_weight = 0.4
+        if (embed_weight > 0 or hrr_weight > 0) and not hrr._HAS_NUMPY:
+            fts_weight = 0.5
+            jaccard_weight = 0.3
+            embed_weight = 0.2
             hrr_weight = 0.0
 
         self.fts_weight = fts_weight
         self.jaccard_weight = jaccard_weight
+        self.embed_weight = embed_weight
         self.hrr_weight = hrr_weight
 
     def search(
@@ -276,6 +281,17 @@ class ThreeDimRetriever:
         except Exception:
             _qvec = None
 
+        # Pre-compute query neural embedding (v2)
+        _qembed: Optional[np.ndarray] = None
+        _embed_svc: Optional[object] = None
+        if self.embed_weight > 0:
+            try:
+                from .embedding import get_embedding_service
+                _embed_svc = get_embedding_service()
+                _qembed = _embed_svc.encode_one(query)
+            except Exception:
+                _qembed = None
+
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
             tag_tokens = self._tokenize(fact.get("tags", ""))
@@ -285,7 +301,19 @@ class ThreeDimRetriever:
             jaccard = self._jaccard_similarity(query_tokens, all_tokens)
             fts_score = fact.get("fts_rank", 0.0)
 
-            # HRR similarity
+            # Embedding similarity (v2: neural embedding, bge-small-zh)
+            embed_sim = 0.5
+            if self.embed_weight > 0 and _qembed is not None and _embed_svc is not None:
+                try:
+                    embed_data = fact.get("embedding")
+                    if embed_data is not None and isinstance(embed_data, (bytes, memoryview)):
+                        fvec = _embed_svc.deserialize(bytes(embed_data))
+                        if fvec is not None:
+                            embed_sim = _embed_svc.cosine_similarity(_qembed, fvec)
+                except Exception:
+                    embed_sim = 0.5
+
+            # HRR similarity (fallback for pre-v2 facts without embedding)
             if self.hrr_weight > 0 and fact.get("hrr_vector") and _qvec is not None:
                 try:
                     fact_vec = hrr.bytes_to_phases(fact["hrr_vector"])
@@ -298,6 +326,7 @@ class ThreeDimRetriever:
             relevance = (
                 self.fts_weight * fts_score
                 + self.jaccard_weight * jaccard
+                + self.embed_weight * embed_sim
                 + self.hrr_weight * hrr_sim
             )
 

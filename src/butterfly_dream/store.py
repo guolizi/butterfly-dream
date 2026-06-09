@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS facts (
     content_date    TEXT,                       -- event date from conversation (e.g. '2023-01-19')
     created_at      TEXT DEFAULT (datetime('now')),
     updated_at      TEXT DEFAULT (datetime('now')),
-    hrr_vector      BLOB
+    hrr_vector      BLOB,
+    embedding       BLOB                        -- 512-dim float32 dense vector (bge-small-zh)
 );
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS entities (
     name        TEXT NOT NULL UNIQUE,
     entity_type TEXT DEFAULT 'unknown',
     aliases     TEXT DEFAULT '',
+    embedding   BLOB,                           -- 512-dim float32 dense vector
     created_at  TEXT DEFAULT (datetime('now'))
 );
 
@@ -267,6 +269,18 @@ class MemoryStore:
             self._conn.commit()
         except sqlite3.OperationalError:
             pass  # Column already exists
+
+        # v2: add embedding columns
+        try:
+            self._conn.execute("ALTER TABLE facts ADD COLUMN embedding BLOB")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass
+        try:
+            self._conn.execute("ALTER TABLE entities ADD COLUMN embedding BLOB")
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
@@ -745,11 +759,21 @@ class MemoryStore:
         """Insert a brand-new fact."""
         hrr_vector = self._encode_hrr(content, entities)
         hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
+        # Compute neural embedding (best-effort)
+        embed_blob = None
+        try:
+            from .embedding import get_embedding_service
+            svc = get_embedding_service()
+            vec = svc.encode_one(content)
+            if vec is not None:
+                embed_blob = svc.serialize(vec)
+        except Exception:
+            pass
         cursor = self._conn.execute(
-            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, content_date, hrr_vector)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, content_date, hrr_vector, embedding)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (content, category, tags, importance, self._default_trust,
-             1 if is_persistent else 0, content_date, hrr_blob),
+             1 if is_persistent else 0, content_date, hrr_blob, embed_blob),
         )
         fact_id = cursor.lastrowid
         if entities:
@@ -1156,9 +1180,23 @@ class MemoryStore:
                 (name,),
             )
             row = self._conn.execute(
-                "SELECT entity_id FROM entities WHERE name = ?", (name,)
+                "SELECT entity_id, embedding FROM entities WHERE name = ?", (name,)
             ).fetchone()
             if row:
+                # If the entity was just created (no embedding yet), compute one
+                if row["embedding"] is None:
+                    try:
+                        from .embedding import get_embedding_service
+                        svc = get_embedding_service()
+                        vec = svc.encode_one(name)
+                        if vec is not None:
+                            blob = svc.serialize(vec)
+                            self._conn.execute(
+                                "UPDATE entities SET embedding=? WHERE entity_id=?",
+                                (blob, row["entity_id"]),
+                            )
+                    except Exception:
+                        pass
                 # Link fact ↔ entity
                 self._conn.execute(
                     "INSERT OR IGNORE INTO fact_entities (fact_id, entity_id) VALUES (?, ?)",
