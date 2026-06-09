@@ -420,6 +420,8 @@ class MemoryStore:
             # Extract entities from content
             extracted = self._extract_entities(content)
             if entities:
+                # Filter LLM-provided entities through quality gate
+                entities = [e for e in entities if MemoryStore._is_valid_entity(e)]
                 extracted.extend(entities)
             extracted = list(dict.fromkeys(extracted))  # dedup
 
@@ -1185,6 +1187,68 @@ class MemoryStore:
 
     # -- Entity management -----------------------------------------------------
 
+    @staticmethod
+    def _is_valid_entity(name: str) -> bool:
+        """Validate an entity name — reject sentences, fragments, and garbage.
+
+        Entity names should be proper nouns or short named concepts, not
+        full sentences, truncated text, or common English words.
+        """
+        if not name or not isinstance(name, str):
+            return False
+        name = name.strip()
+        # Length: entities are names, not sentences
+        if len(name) < 2 or len(name) > 40:
+            return False
+        # Must contain at least one letter or CJK character
+        if not re.search(r'[a-zA-Z\u4e00-\u9fff]', name):
+            return False
+        # No newlines or tabs
+        if '\n' in name or '\t' in name:
+            return False
+        # Max 5 words — full sentences are not entities
+        if len(name.split()) > 5:
+            return False
+        # Sentence detection: 4+ words that aren't Title Cased (no capitalized
+        # content words after the first) → likely a sentence, not an entity
+        words = name.split()
+        if len(words) >= 4:
+            rest_words = words[1:]
+            # If ALL subsequent words are lowercase, it's probably a sentence
+            if all(w[0].islower() for w in rest_words if w):
+                return False
+            # If first word is a WH-word or sentence starter → sentence fragment
+            _SENTENCE_STARTERS = {'what', 'when', 'where', 'why', 'who', 'how', 'which',
+                                  'whose', 'whom', 'that', 'this', 'these', 'those',
+                                  'there', 'it', 'i', 'we', 'they', 'he', 'she'}
+            if words[0].lower() in _SENTENCE_STARTERS:
+                return False
+        # No sentence-ending punctuation at the end
+        if name[-1] in '.!?。！？':
+            return False
+        # First character should be uppercase letter, CJK character, or digit.
+        # For lowercase-starting names, allow if they're 4+ chars (likely a real
+        # concept like "professionals", not a fragment like "re" or "t").
+        if name[0].islower():
+            first_word = name.split()[0].lower().strip("'\"")
+            # Allow short lowercase function words
+            if first_word in {'a', 'an', 'the', 'to', 'in', 'on', 'at', 'by', 'for', 'of', 'with', 'from'}:
+                pass  # these can start a valid multi-word entity
+            # Reject short lowercase fragments (≤3 chars, likely truncated)
+            elif len(first_word) <= 3:
+                return False
+        # Exclude known non-entity starting words
+        _STOP_START = {'both', 'hey', 'hi', 'hello', 'let', "let's", 'lets', 'my', 'your', 'our',
+                       'their', 'its', 'some', 'any', 'every', 'all', 'each', 'no', 'not',
+                       'support', 'welcome', 'thanks'}  # verbs/determiners that don't start entity names
+        first_word = name.split()[0].lower().strip("'\"")
+        if first_word in _STOP_START:
+            return False
+        # Not a possessive fragment
+        if name.startswith("s ") or name.startswith("'s "):
+            return False
+        return True
+
     def _extract_entities(self, text: str) -> list[str]:
         """Extract entity candidates from text."""
         entities = set()
@@ -1212,6 +1276,7 @@ class MemoryStore:
             and not e.startswith("s ")      # possessive garbage
             and not e.startswith("'s ")      # possessive garbage
             and e.lower() not in _STOP_ENTITIES
+            and MemoryStore._is_valid_entity(e)
         ]
 
     def _link_entities(self, fact_id: int, entity_names: list[str],
@@ -1223,6 +1288,10 @@ class MemoryStore:
         relation in the entity_relations table, with weight proportional to
         the fact's importance.
         """
+        if not entity_names:
+            return
+        # Safety net: double-check all entities pass quality gate
+        entity_names = [n for n in entity_names if MemoryStore._is_valid_entity(n)]
         if not entity_names:
             return
         for name in entity_names:
