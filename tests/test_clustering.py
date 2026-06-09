@@ -1,4 +1,4 @@
-"""E2E test for entity clustering + is_member_of graph expansion."""
+"""E2E test for three-layer ontology: abstract entities + includes edges + graph expansion."""
 import json
 import tempfile
 
@@ -35,7 +35,7 @@ def _insert_facts(store):
 
 
 class TestClustering:
-    """Entity clustering end-to-end tests."""
+    """Entity clustering end-to-end tests (three-layer ontology)."""
 
     def test_entities_have_embeddings(self, store):
         """All entities should get embeddings via _link_entities."""
@@ -65,31 +65,67 @@ class TestClustering:
         stats = cluster_stats(store)
         assert stats["total_clusters"] >= 1
 
-    def test_is_member_of_relations_created(self, store):
-        """Clustering should create is_member_of edges in entity_relations."""
+    def test_abstract_entity_created(self, store):
+        """Clustering should create abstract entities in entities table (L2)."""
+        _insert_facts(store)
+        compute_clusters(store, threshold=0.55, min_cluster_size=2)
+
+        abstracts = store.execute_query(
+            "SELECT entity_id, name, entity_type, LENGTH(embedding) as embed_len "
+            "FROM entities WHERE entity_type = 'abstract'"
+        )
+        print(f"Abstract entities created: {len(abstracts)}")
+        for a in abstracts:
+            print(f"  #{a['entity_id']} {a['name']:12s} type={a['entity_type']:10s} embed={a['embed_len']}B")
+
+        assert len(abstracts) > 0, "Should have at least one abstract entity!"
+        # Verify abstract entity has an embedding
+        for a in abstracts:
+            assert a['embed_len'] > 0, f"Abstract entity '{a['name']}' has no embedding!"
+
+    def test_includes_relations_created(self, store):
+        """Clustering should create includes edges from abstract → concrete entities (L3)."""
         _insert_facts(store)
         compute_clusters(store, threshold=0.55, min_cluster_size=2)
 
         rels = store.execute_query(
-            "SELECT er.relation, e1.name as src, e2.name as tgt "
+            "SELECT er.relation, e1.name as src, e1.entity_type as src_type, "
+            "e2.name as tgt, e2.entity_type as tgt_type "
             "FROM entity_relations er "
             "JOIN entities e1 ON er.source_id = e1.entity_id "
             "JOIN entities e2 ON er.target_id = e2.entity_id "
-            "WHERE er.relation = 'is_member_of'"
+            "WHERE er.relation = 'includes'"
         )
-        print(f"is_member_of edges: {len(rels)}")
+        print(f"includes edges: {len(rels)}")
         for r in rels:
-            print(f"  {r['src']:10s} ──{r['relation']}──→ {r['tgt']}")
-        assert len(rels) > 0, "Should have at least one is_member_of edge"
+            print(f"  {r['src']:12s}({r['src_type']}) ──{r['relation']}──→ {r['tgt']:12s}({r['tgt_type']})")
+        assert len(rels) > 0, "Should have at least one includes edge"
+
+        # Verify all source entities are abstract
+        for r in rels:
+            assert r['src_type'] == 'abstract', \
+                f"Source of includes edge should be abstract, got '{r['src_type']}' for '{r['src']}'"
+            assert r['tgt_type'] != 'abstract', \
+                f"Target of includes edge should be concrete, got abstract for '{r['tgt']}'"
+
+    def test_no_old_is_member_of_edges(self, store):
+        """No old-style is_member_of edges should remain."""
+        _insert_facts(store)
+        compute_clusters(store, threshold=0.55, min_cluster_size=2)
+
+        old = store.execute_query(
+            "SELECT COUNT(*) as cnt FROM entity_relations WHERE relation = 'is_member_of'"
+        )
+        assert old[0]['cnt'] == 0, "Should have zero is_member_of edges (all migrated to includes)"
 
     def test_graph_expansion_finds_cluster_members(self, store):
-        """Graph expansion should follow is_member_of to find semantically related facts."""
+        """Graph expansion should follow abstract entity → includes to find related facts."""
         _insert_facts(store)
         compute_clusters(store, threshold=0.55, min_cluster_size=2)
 
         retriever = ThreeDimRetriever(store)
 
-        # Query about "跳绳" — should graph-expand to "游泳" via is_member_of
+        # Query about "跳绳" — should graph-expand to "游泳" via abstract entity's includes
         with_graph = retriever.search("跳绳对健康的好处", limit=10, use_graph_expansion=True)
         no_graph = retriever.search("跳绳对健康的好处", limit=10, use_graph_expansion=False)
 
@@ -110,7 +146,7 @@ class TestClustering:
         assert len(swimming_facts) > 0, "Should find swimming facts via graph!"
 
     def test_entity_cluster_lookup(self, store):
-        """get_entity_clusters should work after clustering."""
+        """get_entity_clusters should work after clustering (still uses cluster_members table)."""
         _insert_facts(store)
         compute_clusters(store, threshold=0.55, min_cluster_size=2)
 

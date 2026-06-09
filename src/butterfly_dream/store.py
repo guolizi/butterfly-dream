@@ -1615,26 +1615,31 @@ class MemoryStore:
         similarities: list[float] | None = None,
         centroid: bytes | None = None,
         coherence: float = 0.0,
-        relation_type: str = "is_member_of",
+        relation_type: str = "includes",
     ) -> int:
-        """Create a new cluster and optionally add members + relations.
+        """Create a new cluster with an abstract entity + includes edges.
+
+        Three-layer ontology:
+          L1: concrete entities (e.g. 跳绳, 游泳) — stored in entities table
+          L2: abstract entity (e.g. 运动爱好) — stored in entities (type=abstract)
+          L3: includes edges in entity_relations (abstract → concrete)
 
         Args:
-            name: Cluster name (e.g. "跳绳类", "运动爱好").
+            name: Abstract entity / cluster name (e.g. "运动爱好").
             cluster_type: 'auto', 'manual', or 'abstract'.
-            member_entity_ids: Entity IDs to add as members.
-            similarities: Pairwise similarities for each ordered pair
-                          (if member_entity_ids has N members, expects
-                           N*(N-1)/2 values).
-            centroid: Serialized centroid embedding (512-dim float32).
+            member_entity_ids: Concrete entity IDs to include.
+            similarities: Per-member similarity to centroid (N values).
+            centroid: Serialized centroid embedding — becomes abstract entity's
+                      embedding and is stored in clusters.centroid.
             coherence: Average intra-cluster similarity.
-            relation_type: Relation type for entity_relations edges.
+            relation_type: Relation type for entity_relations edges
+                          (default 'includes', abstract → member).
 
         Returns:
             cluster_id of the new cluster.
         """
         with self._lock:
-            # Check for duplicate name
+            # Check for duplicate name (cluster)
             existing = self._conn.execute(
                 "SELECT cluster_id FROM clusters WHERE name = ?", (name,)
             ).fetchone()
@@ -1649,7 +1654,36 @@ class MemoryStore:
             )
             cluster_id = cursor.lastrowid
 
-            if member_entity_ids:
+            # ── Create abstract entity in entities table (L2) ──
+            abstract_entity_id = None
+            embed_blob = centroid
+            if embed_blob is None:
+                try:
+                    from .embedding import get_embedding_service
+                    vec = get_embedding_service().encode_one(name)
+                    if vec is not None:
+                        embed_blob = get_embedding_service().serialize(vec)
+                except Exception:
+                    pass
+            try:
+                cur = self._conn.execute(
+                    """INSERT OR IGNORE INTO entities (name, entity_type, embedding)
+                       VALUES (?, 'abstract', ?)""",
+                    (name, embed_blob),
+                )
+                if cur.lastrowid and cur.lastrowid > 0:
+                    abstract_entity_id = cur.lastrowid
+                else:
+                    # Name already existed — fetch existing entity_id
+                    row = self._conn.execute(
+                        "SELECT entity_id FROM entities WHERE name = ?", (name,)
+                    ).fetchone()
+                    if row:
+                        abstract_entity_id = row["entity_id"]
+            except Exception:
+                pass
+
+            if member_entity_ids and abstract_entity_id is not None:
                 sim_iter = iter(similarities or [])
                 for eid in member_entity_ids:
                     sim = next(sim_iter, 0.0)
@@ -1658,38 +1692,15 @@ class MemoryStore:
                            (cluster_id, entity_id, similarity) VALUES (?, ?, ?)""",
                         (cluster_id, eid, sim),
                     )
-                    # Also add is_member_of relation in entity_relations
-                    # so graph expansion naturally picks up cluster members
-                    # Use canonical ordering: source = cluster entity for outbound?
-                    # Actually, use entity → cluster direction so query entity
-                    # expands to cluster: entity --is_member_of--> cluster
-                    # We DON'T have a cluster entity in entities table, so skip
-                    # entity_relations and rely on cluster_members table queries.
-                    # Instead, create is_member_of between members via their
-                    # co-occurrence with the cluster name (handled below).
-                    pass
-
-                # Add intra-cluster is_member_of edges between all member pairs
-                # so graph expansion can follow: member A → is_member_of → member B
-                # This gives the retrieval system a direct path between
-                # semantically similar entities even without co_occur.
-                eids = list(member_entity_ids)
-                for i in range(len(eids)):
-                    for j in range(i + 1, len(eids)):
-                        src, tgt = eids[i], eids[j]
-                        # Use the actual pairwise similarity if available
-                        sim_val = coherence * 0.6  # default weight for intra-cluster
-                        # is_member_of is undirected — canonicalise src < tgt
-                        if src > tgt:
-                            src, tgt = tgt, src
-                        self._conn.execute(
-                            """INSERT INTO entity_relations
-                               (source_id, target_id, relation, weight)
-                               VALUES (?, ?, ?, ?)
-                               ON CONFLICT(source_id, target_id, relation)
-                               DO UPDATE SET weight = MAX(weight, ?)""",
-                            (src, tgt, relation_type, sim_val, sim_val),
-                        )
+                    # One includes edge: abstract entity → concrete member
+                    self._conn.execute(
+                        """INSERT INTO entity_relations
+                           (source_id, target_id, relation, weight)
+                           VALUES (?, ?, ?, ?)
+                           ON CONFLICT(source_id, target_id, relation)
+                           DO UPDATE SET weight = MAX(weight, ?)""",
+                        (abstract_entity_id, eid, relation_type, sim, sim),
+                    )
 
             self._conn.commit()
             return cluster_id
@@ -1753,9 +1764,9 @@ class MemoryStore:
     def add_cluster_member(
         self, cluster_id: int, entity_id: int,
         similarity: float = 0.0, *,
-        relation_type: str = "is_member_of",
+        relation_type: str = "includes",
     ) -> bool:
-        """Add an entity to an existing cluster. Updates member_count + entity_relations."""
+        """Add an entity to an existing cluster. Creates includes edge from abstract entity."""
         with self._lock:
             self._conn.execute(
                 "INSERT OR IGNORE INTO cluster_members (cluster_id, entity_id, similarity) "
@@ -1767,48 +1778,48 @@ class MemoryStore:
                 "updated_at = datetime('now') WHERE cluster_id = ?",
                 (cluster_id,),
             )
-            # Add is_member_of edges to all existing members
-            existing_members = self._conn.execute(
-                "SELECT entity_id FROM cluster_members "
-                "WHERE cluster_id = ? AND entity_id != ?",
-                (cluster_id, entity_id),
-            ).fetchall()
-            for em in existing_members:
-                src, tgt = (entity_id, em["entity_id"])
-                if src > tgt:
-                    src, tgt = tgt, src
-                self._conn.execute(
-                    """INSERT INTO entity_relations
-                       (source_id, target_id, relation, weight)
-                       VALUES (?, ?, ?, ?)
-                       ON CONFLICT(source_id, target_id, relation)
-                       DO UPDATE SET weight = MAX(weight, ?)""",
-                    (src, tgt, relation_type, similarity * 0.6, similarity * 0.6),
-                )
+            # Find abstract entity for this cluster
+            cluster = self._conn.execute(
+                "SELECT name FROM clusters WHERE cluster_id = ?", (cluster_id,)
+            ).fetchone()
+            if cluster:
+                abstract = self._conn.execute(
+                    "SELECT entity_id FROM entities WHERE name = ? AND entity_type = 'abstract'",
+                    (cluster["name"],),
+                ).fetchone()
+                if abstract:
+                    self._conn.execute(
+                        """INSERT INTO entity_relations
+                           (source_id, target_id, relation, weight)
+                           VALUES (?, ?, ?, ?)
+                           ON CONFLICT(source_id, target_id, relation)
+                           DO UPDATE SET weight = MAX(weight, ?)""",
+                        (abstract["entity_id"], entity_id, relation_type, similarity, similarity),
+                    )
             self._conn.commit()
             return True
 
     def remove_cluster_member(
         self, cluster_id: int, entity_id: int, *,
-        relation_type: str = "is_member_of",
+        relation_type: str = "includes",
     ) -> bool:
-        """Remove an entity from a cluster. Also removes entity_relations edges."""
+        """Remove an entity from a cluster. Removes includes edge by abstract entity ID."""
         with self._lock:
-            # Remove entity_relations edges to all other members
-            existing_members = self._conn.execute(
-                "SELECT entity_id FROM cluster_members "
-                "WHERE cluster_id = ? AND entity_id != ?",
-                (cluster_id, entity_id),
-            ).fetchall()
-            for em in existing_members:
-                src, tgt = (entity_id, em["entity_id"])
-                if src > tgt:
-                    src, tgt = tgt, src
-                self._conn.execute(
-                    "DELETE FROM entity_relations "
-                    "WHERE source_id = ? AND target_id = ? AND relation = ?",
-                    (src, tgt, relation_type),
-                )
+            # Find abstract entity for this cluster
+            cluster = self._conn.execute(
+                "SELECT name FROM clusters WHERE cluster_id = ?", (cluster_id,)
+            ).fetchone()
+            if cluster:
+                abstract = self._conn.execute(
+                    "SELECT entity_id FROM entities WHERE name = ? AND entity_type = 'abstract'",
+                    (cluster["name"],),
+                ).fetchone()
+                if abstract:
+                    self._conn.execute(
+                        "DELETE FROM entity_relations "
+                        "WHERE source_id = ? AND target_id = ? AND relation = ?",
+                        (abstract["entity_id"], entity_id, relation_type),
+                    )
             self._conn.execute(
                 "DELETE FROM cluster_members WHERE cluster_id = ? AND entity_id = ?",
                 (cluster_id, entity_id),
@@ -1822,23 +1833,27 @@ class MemoryStore:
             return True
 
     def delete_cluster(self, cluster_id: int) -> bool:
-        """Delete a cluster. Cascade removes members + entity_relations edges."""
+        """Delete a cluster. Removes abstract entity + includes edges, cascade deletes members."""
         with self._lock:
-            # Remove all is_member_of edges
-            members = self._conn.execute(
-                "SELECT entity_id FROM cluster_members WHERE cluster_id = ?",
-                (cluster_id,),
-            ).fetchall()
-            eids = [m["entity_id"] for m in members]
-            for i in range(len(eids)):
-                for j in range(i + 1, len(eids)):
-                    src, tgt = (eids[i], eids[j])
-                    if src > tgt:
-                        src, tgt = tgt, src
+            # Find the abstract entity for this cluster
+            cluster = self._conn.execute(
+                "SELECT name FROM clusters WHERE cluster_id = ?", (cluster_id,)
+            ).fetchone()
+            if cluster:
+                abstract = self._conn.execute(
+                    "SELECT entity_id FROM entities WHERE name = ? AND entity_type = 'abstract'",
+                    (cluster["name"],),
+                ).fetchone()
+                if abstract:
+                    # Remove all includes edges from abstract entity
                     self._conn.execute(
-                        "DELETE FROM entity_relations "
-                        "WHERE source_id = ? AND target_id = ? AND relation = 'is_member_of'",
-                        (src, tgt),
+                        "DELETE FROM entity_relations WHERE source_id = ? AND relation = 'includes'",
+                        (abstract["entity_id"],),
+                    )
+                    # Remove abstract entity itself
+                    self._conn.execute(
+                        "DELETE FROM entities WHERE entity_id = ?",
+                        (abstract["entity_id"],),
                     )
             self._conn.execute(
                 "DELETE FROM clusters WHERE cluster_id = ?", (cluster_id,)

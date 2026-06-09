@@ -33,15 +33,18 @@ def compute_clusters(
     *,
     threshold: float = _DEFAULT_SIM_THRESHOLD,
     min_cluster_size: int = _DEFAULT_MIN_CLUSTER_SIZE,
-    relation_type: str = "is_member_of",
+    relation_type: str = "includes",
 ) -> list[dict]:
-    """Run entity embedding clustering and persist results.
+    """Run entity embedding clustering and persist results (three-layer ontology).
+
+    Creates an abstract entity in the entities table for each cluster, plus
+    includes edges (L3) from abstract → concrete members in entity_relations.
 
     Args:
         store: MemoryStore instance (must have embedding service loaded).
         threshold: Cosine similarity threshold for co-cluster edges.
         min_cluster_size: Minimum entities per cluster (singletons skipped).
-        relation_type: Relation to write in entity_relations.
+        relation_type: Relation to write in entity_relations (default 'includes').
 
     Returns:
         List of cluster dicts: {cluster_id, name, members, coherence, centroid}.
@@ -148,6 +151,17 @@ def compute_clusters(
                     best_idx = idx
         cluster_name = _auto_cluster_name(member_names, best_idx)
 
+        # Per-member centroid similarity (replaces old pairwise similarities)
+        centroid_norm = float(np.linalg.norm(centroid))
+        member_sims = []
+        for vec in member_vecs:
+            vec_norm = float(np.linalg.norm(vec))
+            if centroid_norm > 0 and vec_norm > 0:
+                sim = float(np.dot(centroid, vec) / (centroid_norm * vec_norm))
+            else:
+                sim = 0.0
+            member_sims.append(round(sim, 4))
+
         # ── 6. Persist to DB ──
         try:
             centroid_blob = embed_svc.serialize(centroid)
@@ -158,10 +172,7 @@ def compute_clusters(
             name=cluster_name,
             cluster_type="auto",
             member_entity_ids=member_ids,
-            similarities=[float(sim_mat[i, j])
-                          for i_idx, i in enumerate(member_indices)
-                          for j_idx, j in enumerate(member_indices)
-                          if i_idx < j_idx],
+            similarities=member_sims,  # per-member centroid similarity
             centroid=centroid_blob,
             coherence=coherence,
             relation_type=relation_type,
