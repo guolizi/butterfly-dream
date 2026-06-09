@@ -333,6 +333,26 @@ class MemoryStore:
                     VALUES (new.media_id, jieba_segment(new.description), jieba_segment(new.caption), jieba_segment(new.transcript));
             END;
 
+            CREATE TABLE IF NOT EXISTS clusters (
+                cluster_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL UNIQUE,
+                cluster_type TEXT DEFAULT 'auto' CHECK(cluster_type IN ('auto', 'manual', 'abstract')),
+                member_count INTEGER DEFAULT 0,
+                centroid     BLOB,
+                coherence    REAL DEFAULT 0.0,
+                created_at   TEXT DEFAULT (datetime('now')),
+                updated_at   TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS cluster_members (
+                cluster_id INTEGER NOT NULL REFERENCES clusters(cluster_id) ON DELETE CASCADE,
+                entity_id  INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
+                similarity REAL DEFAULT 0.0,
+                PRIMARY KEY (cluster_id, entity_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_cluster_members_entity ON cluster_members(entity_id);
+
             -- Rebuild FTS5 index for existing data with jieba segmentation
             DELETE FROM facts_fts;
             INSERT INTO facts_fts(rowid, content, tags)
@@ -1380,7 +1400,7 @@ class MemoryStore:
     def expand_entities_for_retrieval(self, entity_names: list[str],
                                        max_depth: int = 2,
                                        max_results: int = 50,
-                                       relation: str = 'co_occur',
+                                       relation: str = '',
                                        min_weight: float = 0.0) -> dict:
         """BFS graph expansion: from seed entities, traverse entity_relations
         to find reachable entities and their linked facts.
@@ -1583,6 +1603,249 @@ class MemoryStore:
                 "avg_weight": round(avg_weight or 0, 3),
                 "relation_types": {r["relation"]: r["cnt"] for r in relation_types},
             }
+
+    # -- Entity clustering ----------------------------------------------------
+
+    def create_cluster(
+        self,
+        name: str,
+        *,
+        cluster_type: str = "auto",
+        member_entity_ids: list[int] | None = None,
+        similarities: list[float] | None = None,
+        centroid: bytes | None = None,
+        coherence: float = 0.0,
+        relation_type: str = "is_member_of",
+    ) -> int:
+        """Create a new cluster and optionally add members + relations.
+
+        Args:
+            name: Cluster name (e.g. "跳绳类", "运动爱好").
+            cluster_type: 'auto', 'manual', or 'abstract'.
+            member_entity_ids: Entity IDs to add as members.
+            similarities: Pairwise similarities for each ordered pair
+                          (if member_entity_ids has N members, expects
+                           N*(N-1)/2 values).
+            centroid: Serialized centroid embedding (512-dim float32).
+            coherence: Average intra-cluster similarity.
+            relation_type: Relation type for entity_relations edges.
+
+        Returns:
+            cluster_id of the new cluster.
+        """
+        with self._lock:
+            # Check for duplicate name
+            existing = self._conn.execute(
+                "SELECT cluster_id FROM clusters WHERE name = ?", (name,)
+            ).fetchone()
+            if existing:
+                return existing["cluster_id"]
+
+            cursor = self._conn.execute(
+                """INSERT INTO clusters (name, cluster_type, member_count, centroid, coherence)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (name, cluster_type, len(member_entity_ids) if member_entity_ids else 0,
+                 centroid, coherence),
+            )
+            cluster_id = cursor.lastrowid
+
+            if member_entity_ids:
+                sim_iter = iter(similarities or [])
+                for eid in member_entity_ids:
+                    sim = next(sim_iter, 0.0)
+                    self._conn.execute(
+                        """INSERT OR IGNORE INTO cluster_members
+                           (cluster_id, entity_id, similarity) VALUES (?, ?, ?)""",
+                        (cluster_id, eid, sim),
+                    )
+                    # Also add is_member_of relation in entity_relations
+                    # so graph expansion naturally picks up cluster members
+                    # Use canonical ordering: source = cluster entity for outbound?
+                    # Actually, use entity → cluster direction so query entity
+                    # expands to cluster: entity --is_member_of--> cluster
+                    # We DON'T have a cluster entity in entities table, so skip
+                    # entity_relations and rely on cluster_members table queries.
+                    # Instead, create is_member_of between members via their
+                    # co-occurrence with the cluster name (handled below).
+                    pass
+
+                # Add intra-cluster is_member_of edges between all member pairs
+                # so graph expansion can follow: member A → is_member_of → member B
+                # This gives the retrieval system a direct path between
+                # semantically similar entities even without co_occur.
+                eids = list(member_entity_ids)
+                for i in range(len(eids)):
+                    for j in range(i + 1, len(eids)):
+                        src, tgt = eids[i], eids[j]
+                        # Use the actual pairwise similarity if available
+                        sim_val = coherence * 0.6  # default weight for intra-cluster
+                        # is_member_of is undirected — canonicalise src < tgt
+                        if src > tgt:
+                            src, tgt = tgt, src
+                        self._conn.execute(
+                            """INSERT INTO entity_relations
+                               (source_id, target_id, relation, weight)
+                               VALUES (?, ?, ?, ?)
+                               ON CONFLICT(source_id, target_id, relation)
+                               DO UPDATE SET weight = MAX(weight, ?)""",
+                            (src, tgt, relation_type, sim_val, sim_val),
+                        )
+
+            self._conn.commit()
+            return cluster_id
+
+    def get_cluster(self, cluster_identifier: int | str) -> dict | None:
+        """Get cluster info + member list by ID or name."""
+        with self._lock:
+            if isinstance(cluster_identifier, int):
+                row = self._conn.execute(
+                    "SELECT * FROM clusters WHERE cluster_id = ?",
+                    (cluster_identifier,),
+                ).fetchone()
+            else:
+                row = self._conn.execute(
+                    "SELECT * FROM clusters WHERE name = ?",
+                    (cluster_identifier,),
+                ).fetchone()
+            if not row:
+                return None
+
+            cluster = {key: row[key] for key in row.keys()}
+
+            # Get members
+            members = self._conn.execute(
+                """SELECT cm.similarity, e.entity_id, e.name
+                   FROM cluster_members cm
+                   JOIN entities e ON cm.entity_id = e.entity_id
+                   WHERE cm.cluster_id = ?
+                   ORDER BY cm.similarity DESC""",
+                (cluster["cluster_id"],),
+            ).fetchall()
+            cluster["members"] = [
+                {"entity_id": m["entity_id"], "name": m["name"],
+                 "similarity": round(m["similarity"], 3)}
+                for m in members
+            ]
+            return cluster
+
+    def get_all_clusters(self) -> list[dict]:
+        """Return all clusters (basic info, without members)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM clusters ORDER BY member_count DESC, coherence DESC"
+            ).fetchall()
+            return [{key: r[key] for key in r.keys()} for r in rows]
+
+    def get_entity_clusters(self, entity_name: str) -> list[dict]:
+        """Return all clusters that contain the given entity."""
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT c.*, cm.similarity
+                   FROM clusters c
+                   JOIN cluster_members cm ON c.cluster_id = cm.cluster_id
+                   JOIN entities e ON cm.entity_id = e.entity_id
+                   WHERE e.name = ?
+                   ORDER BY cm.similarity DESC""",
+                (entity_name,),
+            ).fetchall()
+            return [{key: r[key] for key in r.keys()} for r in rows]
+
+    def add_cluster_member(
+        self, cluster_id: int, entity_id: int,
+        similarity: float = 0.0, *,
+        relation_type: str = "is_member_of",
+    ) -> bool:
+        """Add an entity to an existing cluster. Updates member_count + entity_relations."""
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO cluster_members (cluster_id, entity_id, similarity) "
+                "VALUES (?, ?, ?)",
+                (cluster_id, entity_id, similarity),
+            )
+            self._conn.execute(
+                "UPDATE clusters SET member_count = member_count + 1, "
+                "updated_at = datetime('now') WHERE cluster_id = ?",
+                (cluster_id,),
+            )
+            # Add is_member_of edges to all existing members
+            existing_members = self._conn.execute(
+                "SELECT entity_id FROM cluster_members "
+                "WHERE cluster_id = ? AND entity_id != ?",
+                (cluster_id, entity_id),
+            ).fetchall()
+            for em in existing_members:
+                src, tgt = (entity_id, em["entity_id"])
+                if src > tgt:
+                    src, tgt = tgt, src
+                self._conn.execute(
+                    """INSERT INTO entity_relations
+                       (source_id, target_id, relation, weight)
+                       VALUES (?, ?, ?, ?)
+                       ON CONFLICT(source_id, target_id, relation)
+                       DO UPDATE SET weight = MAX(weight, ?)""",
+                    (src, tgt, relation_type, similarity * 0.6, similarity * 0.6),
+                )
+            self._conn.commit()
+            return True
+
+    def remove_cluster_member(
+        self, cluster_id: int, entity_id: int, *,
+        relation_type: str = "is_member_of",
+    ) -> bool:
+        """Remove an entity from a cluster. Also removes entity_relations edges."""
+        with self._lock:
+            # Remove entity_relations edges to all other members
+            existing_members = self._conn.execute(
+                "SELECT entity_id FROM cluster_members "
+                "WHERE cluster_id = ? AND entity_id != ?",
+                (cluster_id, entity_id),
+            ).fetchall()
+            for em in existing_members:
+                src, tgt = (entity_id, em["entity_id"])
+                if src > tgt:
+                    src, tgt = tgt, src
+                self._conn.execute(
+                    "DELETE FROM entity_relations "
+                    "WHERE source_id = ? AND target_id = ? AND relation = ?",
+                    (src, tgt, relation_type),
+                )
+            self._conn.execute(
+                "DELETE FROM cluster_members WHERE cluster_id = ? AND entity_id = ?",
+                (cluster_id, entity_id),
+            )
+            self._conn.execute(
+                "UPDATE clusters SET member_count = member_count - 1, "
+                "updated_at = datetime('now') WHERE cluster_id = ?",
+                (cluster_id,),
+            )
+            self._conn.commit()
+            return True
+
+    def delete_cluster(self, cluster_id: int) -> bool:
+        """Delete a cluster. Cascade removes members + entity_relations edges."""
+        with self._lock:
+            # Remove all is_member_of edges
+            members = self._conn.execute(
+                "SELECT entity_id FROM cluster_members WHERE cluster_id = ?",
+                (cluster_id,),
+            ).fetchall()
+            eids = [m["entity_id"] for m in members]
+            for i in range(len(eids)):
+                for j in range(i + 1, len(eids)):
+                    src, tgt = (eids[i], eids[j])
+                    if src > tgt:
+                        src, tgt = tgt, src
+                    self._conn.execute(
+                        "DELETE FROM entity_relations "
+                        "WHERE source_id = ? AND target_id = ? AND relation = 'is_member_of'",
+                        (src, tgt),
+                    )
+            self._conn.execute(
+                "DELETE FROM clusters WHERE cluster_id = ?", (cluster_id,)
+            )
+            # cluster_members cascade deleted
+            self._conn.commit()
+            return True
 
     # -- Entity summary (S6.4) -------------------------------------------------
 
