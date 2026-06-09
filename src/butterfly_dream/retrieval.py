@@ -156,6 +156,8 @@ class ThreeDimRetriever:
         use_graph_expansion: bool = True,
         use_step_back: bool = True,
         step_back_threshold: float = 0.50,
+        use_ppr: bool = True,
+        ppr_alpha: float = 0.85,
     ) -> list[dict]:
         """Three-dimensional search: relevance × recency × importance × trust.
 
@@ -173,6 +175,10 @@ class ThreeDimRetriever:
                           (default True).
             step_back_threshold: Min cosine similarity for abstract entity matching
                                 (default 0.50).
+            use_ppr: Use Personalized PageRank for graph expansion instead of BFS
+                    (default True). PPR scores weight facts by graph distance.
+            ppr_alpha: PPR teleport probability (default 0.85). Lower = more
+                      exploration, higher = more focused on seeds.
 
         Returns:
             List of fact dicts with 'score' field, sorted descending.
@@ -307,6 +313,7 @@ class ThreeDimRetriever:
                     max_depth=2,
                     max_results=limit * 2,
                     min_weight=0.3,
+                    ppr_alpha=ppr_alpha if use_ppr else None,
                 )
                 graph_facts = graph_result.get("facts", [])
                 if graph_facts:
@@ -315,7 +322,9 @@ class ThreeDimRetriever:
                     for gf in graph_facts:
                         if gf.get("fact_id") not in seen_ids:
                             gf["fts_rank"] = 0.0
-                            gf["_graph_expanded"] = True
+                            # PPR mode already sets _graph_expanded per-fact
+                            if "_graph_expanded" not in gf:
+                                gf["_graph_expanded"] = True
                             candidates.append(gf)
                             seen_ids.add(gf["fact_id"])
                             added += 1
@@ -414,6 +423,12 @@ class ThreeDimRetriever:
             # multiple additive boosts alone. A fact with low base relevance stays low
             # even with all boosts active.
             boost = 1.0
+
+            # PPR proximity multiplier: facts from distant entities get de-prioritised
+            _ppr = fact.get("_ppr_score")
+            if _ppr is not None:
+                # Map [0.01, 1.0] → [0.5, 1.0] multiplier
+                boost *= (0.5 + 0.5 * max(_ppr, 0.01))
 
             # Boost relevance if fact's category matches query intent
             # Uses SEMANTIC_CAT_BOOST_MAP to map query categories → boosted fact categories,

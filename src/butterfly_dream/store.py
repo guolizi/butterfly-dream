@@ -1401,108 +1401,205 @@ class MemoryStore:
                                        max_depth: int = 2,
                                        max_results: int = 50,
                                        relation: str = '',
-                                       min_weight: float = 0.0) -> dict:
-        """BFS graph expansion: from seed entities, traverse entity_relations
-        to find reachable entities and their linked facts.
+                                       min_weight: float = 0.0,
+                                       ppr_alpha: float | None = None,
+                                       min_ppr: float = 0.005) -> dict:
+        """BFS or PPR graph expansion from seed entities.
 
-        Returns facts from expanded entity set for multi-hop retrieval.
+        When ppr_alpha is set, uses Personalized PageRank instead of BFS.
+        PPR scores are attached to each fact as _ppr_score for distance-aware
+        relevance weighting in search.
 
         Args:
             entity_names: Seed entity names.
-            max_depth: Max BFS hops (default 2 — covers indirect relations).
+            max_depth: Max BFS hops (only used when ppr_alpha is None).
             max_results: Max total facts to return.
             relation: Relation filter.
             min_weight: Minimum relation weight.
+            ppr_alpha: Teleport probability for PPR (e.g. 0.85).
+                       When set, overrides BFS with PPR-based expansion.
+            min_ppr: Minimum PPR score to include entity (PPR mode only).
 
         Returns:
             dict with:
-              - entities: list of {name, depth, path_from_seed}
-              - facts: list of fact dicts from expanded entity set
-              - expansions: number of additional entities found via graph
+              - entities: list of {name, depth/ppr, reached_via}
+              - facts: list of fact dicts (with _ppr_score in PPR mode)
+              - expansions: number of additional entities found
         """
         if not entity_names:
             return {"entities": [], "facts": [], "expansions": 0}
 
         with self._lock:
-            # ── BFS through entity_relations ──
-            visited: set[str] = set()
-            queue: deque = deque()
-            expansion_results: list[dict] = []  # {name, depth, source}
+            if ppr_alpha is not None:
+                # ── PPR MODE ──
+                # Map names → entity IDs
+                seed_ids: list[int] = []
+                for name in entity_names:
+                    row = self._conn.execute(
+                        "SELECT entity_id FROM entities WHERE name = ?", (name,)
+                    ).fetchone()
+                    if row:
+                        seed_ids.append(row["entity_id"])
 
-            for name in entity_names:
-                if name not in visited:
-                    visited.add(name)
-                    queue.append((name, 0, None))  # (name, depth, source)
+                if not seed_ids:
+                    return {"entities": [], "facts": [], "expansions": 0}
 
-            while queue:
-                name, depth, source = queue.popleft()
-                if depth > 0:
-                    expansion_results.append({
-                        "name": name, "depth": depth,
-                        "reached_via": source,
-                    })
-                if depth >= max_depth:
-                    continue
+                ppr_scores = self.compute_ppr(
+                    seed_ids, alpha=ppr_alpha,
+                )
+                if not ppr_scores:
+                    return {"entities": [], "facts": [], "expansions": 0}
 
-                # Find neighbors via entity_relations
-                row = self._conn.execute(
-                    "SELECT entity_id FROM entities WHERE name = ?", (name,)
-                ).fetchone()
-                if not row:
-                    continue
-                eid = row["entity_id"]
-                rel_filter = "AND er.relation = ?" if relation else ""
-                params: tuple = (eid, eid, eid, min_weight)
-                if relation:
-                    params = (eid, eid, eid, min_weight, relation)
+                # Collect entities with PPR > min_ppr
+                seed_set = set(entity_names)
+                seed_id_set = set(seed_ids)
+                ranked_entities: list[dict] = []
+                for eid, score in sorted(
+                    ppr_scores.items(), key=lambda x: x[1], reverse=True
+                ):
+                    if score < min_ppr:
+                        continue
+                    row = self._conn.execute(
+                        "SELECT name FROM entities WHERE entity_id = ?", (eid,)
+                    ).fetchone()
+                    if row:
+                        ename = row["name"]
+                        ranked_entities.append({
+                            "entity_id": eid,
+                            "name": ename,
+                            "ppr_score": round(score, 4),
+                            "is_seed": ename in seed_set,
+                        })
 
-                neighbors = self._conn.execute(
-                    f"""SELECT DISTINCT e.name
-                        FROM entity_relations er
-                        JOIN entities e ON e.entity_id =
-                            CASE WHEN er.source_id = ? THEN er.target_id
-                                 ELSE er.source_id END
-                        WHERE (er.source_id = ? OR er.target_id = ?)
-                        AND er.weight >= ?
-                        {rel_filter}""",
-                    params,
+                # Separate seeds vs expansions
+                expanded = [e for e in ranked_entities if not e["is_seed"]]
+
+                # Gather facts with max PPR per fact
+                all_names = list(set(
+                    e["name"] for e in ranked_entities
+                ))
+                if not all_names:
+                    return {"entities": [], "facts": [], "expansions": 0}
+
+                placeholders = ",".join("?" for _ in all_names)
+                fact_rows = self._conn.execute(
+                    f"""SELECT f.*, fe.entity_id
+                        FROM facts f
+                        JOIN fact_entities fe ON f.fact_id = fe.fact_id
+                        JOIN entities e ON fe.entity_id = e.entity_id
+                        WHERE e.name IN ({placeholders})
+                        ORDER BY f.importance DESC, f.trust_score DESC
+                        LIMIT ?""",
+                    (*all_names, max_results * 2),
                 ).fetchall()
 
-                for nb in neighbors:
-                    nb_name = nb[0]
-                    if nb_name not in visited:
-                        visited.add(nb_name)
-                        queue.append((nb_name, depth + 1, name))
+                # Deduplicate by fact_id, keep max PPR
+                seen_facts: dict[int, dict] = {}
+                for row in fact_rows:
+                    fid = row["fact_id"]
+                    eid = row["entity_id"]
+                    ppr = ppr_scores.get(eid, 0.0)
+                    if fid not in seen_facts or ppr > seen_facts[fid].get("_max_ppr", 0):
+                        fact = {key: row[key] for key in row.keys() if key != "entity_id"}
+                        fact["_ppr_score"] = round(ppr, 4)
+                        fact["_max_ppr"] = ppr
+                        fact["_graph_expanded"] = eid not in seed_id_set
+                        seen_facts[fid] = fact
 
-            # Separate seed from expanded
-            seed_set = set(entity_names)
-            expanded = [e for e in expansion_results if e["name"] not in seed_set]
+                facts = [v for v in seen_facts.values()]
+                # Clean up internal _max_ppr
+                for f in facts:
+                    del f["_max_ppr"]
 
-            if not expanded:
-                return {"entities": [{"name": n, "depth": 0} for n in entity_names],
-                        "facts": [], "expansions": 0}
+                # Trim to max_results
+                facts.sort(key=lambda x: x.get("_ppr_score", 0), reverse=True)
+                facts = facts[:max_results]
 
-            # ── Gather facts from expanded entities ──
-            expanded_names = [e["name"] for e in expanded]
-            all_names = list(seed_set) + expanded_names
-            placeholders = ",".join("?" for _ in all_names)
-            rows = self._conn.execute(
-                f"""SELECT DISTINCT f.* FROM facts f
-                    JOIN fact_entities fe ON f.fact_id = fe.fact_id
-                    JOIN entities e ON fe.entity_id = e.entity_id
-                    WHERE e.name IN ({placeholders})
-                    ORDER BY f.importance DESC, f.trust_score DESC
-                    LIMIT ?""",
-                (*all_names, max_results),
-            ).fetchall()
-            facts = [{key: r[key] for key in r.keys()} for r in rows]
+                return {
+                    "entities": [{"name": e["name"], "ppr": e["ppr_score"],
+                                  "depth": 0 if e["is_seed"] else None}
+                                 for e in ranked_entities],
+                    "facts": facts,
+                    "expansions": len(expanded),
+                }
 
-            return {
-                "entities": [{"name": n, "depth": 0} for n in entity_names]
-                           + expanded,
-                "facts": facts,
-                "expansions": len(expanded),
-            }
+            else:
+                # ── BFS MODE (original) ──
+                visited: set[str] = set()
+                queue: deque = deque()
+                expansion_results: list[dict] = []
+
+                for name in entity_names:
+                    if name not in visited:
+                        visited.add(name)
+                        queue.append((name, 0, None))
+
+                while queue:
+                    name, depth, source = queue.popleft()
+                    if depth > 0:
+                        expansion_results.append({
+                            "name": name, "depth": depth,
+                            "reached_via": source,
+                        })
+                    if depth >= max_depth:
+                        continue
+
+                    row = self._conn.execute(
+                        "SELECT entity_id FROM entities WHERE name = ?", (name,)
+                    ).fetchone()
+                    if not row:
+                        continue
+                    eid = row["entity_id"]
+                    rel_filter = "AND er.relation = ?" if relation else ""
+                    params: tuple = (eid, eid, eid, min_weight)
+                    if relation:
+                        params = (eid, eid, eid, min_weight, relation)
+
+                    neighbors = self._conn.execute(
+                        f"""SELECT DISTINCT e.name
+                            FROM entity_relations er
+                            JOIN entities e ON e.entity_id =
+                                CASE WHEN er.source_id = ? THEN er.target_id
+                                     ELSE er.source_id END
+                            WHERE (er.source_id = ? OR er.target_id = ?)
+                            AND er.weight >= ?
+                            {rel_filter}""",
+                        params,
+                    ).fetchall()
+
+                    for nb in neighbors:
+                        nb_name = nb[0]
+                        if nb_name not in visited:
+                            visited.add(nb_name)
+                            queue.append((nb_name, depth + 1, name))
+
+                seed_set = set(entity_names)
+                expanded = [e for e in expansion_results if e["name"] not in seed_set]
+
+                if not expanded:
+                    return {"entities": [{"name": n, "depth": 0} for n in entity_names],
+                            "facts": [], "expansions": 0}
+
+                expanded_names = [e["name"] for e in expanded]
+                all_names = list(seed_set) + expanded_names
+                placeholders = ",".join("?" for _ in all_names)
+                rows = self._conn.execute(
+                    f"""SELECT DISTINCT f.* FROM facts f
+                        JOIN fact_entities fe ON f.fact_id = fe.fact_id
+                        JOIN entities e ON fe.entity_id = e.entity_id
+                        WHERE e.name IN ({placeholders})
+                        ORDER BY f.importance DESC, f.trust_score DESC
+                        LIMIT ?""",
+                    (*all_names, max_results),
+                ).fetchall()
+                facts = [{key: r[key] for key in r.keys()} for r in rows]
+
+                return {
+                    "entities": [{"name": n, "depth": 0} for n in entity_names]
+                               + expanded,
+                    "facts": facts,
+                    "expansions": len(expanded),
+                }
 
     def get_relation_path(self, source_name: str, target_name: str,
                            max_depth: int = 5) -> list[dict]:
@@ -1603,6 +1700,84 @@ class MemoryStore:
                 "avg_weight": round(avg_weight or 0, 3),
                 "relation_types": {r["relation"]: r["cnt"] for r in relation_types},
             }
+
+    def compute_ppr(
+        self,
+        seed_entity_ids: list[int],
+        *,
+        alpha: float = 0.85,
+        max_iter: int = 100,
+        tol: float = 1e-6,
+    ) -> dict[int, float]:
+        """Personalized PageRank over entity_relations graph.
+
+        All edges treated as undirected (bidirectional). Converges via
+        power iteration. Returns PPR scores for all reachable entities.
+
+        Args:
+            seed_entity_ids: Seed entity IDs for personalization vector.
+            alpha: Teleport probability (default 0.85).
+            max_iter: Max power-iteration steps.
+            tol: L1 convergence tolerance.
+
+        Returns:
+            dict mapping entity_id → ppr_score (0..1).
+        """
+        import numpy as np
+
+        all_rows = self._conn.execute(
+                "SELECT entity_id FROM entities"
+            ).fetchall()
+        if not all_rows:
+            return {}
+
+        n = len(all_rows)
+        eid_to_idx: dict[int, int] = {}
+        idx_to_eid: dict[int, int] = {}
+        for i, r in enumerate(all_rows):
+            eid = r["entity_id"]
+            eid_to_idx[eid] = i
+            idx_to_eid[i] = eid
+
+        # Build adjacency matrix (dense, fine for typical <1000 nodes)
+        adj = np.zeros((n, n), dtype=np.float32)
+        edges = self._conn.execute(
+            "SELECT source_id, target_id, weight FROM entity_relations WHERE weight > 0"
+        ).fetchall()
+        for e in edges:
+            s, t, w = e["source_id"], e["target_id"], e["weight"]
+            if s in eid_to_idx and t in eid_to_idx:
+                i, j = eid_to_idx[s], eid_to_idx[t]
+                # Undirected: both directions
+                adj[i, j] = max(adj[i, j], w)
+                adj[j, i] = max(adj[j, i], w)
+
+        # Stochastic matrix (column-normalised)
+        col_sums = adj.sum(axis=0)
+        col_sums[col_sums == 0] = 1.0
+        M = adj / col_sums[np.newaxis, :]
+
+        # Personalization: uniform over seeds
+        p = np.zeros(n, dtype=np.float32)
+        for eid in seed_entity_ids:
+            if eid in eid_to_idx:
+                p[eid_to_idx[eid]] = 1.0
+        p_sum = p.sum()
+        if p_sum > 0:
+            p /= p_sum
+        else:
+            return {}  # no valid seeds
+
+        # Power iteration
+        r = p.copy()
+        for _ in range(max_iter):
+            r_new = (1.0 - alpha) * (M @ r) + alpha * p
+            diff = float(np.linalg.norm(r_new - r, ord=1))
+            r = r_new
+            if diff < tol:
+                break
+
+        return {idx_to_eid[i]: float(r[i]) for i in range(n) if r[i] > 0}
 
     def match_abstract_entities(
         self, query_vec, *,
