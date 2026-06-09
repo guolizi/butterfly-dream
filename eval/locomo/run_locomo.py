@@ -58,12 +58,17 @@ def _log(msg: str, level: str = "info"):
     print(f"  {msg}")
 
 
-def _run_clustering_after_extraction(store):
+def _run_clustering_after_extraction(store, threshold: float = 0.75):
     """Run v2 entity clustering after extraction to build three-layer ontology.
 
     Creates abstract entities + includes edges for semantic reasoning.
     Safe to call even if no clusters are found.
     First removes any existing clusters (when reusing a DB with --db-dir).
+
+    Args:
+        store: MemoryStore instance.
+        threshold: Cosine similarity threshold. LoCoMo English data → 0.75,
+                   general CJK data → 0.55-0.65.
     """
     if store is None:
         print("  ⚠️  No store available, skipping clustering")
@@ -77,7 +82,7 @@ def _run_clustering_after_extraction(store):
         store.execute_query("DELETE FROM entities WHERE entity_type = 'abstract'")
         store._conn.commit()
         t0 = time.perf_counter()
-        clusters = compute_clusters(store, threshold=0.55, min_cluster_size=2)
+        clusters = compute_clusters(store, threshold=threshold, min_cluster_size=2)
         if clusters:
             for c in clusters:
                 print(f"  🏷️  Cluster '{c['name']}' ({c['size']} members, coherence={c['coherence']})")

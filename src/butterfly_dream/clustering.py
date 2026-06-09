@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Default clustering parameters
-_DEFAULT_SIM_THRESHOLD = 0.55   # min cosine sim to be in same cluster
+_DEFAULT_SIM_THRESHOLD = 0.65   # min cosine sim to be in same cluster (0.55 for CJK, 0.75+ for EN)
 _DEFAULT_MIN_CLUSTER_SIZE = 2   # ignore singletons
 
 

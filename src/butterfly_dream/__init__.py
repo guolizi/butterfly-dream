@@ -175,7 +175,16 @@ GOLDEN RULES (in order):
 Output strictly a JSON array of objects. Each object has:
 - "content": str, the fact (plain text, one complete sentence)
 - "category": str — one of: place, time, person, event, activity, preference, identity, goal, project, tool, possession, state, opinion, general
-- "entities": [str] — at least the primary subject
+- "entities": [str] — PERSON names, PLACE names, THING names (proper nouns only). CRITICAL rules:
+  * ONLY output real entity names: person names (e.g. "Evan", "Sam"), location names, organization names, activity names, book/movie titles
+  * NEVER output full sentences or sentence fragments ("the user went to the store", "support group")
+  * NEVER output common English words ("professional", "support", "city", "group")
+  * NEVER output truncated text or conversation snippets
+  * NEVER output Chinese common nouns or generic terms ("专业", "支持", "城市", "小组", "活动", "事情")
+  * Each entity should be a short (≤5 words / ≤10 Chinese chars) proper noun or named concept
+  * Correct: ["小明", "跳绳", "清华大学", "运动爱好", "复仇者联盟"]
+  * Wrong: ["小明喜欢跳绳这项运动", "专业支持小组", "the user went to the store", "t easy and acceptance"]
+  * At minimum include the primary subject person/thing name
 - "tags": str — comma-separated keywords
 - "importance": int 1-10 (7-9 major life events, 4-6 significant details/plans/preferences, 1-3 minor)
 - "is_persistent": bool
