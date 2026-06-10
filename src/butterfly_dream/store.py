@@ -1589,10 +1589,8 @@ class MemoryStore:
                 for f in facts:
                     del f["_max_ppr"]
 
-                # Trim to max_results — sort by _ppr_score first, then
-                # importance as tiebreaker (same-ppr seeds rank by importance)
-                facts.sort(key=lambda x: (x.get("_ppr_score", 0), x.get("importance", 0)), reverse=True)
-                facts = facts[:max_results]
+                # Return all facts; retrieval layer does per-entity ranking
+                # and cutoff using query↔category similarity + importance.
 
                 return {
                     "entities": [{"name": e["name"], "ppr": e["ppr_score"],

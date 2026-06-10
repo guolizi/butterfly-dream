@@ -90,10 +90,7 @@ class ThreeDimRetriever:
         store: MemoryStore,
         *,
         half_life_days: float = 30.0,
-        fts_weight: float = 0.15,
-        jaccard_weight: float = 0.10,
-        embed_weight: float = 0.70,  # neural embedding (bge-small-zh) primary
-        category_weight: float = 0.15,  # query→category similarity bonus
+        embed_weight: float = 0.70,  # neural embedding (bge-small-zh)
         custom_weights: dict | None = None,
         debug_logging: bool = False,
         dlog: logging.Logger | None = None,
@@ -104,10 +101,7 @@ class ThreeDimRetriever:
         self._debug_logging = debug_logging
         self._dlog = dlog or logger
 
-        self.fts_weight = fts_weight
-        self.jaccard_weight = jaccard_weight
         self.embed_weight = embed_weight
-        self.category_weight = category_weight
 
     def search(
         self,
@@ -200,6 +194,7 @@ class ThreeDimRetriever:
         # and adds those as extra seeds. PPR walks co_occur edges in the entity
         # graph to propagate scores through connected entities.
         seed_entities: list[str] = []
+        _exact_seed_set: set[str] = set()  # exact-match seeds → skipped in PPR (already in FTS5)
         step_back_abstracts: list[str] = []
         # Track entity-to-query relevance for PPR boost: exact-matched = 1.0,
         # step-back = embedding similarity. Used to give higher boost to
@@ -217,6 +212,7 @@ class ThreeDimRetriever:
                     row["name"] for row in entity_rows
                     if row["name"].lower() in q_lower
                 ]
+                _exact_seed_set = set(seed_entities)
                 for _n in seed_entities:
                     _seed_relevance[_n] = 1.0  # exact-name match → fully relevant
         except Exception:
@@ -277,45 +273,60 @@ class ThreeDimRetriever:
                 graph_result = self.store.expand_entities_for_retrieval(
                     seed_entities,
                     max_depth=2,
-                    max_results=limit * 6,
+                    max_results=limit * 50,  # generous — store no longer applies sort+limit
                     min_weight=0.3,
                     ppr_alpha=ppr_alpha if use_ppr else None,
                     seed_scores=_seed_relevance if _seed_relevance else None,
                 )
                 graph_facts = graph_result.get("facts", [])
                 if graph_facts:
-                    # Sort PPR facts by embedding similarity to query (not by
-                    # _ppr_score which is uniform for all seed entity facts).
-                    # This puts the most semantically relevant facts first,
-                    # regardless of entity importance or PPR mass.
+                    # Pre-compute query↔category similarities for per-entity ranking
+                    _cat_sims: dict[str, float] = {}
                     try:
-                        from .embedding import get_embedding_service, EmbeddingService as _ppr_es
-                        _ppr_svc = get_embedding_service()
-                        _ppr_qvec = _ppr_svc.encode_one(query)
-                        if _ppr_qvec is not None:
-                            for gf in graph_facts:
-                                _ed = gf.get("embedding")
-                                if _ed is not None and isinstance(_ed, (bytes, memoryview)):
-                                    _fv = _ppr_svc.deserialize(bytes(_ed))
-                                    if _fv is not None:
-                                        gf["_embed_sim"] = _ppr_es.cosine_similarity(_ppr_qvec, _fv)
-                                    else:
-                                        gf["_embed_sim"] = 0.0
-                                else:
-                                    gf["_embed_sim"] = 0.0
-                            graph_facts.sort(key=lambda x: x.get("_embed_sim", 0), reverse=True)
+                        from .embedding import get_embedding_service, EmbeddingService as _ce_es
+                        _ce_svc = get_embedding_service()
+                        _ce_qvec = _ce_svc.encode_one(query)
+                        if _ce_qvec is not None:
+                            for _cn in ['activity', 'event', 'general', 'goal', 'identity',
+                                          'opinion', 'person', 'place', 'possession',
+                                          'preference', 'project', 'state', 'time']:
+                                _cv = _ce_svc.encode_one(_cn)
+                                if _cv is not None:
+                                    _cat_sims[_cn] = _ce_es.cosine_similarity(_ce_qvec, _cv)
                     except Exception:
-                        pass
+                        _cat_sims = {}
+
+                    # Per-entity ranking: group by entity, cut off per entity.
+                    # Exact-match seeds (Caroline, Melanie) skipped here — their
+                    # facts are already well-covered by FTS5. Only step-back
+                    # entities and PPR neighbor entities need the entity path.
+                    from collections import defaultdict
+                    _entity_groups = defaultdict(list)
+                    for gf in graph_facts:
+                        _ename = gf.get("_entity_name", "")
+                        # Skip exact-match seed entities (already in FTS5 pool)
+                        if _ename not in _exact_seed_set:
+                            _entity_groups[_ename].append(gf)
+
+                    _filtered = []
+                    for _ename, _efacts in _entity_groups.items():
+                        _per_limit = limit  # same cutoff for step-back and neighbors
+                        # Sort within entity by importance_norm × 0.3 + cat_sim × 0.7
+                        for _f in _efacts:
+                            _imp_norm = _f.get("importance", 5.0) / 10.0
+                            _cat_sim = _cat_sims.get(_f.get("category", ""), 0.0)
+                            _f["_entity_rank"] = _imp_norm * 0.3 + _cat_sim * 0.7
+                        _efacts.sort(key=lambda x: x.get("_entity_rank", 0), reverse=True)
+                        _filtered.extend(_efacts[:_per_limit])
+
+                    # Apply total cap (limit × 6) across all entities
+                    _filtered.sort(key=lambda x: x.get("_entity_rank", 0), reverse=True)
+                    graph_facts = _filtered[:limit * 6]
 
                     seen_ids = {c.get("fact_id") for c in candidates}
                     added = 0
                     for gf in graph_facts:
                         if gf.get("fact_id") not in seen_ids:
-                            # Entity-sourced facts: use embedding similarity as
-                            # their fts_rank, so all facts compete on semantic
-                            # relevance rather than entity proximity to seeds.
-                            _es = gf.get("_embed_sim")
-                            gf["fts_rank"] = _es if _es is not None else 0.0
                             if "_graph_expanded" not in gf:
                                 gf["_graph_expanded"] = True
                             candidates.append(gf)
@@ -336,7 +347,6 @@ class ThreeDimRetriever:
             return []
 
         # Stage 2: Score on all three dimensions
-        query_tokens = self._tokenize(query)
         scored = []
 
         # Pre-compute query neural embedding (v2)
@@ -350,31 +360,8 @@ class ThreeDimRetriever:
             except Exception:
                 _qembed = None
 
-        # Pre-compute query↔category embedding similarities for category bonus
-        _cat_sims: dict[str, float] = {}
-        if self.category_weight > 0 and _qembed is not None and _embed_svc is not None:
-            try:
-                from .embedding import EmbeddingService as _cat_es
-                _cat_names = ['activity', 'event', 'general', 'goal', 'identity',
-                              'opinion', 'person', 'place', 'possession',
-                              'preference', 'project', 'state', 'time']
-                for _cn in _cat_names:
-                    _cv = _embed_svc.encode_one(_cn)
-                    if _cv is not None:
-                        _cat_sims[_cn] = _cat_es.cosine_similarity(_qembed, _cv)
-            except Exception:
-                _cat_sims = {}
-
         for fact in candidates:
-            content_tokens = self._tokenize(fact["content"])
-            tag_tokens = self._tokenize(fact.get("tags", ""))
-            all_tokens = content_tokens | tag_tokens
-
-            # --- Relevance ---
-            jaccard = self._jaccard_similarity(query_tokens, all_tokens)
-            fts_score = fact.get("fts_rank", 0.0)
-
-            # Embedding similarity (v2: neural embedding, bge-small-zh)
+            # --- Relevance: embedding similarity (primary signal) ---
             embed_sim = 0.5
             if self.embed_weight > 0 and _qembed is not None and _embed_svc is not None:
                 try:
@@ -386,32 +373,10 @@ class ThreeDimRetriever:
                 except Exception:
                     embed_sim = 0.5
 
-            # Category bonus: query↔category name similarity (extra on top)
-            _cat_sim = _cat_sims.get(fact.get("category", ""), 0.0)
+            relevance = embed_sim  # semantic similarity, same for all candidates
 
-            relevance = (
-                self.fts_weight * fts_score
-                + self.jaccard_weight * jaccard
-                + self.embed_weight * embed_sim
-            )
-            # Category bonus on top (not diluting other weights)
-            relevance += self.category_weight * _cat_sim
 
-            # Boosts are multiplicative: each boost applies as a multiplier on relevance.
-            # This prevents low-relevance facts from overtaking better matches through
-            # multiple additive boosts alone. A fact with low base relevance stays low
-            # even with all boosts active.
-            boost = 1.0
-
-            # PPR-based multiplier: facts from seed entities use entity-to-query
-            # relevance (exact-match=1.0 → full boost, step-back=score~0.65 →
-            # 0.825 boost), while graph-expanded entities use PPR propagation
-            # score (0.01~0.1 → 0.5~0.55) for distance-based decay.
-            _ppr = fact.get("_ppr_score")
-            if _ppr is not None:
-                boost *= (0.5 + 0.5 * max(_ppr, 0.01))
-
-            relevance = min(1.0, relevance * boost)
+            relevance = min(1.0, relevance)
 
             # --- Recency ---
             created = _parse_datetime(fact.get("created_at"))
