@@ -34,24 +34,6 @@ SCENARIO_WEIGHTS = {
     "balanced":  {"relevance": 0.4, "recency": 0.3, "importance": 0.3},
 }
 
-# Map query semantic categories → fact categories that should be boosted.
-# When a user asks about time, boost event/activity facts; when they ask
-# about preferences, boost preference/goal facts; etc.
-SEMANTIC_CAT_BOOST_MAP: dict[str, tuple[str, ...]] = {
-    "time":        ("event", "activity"),
-    "place":       ("place", "event", "activity"),
-    "event":       ("event", "activity"),
-    "activity":    ("activity", "event"),
-    "identity":    ("identity", "person", "opinion"),
-    "preference":  ("preference", "goal", "opinion"),
-    "goal":        ("goal", "preference"),
-    "project":     ("project", "tool"),
-    "tool":        ("tool", "project"),
-    "possession":  ("possession",),
-    "state":       ("state", "preference", "opinion"),
-    "person":      ("person", "identity", "opinion"),
-    "opinion":     ("opinion", "preference", "state"),
-}
 
 
 def _now() -> datetime:
@@ -206,20 +188,6 @@ class ThreeDimRetriever:
         # Stage 1: Get FTS5 candidates
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
 
-        # Stage 1.5: Also fetch candidates by semantic category if query matches
-        semantic_cats = self._query_to_semantic_categories(query)
-        if semantic_cats:
-            cat_candidates = self._semantic_category_candidates(
-                semantic_cats, category, min_trust, limit * 3, persistent_only
-            )
-            # Merge: add category candidates not already in FTS5 results
-            seen_ids = {c.get("fact_id") for c in candidates}
-            for c in cat_candidates:
-                if c.get("fact_id") not in seen_ids:
-                    c["fts_rank"] = 0.0  # no FTS rank, will rely on other dimensions
-                    candidates.append(c)
-                    seen_ids.add(c["fact_id"])
-
         # Stage 1.5: Entity lookup + graph-based entity expansion (v2)
         # If entities mentioned in query have co_occur relations, add facts
         # about their graph neighbors to the candidate pool.
@@ -331,14 +299,8 @@ class ThreeDimRetriever:
         query_tokens = self._tokenize(query)
         scored = []
 
-        # Semantic category boost: facts matching detected categories get a relevance bump
-        _CAT_BOOST = 0.15  # boost for matching semantic category
-
         # Entity boost: find entities mentioned in the query
         _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
-        # Temporal boost: for time-related queries, boost facts with precise dates
-        _TEMPORAL_BOOST = 0.15  # boost for precise-date facts on time queries
-        is_temporal_query = bool(semantic_cats and "time" in semantic_cats)
 
         # entity_fact_ids / entity_fact_map / query_entity_ids / matched_entities
         # are already populated in Stage 1.75 (graph expansion section above).
@@ -398,16 +360,6 @@ class ThreeDimRetriever:
                 # Map [0.01, 1.0] → [0.5, 1.0] multiplier
                 boost *= (0.5 + 0.5 * max(_ppr, 0.01))
 
-            # Boost relevance if fact's category matches query intent
-            # Uses SEMANTIC_CAT_BOOST_MAP to map query categories → boosted fact categories,
-            # e.g. "time" query → boost event/activity facts, not exact "time" category.
-            if semantic_cats:
-                boost_cats = set()
-                for sc in semantic_cats:
-                    boost_cats.update(SEMANTIC_CAT_BOOST_MAP.get(sc, ()))
-                if boost_cats and fact.get("category") in boost_cats:
-                    boost += _CAT_BOOST
-
             # Boost relevance if fact is linked to an entity mentioned in the query
             if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
                 boost += _ENTITY_BOOST
@@ -430,20 +382,6 @@ class ThreeDimRetriever:
                 and not entity_fact_map[fid] & query_entity_ids
             ):
                 boost += _ENTITY_MISMATCH_PENALTY
-
-            # Boost relevance for time-related queries if fact has a precise date
-            if is_temporal_query:
-                cd = fact.get("content_date") or ""
-                # Precise date: content_date is YYYY-MM-DD and month is specified
-                # Day=01 is treated as imprecise (e.g., "around June 2023" → "2023-06-01"),
-                # but give a half boost to avoid excluding valid dates like July 1
-                if len(cd) == 10 and cd[5:7] != "00":
-                    if cd[8:10] != "01":
-                        # Fully precise date (day specified)
-                        boost += _TEMPORAL_BOOST
-                    else:
-                        # Month-precise date (day=01 = imprecise/estimated, smaller boost)
-                        boost += _TEMPORAL_BOOST * 0.5
 
             relevance = min(1.0, relevance * boost)
 
@@ -754,74 +692,6 @@ class ThreeDimRetriever:
         results.sort(key=lambda x: x["fts_rank"], reverse=True)
         return results[:limit]
 
-    # -- Semantic category helpers --------------------------------------------
-
-    @staticmethod
-    def _query_to_semantic_categories(query: str) -> list[str]:
-        """Map query keywords to semantic categories. Supports English and Chinese."""
-        q = query.lower()
-        categories = []
-
-        # English mappings
-        EN_MAP = [
-            (["where", "location", "place", "which city", "which country", "which town"], "place"),
-            (["when", "what time", "what date", "how long", "how many years", "how many days",
-              "how old", "since when", "which year", "which month", "which day"], "time"),
-            (["who", "whom", "whose", "which person"], "person"),
-            (["what happened", "what did", "what event", "what events", "what was the",
-              "event", "events", "participated in", "attended", "went to"], "event"),
-            (["what activities", "what activity", "what hobbies", "what hobby",
-              "what sports", "what sport", "what pastime", "what pastimes",
-              "what does", "what do", "how do you", "how often"], "activity"),
-            (["what is", "what are", "how would", "describe"], "identity"),
-            (["like", "favorite", "prefer", "enjoy", "love", "hate", "dislike",
-              "taste", "interest"], "preference"),
-            (["want", "plan", "goal", "wish", "hope", "aspire", "intend",
-              "going to", "will do"], "goal"),
-            (["what project", "what projects", "working on", "building",
-              "what tech", "what stack", "what framework"], "project"),
-            (["what tool", "what tools", "what software", "what app", "what apps",
-              "what program", "what programs", "what do you use", "how do you use"], "tool"),
-            (["do you have", "what do you own", "what do you have", "any pets",
-              "any cars", "any property"], "possession"),
-            (["how are you", "how do you feel", "what is your status",
-              "what is your state", "how is it going"], "state"),
-            (["what do you think", "how do you feel about", "opinion",
-              "thoughts on", "say about"], "opinion"),
-        ]
-        # Chinese mappings
-        ZH_MAP = [
-            (["在哪", "哪里", "什么地方", "何处", "哪个城市", "哪个国家", "来源", "来自",
-              "住在", "家在", "搬去", "搬到", "去哪"], "place"),
-            (["什么时候", "几月", "哪天", "多久", "多长时间", "几年", "何时", "哪一年", "多大",
-              "几号", "哪天", "几点", "多晚"], "time"),
-            (["谁", "哪个人", "什么人", "认识", "朋友", "家人", "同事", "邻居", "亲戚"], "person"),
-            (["发生了什么", "什么事", "什么事件", "什么情况", "怎么了", "出什么事"], "event"),
-            (["做什么", "干什么", "什么活动", "什么爱好", "什么运动", "怎么锻炼", "平时做什么",
-              "经常", "每天", "每周", "总是", "习惯", "一般"], "activity"),
-            (["是什么", "什么样的", "什么身份", "什么职业", "做什么工作", "工作是"], "identity"),
-            (["喜欢", "爱好", "偏好", "爱", "讨厌", "不喜欢", "兴趣", "最爱", "最讨厌",
-              "宁愿", "倾向", "更喜欢"], "preference"),
-            (["想", "计划", "目标", "打算", "希望", "愿望", "想要", "准备", "将来"], "goal"),
-            (["什么项目", "在做什么", "什么技术", "什么框架", "用什么开发", "开发什么",
-              "做什么项目", "技术栈"], "project"),
-            (["什么工具", "什么软件", "用什么", "什么程序", "什么app", "什么应用",
-              "用什么软件", "用什么工具"], "tool"),
-            (["有没有", "拥有", "有什么", "养了什么", "名下", "养了", "有只", "有只猫",
-              "有只狗", "有辆车", "有套房"], "possession"),
-            (["最近怎么样", "状态如何", "什么状态", "什么情况", "还好吗", "怎么样"], "state"),
-            (["觉得", "认为", "评价", "怎么看", "看法", "怎么说", "什么看法", "怎么觉得"], "opinion"),
-        ]
-
-        for keywords, cat in EN_MAP + ZH_MAP:
-            for kw in keywords:
-                if kw in q:
-                    categories.append(cat)
-                    break
-
-        # Deduplicate while preserving order
-        return list(dict.fromkeys(categories))
-
     @staticmethod
     def _detect_query_type(query: str) -> str | None:
         """Classify query as fact-finding ('fact'), opinion-seeking ('opinion'), or None (balanced).
@@ -945,40 +815,6 @@ class ThreeDimRetriever:
                     return 'fact'
 
         return None
-
-    def _semantic_category_candidates(
-        self,
-        semantic_cats: list[str],
-        category: Optional[str] = None,
-        min_trust: float = 0.3,
-        limit: int = 30,
-        persistent_only: bool = False,
-    ) -> list[dict]:
-        """Fetch facts by category (semantic classification)."""
-        placeholders = ",".join("?" for _ in semantic_cats)
-        conditions = f"f.category IN ({placeholders}) AND f.trust_score >= ?"
-        params: list = list(semantic_cats) + [min_trust]
-
-        if persistent_only:
-            conditions += " AND f.is_persistent = 1"
-
-        params.append(limit)
-        try:
-            rows = self.store.execute_query(
-                f"SELECT * FROM facts f WHERE {conditions} ORDER BY f.importance DESC, f.created_at DESC LIMIT ?",
-                tuple(params),
-            )
-        except Exception:
-            return []
-
-        results = []
-        for row in rows:
-            d = {key: row[key] for key in row.keys()}
-            d["fts_rank"] = 0.0
-            d["media"] = []
-            d["_media_match"] = False
-            results.append(d)
-        return results
 
     @staticmethod
     def _sanitize_fts_query(query: str, fts_mode: str = "or") -> str:

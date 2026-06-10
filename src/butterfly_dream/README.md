@@ -90,7 +90,6 @@ User message → prefetch(query) → ThreeDimRetriever.search()
                                         ↓
                               ┌─────────────────┐
                               │  FTS5 candidates │ ← facts_fts (populated by jieba-segmented content)
-                              │  + semantic cats │ ← category-based fallback
                               └────────┬────────┘
                                        ↓
                               ┌─────────────────┐
