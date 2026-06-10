@@ -93,7 +93,7 @@ class ThreeDimRetriever:
         fts_weight: float = 0.15,
         jaccard_weight: float = 0.10,
         embed_weight: float = 0.70,  # neural embedding (bge-small-zh) primary
-        category_weight: float = 0.15,  # query→category embedding similarity bonus
+        category_weight: float = 0.15,  # query→category similarity bonus
         custom_weights: dict | None = None,
         debug_logging: bool = False,
         dlog: logging.Logger | None = None,
@@ -291,7 +291,11 @@ class ThreeDimRetriever:
                     added = 0
                     for gf in graph_facts:
                         if gf.get("fact_id") not in seen_ids:
-                            gf["fts_rank"] = 0.0
+                            # Entity-sourced facts: use entity relevance as their
+                            # entry signal (replacing fts_rank) so they stand on
+                            # equal footing with FTS5-sourced facts.
+                            _er = gf.get("_ppr_score")
+                            gf["fts_rank"] = _er if _er is not None else 0.0
                             if "_graph_expanded" not in gf:
                                 gf["_graph_expanded"] = True
                             candidates.append(gf)
@@ -326,9 +330,7 @@ class ThreeDimRetriever:
             except Exception:
                 _qembed = None
 
-        # Pre-compute query→category similarity for all fact categories
-        # Category matching helps bridge vocabulary gaps (e.g. query "events"
-        # → category "event" sim=0.70) without hardcoded keyword rules.
+        # Pre-compute query↔category embedding similarities for category bonus
         _cat_sims: dict[str, float] = {}
         if self.category_weight > 0 and _qembed is not None and _embed_svc is not None:
             try:
@@ -364,8 +366,7 @@ class ThreeDimRetriever:
                 except Exception:
                     embed_sim = 0.5
 
-            # Category embedding similarity — query vs fact's category name.
-            # Added as a bonus on top of base relevance, not diluting other weights.
+            # Category bonus: query↔category name similarity (extra on top)
             _cat_sim = _cat_sims.get(fact.get("category", ""), 0.0)
 
             relevance = (
@@ -373,6 +374,7 @@ class ThreeDimRetriever:
                 + self.jaccard_weight * jaccard
                 + self.embed_weight * embed_sim
             )
+            # Category bonus on top (not diluting other weights)
             relevance += self.category_weight * _cat_sim
 
             # Boosts are multiplicative: each boost applies as a multiplier on relevance.
