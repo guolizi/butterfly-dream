@@ -22,11 +22,6 @@ from typing import Optional
 
 import jieba
 
-try:
-    from . import holographic as hrr
-except ImportError:
-    import holographic as hrr  # type: ignore[no-redef]
-
 from .retrieval import tokenize, jaccard_similarity
 from nltk.stem import WordNetLemmatizer
 
@@ -46,7 +41,6 @@ CREATE TABLE IF NOT EXISTS facts (
     content_date    TEXT,                       -- event date from conversation (e.g. '2023-01-19')
     created_at      TEXT DEFAULT (datetime('now')),
     updated_at      TEXT DEFAULT (datetime('now')),
-    hrr_vector      BLOB,
     embedding       BLOB                        -- 512-dim float32 dense vector (bge-small-zh)
 );
 
@@ -234,11 +228,10 @@ def _jieba_segment(text: str) -> str:
 class MemoryStore:
     """Thread-safe SQLite-backed fact store with importance + trust tracking."""
 
-    def __init__(self, db_path: str, default_trust: float = 0.5, hrr_dim: int = 1024,
+    def __init__(self, db_path: str, default_trust: float = 0.5,
                  compression_config: Optional[dict] = None):
         self._db_path = db_path
         self._default_trust = default_trust
-        self._hrr_dim = hrr_dim
         self._media_dir = str(Path(db_path).parent / "media")
         self._compression_config = compression_config
         self._lock = threading.Lock()
@@ -460,9 +453,6 @@ class MemoryStore:
         new_persistent = max(old_persistent, 1 if is_persistent else 0)
         # Merge tags
         merged_tags = self._merge_tags(old_tags, tags)
-        # Re-encode HRR to reflect updated importance/trust
-        hrr_vector = self._encode_hrr(old_content)
-        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         # Re-compute neural embedding (best-effort) for merged facts
         embed_blob = None
         try:
@@ -475,9 +465,9 @@ class MemoryStore:
             pass
         self._conn.execute(
             """UPDATE facts SET importance=?, trust_score=?, tags=?,
-               is_persistent=?, hrr_vector=?, embedding=COALESCE(?, embedding),
+               is_persistent=?, embedding=COALESCE(?, embedding),
                updated_at=datetime('now') WHERE fact_id=?""",
-            (new_importance, new_trust, merged_tags, new_persistent, hrr_blob, embed_blob, fact_id),
+            (new_importance, new_trust, merged_tags, new_persistent, embed_blob, fact_id),
         )
         self._conn.commit()
         logger.debug("Merged exact duplicate fact #%d (importance %.1f)", fact_id, new_importance)
@@ -639,10 +629,8 @@ class MemoryStore:
         new_importance = max(old_imp, importance)
         new_trust = max(old_trust, self._default_trust)
         new_persistent = max(old_persistent, 1 if is_persistent else 0)
+        new_category = category
 
-        # Re-encode HRR with merged content
-        hrr_vector = self._encode_hrr(merged_content, entities)
-        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
         # Re-compute neural embedding (best-effort) for merged content
         embed_blob = None
         try:
@@ -653,14 +641,13 @@ class MemoryStore:
                 embed_blob = svc.serialize(vec)
         except Exception:
             pass
-
         self._conn.execute(
-            """UPDATE facts SET content=?, category=?, tags=?, importance=?,
-               trust_score=?, is_persistent=?, hrr_vector=?, embedding=COALESCE(?, embedding),
+            """UPDATE facts SET
+               category=?, importance=?, trust_score=?, is_persistent=?, embedding=COALESCE(?, embedding),
                updated_at=datetime('now')
                WHERE fact_id=?""",
-            (merged_content, category, merged_tags, new_importance,
-             new_trust, new_persistent, hrr_blob, embed_blob, fact_id),
+            (new_category, new_importance,
+             new_trust, new_persistent, embed_blob, fact_id),
         )
 
         # Log the merge
@@ -802,12 +789,13 @@ class MemoryStore:
         content_date: Optional[str] = None,
     ) -> dict:
         """Insert a brand-new fact."""
-        hrr_vector = self._encode_hrr(content, entities)
-        hrr_blob = hrr.phases_to_bytes(hrr_vector) if hrr_vector is not None else None
-        # Compute neural embedding (best-effort)
+        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+        tags_str = ", ".join(tags_list)
+        trust_score = self._default_trust
+        # Neural embedding (best-effort)
         embed_blob = None
         try:
-            from .embedding import get_embedding_service
+            from .embedding import get_embedding_service, encode_one
             svc = get_embedding_service()
             vec = svc.encode_one(content)
             if vec is not None:
@@ -815,10 +803,10 @@ class MemoryStore:
         except Exception:
             pass
         cursor = self._conn.execute(
-            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, content_date, hrr_vector, embedding)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (content, category, tags, importance, self._default_trust,
-             1 if is_persistent else 0, content_date, hrr_blob, embed_blob),
+            """INSERT INTO facts (content, category, tags, importance, trust_score, is_persistent, content_date, embedding)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (content, category, tags_str, importance, trust_score,
+             1 if is_persistent else 0, content_date, embed_blob),
         )
         fact_id = cursor.lastrowid
         if entities:
@@ -992,24 +980,7 @@ class MemoryStore:
             )
             media_id = cursor.lastrowid
 
-            # 8. Re-bundle HRR vector with media description
-            if hrr._HAS_NUMPY and description:
-                try:
-                    fact_hrr = self._conn.execute(
-                        "SELECT hrr_vector FROM facts WHERE fact_id=?",
-                        (fact_id,),
-                    ).fetchone()
-                    if fact_hrr and fact_hrr[0] is not None:
-                        existing_vec = hrr.bytes_to_phases(fact_hrr[0])
-                        media_vec = hrr.encode_text(description, self._hrr_dim)
-                        new_vec = hrr.bundle(existing_vec, media_vec)
-                        new_blob = hrr.phases_to_bytes(new_vec)
-                        self._conn.execute(
-                            "UPDATE facts SET hrr_vector=? WHERE fact_id=?",
-                            (new_blob, fact_id),
-                        )
-                except Exception:
-                    pass  # non-critical
+            # 8. HRR vector bundle removed — neural embedding replaces it  # non-critical
 
             self._conn.commit()
 
@@ -2299,36 +2270,7 @@ class MemoryStore:
         has_cjk_b = any(n in b_lower for n in cjk_neg)
         return (has_eng_a or has_cjk_a) != (has_eng_b or has_cjk_b)
 
-    # -- HRR encoding ----------------------------------------------------------
-
-    def _encode_hrr(self, content: str, entities: list[str] = None) -> Optional["np.ndarray"]:
-        """Encode fact content + entities into HRR phase vector."""
-        if not hrr._HAS_NUMPY:
-            return None
-        try:
-            if entities:
-                return hrr.encode_fact(content, entities, self._hrr_dim)
-            return hrr.encode_text(content, self._hrr_dim)
-        except Exception:
-            return None
-
-    def compute_hrr_similarity(self, fact_id: int, query: str) -> float:
-        """HRR similarity between a stored fact and a query string."""
-        if not hrr._HAS_NUMPY:
-            return 0.5
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT hrr_vector FROM facts WHERE fact_id = ? AND hrr_vector IS NOT NULL",
-                (fact_id,),
-            ).fetchone()
-            if not row:
-                return 0.5
-            try:
-                fact_vec = hrr.bytes_to_phases(row[0])
-                query_vec = hrr.encode_text(query, self._hrr_dim)
-                return (hrr.similarity(query_vec, fact_vec) + 1.0) / 2.0
-            except Exception:
-                return 0.5
+    # -- HRR encoding removed — neural embedding replaces it entirely
 
     # -- Close ----------------------------------------------------------------
 

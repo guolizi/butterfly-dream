@@ -19,7 +19,7 @@ def memstore():
     """Create a MemoryStore in a temp DB for each test."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
-    ms = MemoryStore(db_path=db_path, default_trust=0.5, hrr_dim=128)
+    ms = MemoryStore(db_path=db_path, default_trust=0.5)
     yield ms
     ms.close()
     os.unlink(db_path)
@@ -215,21 +215,23 @@ class TestFeedback:
         assert "error" in result
 
 
-class TestHRREncoding:
-    def test_hrr_vector_stored(self, memstore):
-        """HRR vector is computed and stored for new facts."""
+class TestEmbeddingEncoding:
+    def test_embedding_stored(self, memstore):
+        """Neural embedding is computed and stored for new facts."""
         r = memstore.add_fact("A test fact with entities", importance=5)
         fetched = memstore.get_fact(r["fact_id"])
-        if fetched["hrr_vector"] is not None:
-            # Verify it decodes to correct length
-            vec = np.frombuffer(fetched["hrr_vector"], dtype=np.float64)
-            assert len(vec) == 128  # hrr_dim we set in fixture
+        assert fetched is not None
+        # Verify embedding exists
+        assert fetched.get("embedding") is not None, "Fact should have an embedding"
 
-    def test_hrr_similarity(self, memstore):
-        """compute_hrr_similarity returns a value in [0, 1]."""
+    def test_embedding_dimension(self, memstore):
+        """Embedding should be a 512-dim float32 vector."""
+        from butterfly_dream.embedding import get_embedding_service
+        svc = get_embedding_service()
         r = memstore.add_fact("Python programming language", importance=5)
-        sim = memstore.compute_hrr_similarity(r["fact_id"], "Python coding")
-        assert 0.0 <= sim <= 1.0
+        fetched = memstore.get_fact(r["fact_id"])
+        vec = svc.deserialize(bytes(fetched["embedding"]))
+        assert len(vec) == 512, f"Expected 512-dim embedding, got {len(vec)}"
 
 
 class TestCombineFactContent:

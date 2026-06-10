@@ -23,8 +23,8 @@ def store_and_retriever():
     """Create store + retriever with temp DB."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
-    ms = MemoryStore(db_path=db_path, default_trust=0.5, hrr_dim=128)
-    ret = ThreeDimRetriever(ms, half_life_days=30, hrr_dim=128)
+    ms = MemoryStore(db_path=db_path, default_trust=0.5)
+    ret = ThreeDimRetriever(ms, half_life_days=30)
     yield ms, ret
     ms.close()
     os.unlink(db_path)

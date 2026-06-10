@@ -45,7 +45,6 @@ def store_compressed(tmp_dir):
     db_path = os.path.join(tmp_dir, "test_compressed.db")
     store = MemoryStore(
         db_path,
-        hrr_dim=128,
         compression_config=DEFAULT_COMPRESSION_CONFIG.copy(),
     )
     yield store
@@ -58,7 +57,6 @@ def store_uncompressed(tmp_dir):
     db_path = os.path.join(tmp_dir, "test_uncompressed.db")
     store = MemoryStore(
         db_path,
-        hrr_dim=128,
         compression_config={"enabled": False},
     )
     yield store
@@ -269,7 +267,7 @@ class TestCompressMediaUnit:
         """MemoryStore respects max_size_mb from config."""
         cfg = {"enabled": True, "max_size_mb": 1}  # 1MB limit
         db_path = os.path.join(tmp_dir, "test_maxsize.db")
-        store = MemoryStore(db_path, hrr_dim=128, compression_config=cfg)
+        store = MemoryStore(db_path, compression_config=cfg)
 
         fact = store.add_fact("Big file test", category="test")
         fact_id = fact["fact_id"]
@@ -409,7 +407,7 @@ class TestCompressionIntegration:
             "image": {"quality": 50},
         }
         db_path = os.path.join(tmp_dir, "test_partial.db")
-        store = MemoryStore(db_path, hrr_dim=128, compression_config=cfg)
+        store = MemoryStore(db_path, compression_config=cfg)
 
         fact = store.add_fact("Partial config test", category="test")
         fact_id = fact["fact_id"]
@@ -493,7 +491,7 @@ class TestCompressionIntegration:
     def test_no_config_defaults_to_no_compression(self, tmp_dir):
         """MemoryStore without compression_config should not compress."""
         db_path = os.path.join(tmp_dir, "test_no_cfg.db")
-        store = MemoryStore(db_path, hrr_dim=128)  # no compression_config
+        store = MemoryStore(db_path)  # no compression_config
 
         fact = store.add_fact("No config test", category="test")
         fact_id = fact["fact_id"]

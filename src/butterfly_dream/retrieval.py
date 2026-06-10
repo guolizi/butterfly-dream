@@ -15,17 +15,13 @@ import math
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
+import jieba
 import numpy as np
 
 if TYPE_CHECKING:
     from .store import MemoryStore
 
-try:
-    from . import holographic as hrr
-except ImportError:
-    import holographic as hrr  # type: ignore[no-redef]
-
-import jieba
+import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -112,33 +108,22 @@ class ThreeDimRetriever:
         store: MemoryStore,
         *,
         half_life_days: float = 30.0,
-        fts_weight: float = 0.35,
-        jaccard_weight: float = 0.20,
-        embed_weight: float = 0.35,  # neural embedding (bge-small-zh)
-        hrr_weight: float = 0.10,     # fallback HRR for pre-v2 facts
-        hrr_dim: int = 1024,
+        fts_weight: float = 0.15,
+        jaccard_weight: float = 0.10,
+        embed_weight: float = 0.70,  # neural embedding (bge-small-zh) primary
         custom_weights: dict | None = None,
         debug_logging: bool = False,
         dlog: logging.Logger | None = None,
     ):
         self.store = store
         self.half_life_days = half_life_days
-        self.hrr_dim = hrr_dim
         self._custom_weights = custom_weights
         self._debug_logging = debug_logging
         self._dlog = dlog or logger
 
-        # Auto-redistribute weights if numpy unavailable
-        if (embed_weight > 0 or hrr_weight > 0) and not hrr._HAS_NUMPY:
-            fts_weight = 0.5
-            jaccard_weight = 0.3
-            embed_weight = 0.2
-            hrr_weight = 0.0
-
         self.fts_weight = fts_weight
         self.jaccard_weight = jaccard_weight
         self.embed_weight = embed_weight
-        self.hrr_weight = hrr_weight
 
     def search(
         self,
@@ -363,12 +348,6 @@ class ThreeDimRetriever:
             entity_fact_map = {}
             query_entity_ids = set()
 
-        # Pre-compute query HRR vector once (was inside loop × 60!)
-        try:
-            _qvec = hrr.encode_text(query, self.hrr_dim) if self.hrr_weight > 0 else None
-        except Exception:
-            _qvec = None
-
         # Pre-compute query neural embedding (v2)
         _qembed: Optional[np.ndarray] = None
         _embed_svc: Optional[object] = None
@@ -401,21 +380,10 @@ class ThreeDimRetriever:
                 except Exception:
                     embed_sim = 0.5
 
-            # HRR similarity (fallback for pre-v2 facts without embedding)
-            if self.hrr_weight > 0 and fact.get("hrr_vector") and _qvec is not None:
-                try:
-                    fact_vec = hrr.bytes_to_phases(fact["hrr_vector"])
-                    hrr_sim = (hrr.similarity(_qvec, fact_vec) + 1.0) / 2.0
-                except Exception:
-                    hrr_sim = 0.5
-            else:
-                hrr_sim = 0.5
-
             relevance = (
                 self.fts_weight * fts_score
                 + self.jaccard_weight * jaccard
                 + self.embed_weight * embed_sim
-                + self.hrr_weight * hrr_sim
             )
 
             # Boosts are multiplicative: each boost applies as a multiplier on relevance.

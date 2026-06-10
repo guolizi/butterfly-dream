@@ -32,7 +32,7 @@ def tmp_db():
     """Create a temporary database for testing."""
     tmpdir = tempfile.mkdtemp(prefix="butterfly_media_real_")
     db_path = os.path.join(tmpdir, "test_memory.db")
-    store = MemoryStore(db_path, hrr_dim=128)  # small HRR dim for speed
+    store = MemoryStore(db_path)
     yield store, tmpdir, db_path
     shutil.rmtree(tmpdir, ignore_errors=True)
 

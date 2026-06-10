@@ -189,8 +189,8 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
         for attempt in range(4):
             provider._last_extracted_idx = 0
             provider.on_session_end(session_msgs)
-            # Wait for extraction to complete (max 30s per attempt)
-            for _ in range(60):
+            # Wait for extraction to complete (max 100s per attempt)
+            for _ in range(200):
                 time.sleep(0.5)
                 if provider._store and provider._store.count_facts() > before:
                     break

@@ -1,7 +1,7 @@
 """📐 Semantic embedding service for Butterfly Dream v2.
 
 Wraps FastEmbed (ONNX Runtime) to provide lightweight, CPU-efficient
-text embeddings. Falls back to HRR encoding when the model is unavailable.
+text embeddings.
 
 Uses BAAI/bge-small-zh-v1.5 — a 33 MB bilingual (Chinese + English) model
 that produces 512-dimensional vectors.

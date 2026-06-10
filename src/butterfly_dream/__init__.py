@@ -771,7 +771,6 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             {"key": "default_trust", "description": "Default trust score for new facts", "default": "0.5"},
             {"key": "min_trust_threshold", "description": "Minimum trust threshold for retrieval", "default": "0.3"},
             {"key": "recency_half_life_days", "description": "Days for recency score to decay by half", "default": "30"},
-            {"key": "hrr_dim", "description": "HRR vector dimensions", "default": "1024"},
             {"key": "extract_interval", "description": "Extract facts every N turns via sync_turn (0=disable)", "default": "20"},
             {"key": "debug_logging", "description": "Enable debug logs for search/query pipeline", "default": "false", "choices": ["true", "false"]},
             {"key": "prefetch_limit", "description": "Number of facts to inject into system prompt each turn", "default": "10"},
@@ -806,7 +805,6 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
             db_path = db_path.replace("${HERMES_HOME}", _hermes_home)
 
         default_trust = float(self._config.get("default_trust", 0.5))
-        hrr_dim = int(self._config.get("hrr_dim", 1024))
         half_life = float(self._config.get("recency_half_life_days", 30.0))
 
         # Retrieval weights from config
@@ -830,7 +828,6 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         self._store = MemoryStore(
             db_path=db_path,
             default_trust=default_trust,
-            hrr_dim=hrr_dim,
             compression_config=self._config.get("compression", None),
         )
         # Initialize dedicated butterfly debug logger
@@ -841,7 +838,6 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
         self._retriever = ThreeDimRetriever(
             store=self._store,
             half_life_days=half_life,
-            hrr_dim=hrr_dim,
             custom_weights=custom_weights,
             debug_logging=self._config.get("debug_logging", False),
             dlog=self._dlog,
