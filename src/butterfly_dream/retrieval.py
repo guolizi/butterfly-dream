@@ -277,16 +277,36 @@ class ThreeDimRetriever:
                 graph_result = self.store.expand_entities_for_retrieval(
                     seed_entities,
                     max_depth=2,
-                    max_results=limit * 3,  # increased from limit*2 for better recall
+                    max_results=limit * 6,
                     min_weight=0.3,
                     ppr_alpha=ppr_alpha if use_ppr else None,
                     seed_scores=_seed_relevance if _seed_relevance else None,
                 )
                 graph_facts = graph_result.get("facts", [])
                 if graph_facts:
-                    # Facts from seed entities already have _ppr_score set to
-                    # query relevance (via seed_scores), so PPR's uniform mass
-                    # doesn't drown high-importance facts from relevant entities.
+                    # Sort PPR facts by embedding similarity to query (not by
+                    # _ppr_score which is uniform for all seed entity facts).
+                    # This puts the most semantically relevant facts first,
+                    # regardless of entity importance or PPR mass.
+                    try:
+                        from .embedding import get_embedding_service, EmbeddingService as _ppr_es
+                        _ppr_svc = get_embedding_service()
+                        _ppr_qvec = _ppr_svc.encode_one(query)
+                        if _ppr_qvec is not None:
+                            for gf in graph_facts:
+                                _ed = gf.get("embedding")
+                                if _ed is not None and isinstance(_ed, (bytes, memoryview)):
+                                    _fv = _ppr_svc.deserialize(bytes(_ed))
+                                    if _fv is not None:
+                                        gf["_embed_sim"] = _ppr_es.cosine_similarity(_ppr_qvec, _fv)
+                                    else:
+                                        gf["_embed_sim"] = 0.0
+                                else:
+                                    gf["_embed_sim"] = 0.0
+                            graph_facts.sort(key=lambda x: x.get("_embed_sim", 0), reverse=True)
+                    except Exception:
+                        pass
+
                     seen_ids = {c.get("fact_id") for c in candidates}
                     added = 0
                     for gf in graph_facts:

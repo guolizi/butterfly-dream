@@ -524,7 +524,10 @@ class MemoryStore:
         # Build a broad FTS5 query (OR) from key tokens to find candidates.
         # AND is too strict — similar facts may use synonyms ("likes" vs "prefers").
         # Jaccard check below ensures precision; FTS5 just gathers candidates.
-        safe = re.sub(r'[^\w\s\u4e00-\u9fff#+]', ' ', content)
+        # NOTE: strip # and + from FTS5 query tokens — #28 is interpreted as
+        # NEAR/28 and causes "fts5: syntax error near '#'" (SQLite FTS5 treats
+        # #N as "within N tokens"). Quoted "#28" works but is fragile.
+        safe = re.sub(r'[^\w\s\u4e00-\u9fff]', ' ', content)
         # Jieba-segment CJK tokens to match FTS5 indexed tokens
         segmented = []
         for w in safe.split():
@@ -598,7 +601,7 @@ class MemoryStore:
         # Strategy B: among entity-sharing facts, pick best FTS5 match
         query_tokens = tokenize(content)
         best = None
-        best_score = 0.15  # minimum similarity threshold (jaccard × trust)
+        best_score = 0.50  # minimum similarity threshold (jaccard × trust) — raised from 0.15 to prevent unrelated merges
 
         for row in shared_facts:
             fid, fact_content, fact_imp, fact_trust, fact_tags, fact_persistent = (row[0], row[1], row[2], row[3], row[4], row[5])
@@ -1555,10 +1558,8 @@ class MemoryStore:
                         FROM facts f
                         JOIN fact_entities fe ON f.fact_id = fe.fact_id
                         JOIN entities e ON fe.entity_id = e.entity_id
-                        WHERE e.name IN ({placeholders})
-                        ORDER BY f.importance DESC, f.trust_score DESC
-                        LIMIT ?""",
-                    (*all_names, max_results * 2),
+                        WHERE e.name IN ({placeholders})""",
+                    (*all_names,),
                 ).fetchall()
 
                 # Deduplicate by fact_id, keep max PPR (or max seed relevance)
@@ -1588,8 +1589,9 @@ class MemoryStore:
                 for f in facts:
                     del f["_max_ppr"]
 
-                # Trim to max_results
-                facts.sort(key=lambda x: x.get("_ppr_score", 0), reverse=True)
+                # Trim to max_results — sort by _ppr_score first, then
+                # importance as tiebreaker (same-ppr seeds rank by importance)
+                facts.sort(key=lambda x: (x.get("_ppr_score", 0), x.get("importance", 0)), reverse=True)
                 facts = facts[:max_results]
 
                 return {
