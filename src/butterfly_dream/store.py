@@ -1465,7 +1465,8 @@ class MemoryStore:
                                        relation: str = '',
                                        min_weight: float = 0.0,
                                        ppr_alpha: float | None = None,
-                                       min_ppr: float = 0.005) -> dict:
+                                       min_ppr: float = 0.005,
+                                       seed_scores: dict[str, float] | None = None) -> dict:
         """BFS or PPR graph expansion from seed entities.
 
         When ppr_alpha is set, uses Personalized PageRank instead of BFS.
@@ -1481,6 +1482,11 @@ class MemoryStore:
             ppr_alpha: Teleport probability for PPR (e.g. 0.85).
                        When set, overrides BFS with PPR-based expansion.
             min_ppr: Minimum PPR score to include entity (PPR mode only).
+            seed_scores: Optional dict mapping seed name → query relevance score.
+                        When provided, seed entity facts use this relevance score
+                        instead of raw PPR mass for sorting and boost, so that
+                        exact-matched entities (relevance=1.0) rank above
+                        step-back entities (relevance ~0.5–0.65).
 
         Returns:
             dict with:
@@ -1545,7 +1551,7 @@ class MemoryStore:
 
                 placeholders = ",".join("?" for _ in all_names)
                 fact_rows = self._conn.execute(
-                    f"""SELECT f.*, fe.entity_id
+                    f"""SELECT f.*, fe.entity_id, e.name AS entity_name
                         FROM facts f
                         JOIN fact_entities fe ON f.fact_id = fe.fact_id
                         JOIN entities e ON fe.entity_id = e.entity_id
@@ -1555,16 +1561,25 @@ class MemoryStore:
                     (*all_names, max_results * 2),
                 ).fetchall()
 
-                # Deduplicate by fact_id, keep max PPR
+                # Deduplicate by fact_id, keep max PPR (or max seed relevance)
                 seen_facts: dict[int, dict] = {}
                 for row in fact_rows:
                     fid = row["fact_id"]
                     eid = row["entity_id"]
+                    ename = row["entity_name"]
                     ppr = ppr_scores.get(eid, 0.0)
-                    if fid not in seen_facts or ppr > seen_facts[fid].get("_max_ppr", 0):
-                        fact = {key: row[key] for key in row.keys() if key != "entity_id"}
-                        fact["_ppr_score"] = round(ppr, 4)
-                        fact["_max_ppr"] = ppr
+                    # For seed entities with seed_scores, use query relevance
+                    # instead of raw PPR mass (which is diluted across seeds)
+                    _score = ppr
+                    if seed_scores and eid in seed_id_set:
+                        _qs = seed_scores.get(ename)
+                        if _qs is not None:
+                            _score = _qs
+                    if fid not in seen_facts or _score > seen_facts[fid].get("_max_ppr", 0):
+                        fact = {key: row[key] for key in row.keys() if key not in ("entity_id", "entity_name")}
+                        fact["_ppr_score"] = round(_score, 4)
+                        fact["_max_ppr"] = _score
+                        fact["_entity_name"] = ename
                         fact["_graph_expanded"] = eid not in seed_id_set
                         seen_facts[fid] = fact
 

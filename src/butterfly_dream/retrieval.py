@@ -93,6 +93,7 @@ class ThreeDimRetriever:
         fts_weight: float = 0.15,
         jaccard_weight: float = 0.10,
         embed_weight: float = 0.70,  # neural embedding (bge-small-zh) primary
+        category_weight: float = 0.15,  # query→category embedding similarity bonus
         custom_weights: dict | None = None,
         debug_logging: bool = False,
         dlog: logging.Logger | None = None,
@@ -106,6 +107,7 @@ class ThreeDimRetriever:
         self.fts_weight = fts_weight
         self.jaccard_weight = jaccard_weight
         self.embed_weight = embed_weight
+        self.category_weight = category_weight
 
     def search(
         self,
@@ -144,8 +146,8 @@ class ThreeDimRetriever:
                           seeds — e.g. a query about "pottery" adds "Melanie"
                           because her name embedding is close.
             step_back_threshold: Min cosine similarity for concrete entity embedding
-                                matching (default 0.50). Entities above this
-                                threshold are added as PPR seeds.
+                                matching (default 0.50). Up to 3 entities above
+                                this threshold are added as PPR seeds.
             use_ppr: Use Personalized PageRank for graph expansion instead of BFS
                     (default True). PPR scores weight facts by graph distance.
             ppr_alpha: PPR teleport probability (default 0.85). Lower = more
@@ -199,6 +201,10 @@ class ThreeDimRetriever:
         # graph to propagate scores through connected entities.
         seed_entities: list[str] = []
         step_back_abstracts: list[str] = []
+        # Track entity-to-query relevance for PPR boost: exact-matched = 1.0,
+        # step-back = embedding similarity. Used to give higher boost to
+        # entities more relevant to the query, rather than uniform PPR mass.
+        _seed_relevance: dict[str, float] = {}
 
         # 3a: Entity name matching — find entities explicitly mentioned in query
         try:
@@ -211,14 +217,14 @@ class ThreeDimRetriever:
                     row["name"] for row in entity_rows
                     if row["name"].lower() in q_lower
                 ]
+                for _n in seed_entities:
+                    _seed_relevance[_n] = 1.0  # exact-name match → fully relevant
         except Exception:
             pass
 
         # 3b: Step-back — find concrete entities semantically related to the query
-        # via embedding similarity. This supplements exact entity-name matching
-        # (3a) with entities that the query doesn't explicitly name but is
-        # semantically related to — e.g. a query about "pottery" finds "Melanie"
-        # as a related entity via embedding space proximity.
+        # via embedding similarity. Limit to top-3 to avoid noise from borderline
+        # matches (e.g. threshold=0.50 entities unrelated to query context).
         if use_step_back:
             try:
                 from .embedding import get_embedding_service, EmbeddingService as _sb_es
@@ -252,8 +258,10 @@ class ThreeDimRetriever:
                                 and _sb_names[i] not in seed_entities
                             ]
                             _matched.sort(key=lambda x: x[1], reverse=True)
-                            for _sb_name, _sb_score in _matched[:5]:
+                            # Take top-3 only — more than that adds noise
+                            for _sb_name, _sb_score in _matched[:3]:
                                 seed_entities.append(_sb_name)
+                                _seed_relevance[_sb_name] = round(_sb_score, 4)
                                 step_back_abstracts.append(f"{_sb_name}({_sb_score:.2f})")
                             if step_back_abstracts and self._debug_logging:
                                 self._dlog.debug(
@@ -269,12 +277,16 @@ class ThreeDimRetriever:
                 graph_result = self.store.expand_entities_for_retrieval(
                     seed_entities,
                     max_depth=2,
-                    max_results=limit * 2,
+                    max_results=limit * 3,  # increased from limit*2 for better recall
                     min_weight=0.3,
                     ppr_alpha=ppr_alpha if use_ppr else None,
+                    seed_scores=_seed_relevance if _seed_relevance else None,
                 )
                 graph_facts = graph_result.get("facts", [])
                 if graph_facts:
+                    # Facts from seed entities already have _ppr_score set to
+                    # query relevance (via seed_scores), so PPR's uniform mass
+                    # doesn't drown high-importance facts from relevant entities.
                     seen_ids = {c.get("fact_id") for c in candidates}
                     added = 0
                     for gf in graph_facts:
@@ -314,6 +326,23 @@ class ThreeDimRetriever:
             except Exception:
                 _qembed = None
 
+        # Pre-compute query→category similarity for all fact categories
+        # Category matching helps bridge vocabulary gaps (e.g. query "events"
+        # → category "event" sim=0.70) without hardcoded keyword rules.
+        _cat_sims: dict[str, float] = {}
+        if self.category_weight > 0 and _qembed is not None and _embed_svc is not None:
+            try:
+                from .embedding import EmbeddingService as _cat_es
+                _cat_names = ['activity', 'event', 'general', 'goal', 'identity',
+                              'opinion', 'person', 'place', 'possession',
+                              'preference', 'project', 'state', 'time']
+                for _cn in _cat_names:
+                    _cv = _embed_svc.encode_one(_cn)
+                    if _cv is not None:
+                        _cat_sims[_cn] = _cat_es.cosine_similarity(_qembed, _cv)
+            except Exception:
+                _cat_sims = {}
+
         for fact in candidates:
             content_tokens = self._tokenize(fact["content"])
             tag_tokens = self._tokenize(fact.get("tags", ""))
@@ -335,11 +364,16 @@ class ThreeDimRetriever:
                 except Exception:
                     embed_sim = 0.5
 
+            # Category embedding similarity — query vs fact's category name.
+            # Added as a bonus on top of base relevance, not diluting other weights.
+            _cat_sim = _cat_sims.get(fact.get("category", ""), 0.0)
+
             relevance = (
                 self.fts_weight * fts_score
                 + self.jaccard_weight * jaccard
                 + self.embed_weight * embed_sim
             )
+            relevance += self.category_weight * _cat_sim
 
             # Boosts are multiplicative: each boost applies as a multiplier on relevance.
             # This prevents low-relevance facts from overtaking better matches through
@@ -347,10 +381,12 @@ class ThreeDimRetriever:
             # even with all boosts active.
             boost = 1.0
 
-            # PPR proximity multiplier: facts from distant entities get de-prioritised
+            # PPR-based multiplier: facts from seed entities use entity-to-query
+            # relevance (exact-match=1.0 → full boost, step-back=score~0.65 →
+            # 0.825 boost), while graph-expanded entities use PPR propagation
+            # score (0.01~0.1 → 0.5~0.55) for distance-based decay.
             _ppr = fact.get("_ppr_score")
             if _ppr is not None:
-                # Map [0.01, 1.0] → [0.5, 1.0] multiplier
                 boost *= (0.5 + 0.5 * max(_ppr, 0.01))
 
             relevance = min(1.0, relevance * boost)
