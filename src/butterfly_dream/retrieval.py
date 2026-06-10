@@ -141,7 +141,8 @@ class ThreeDimRetriever:
             use_step_back: Enable step-back via abstract entity embedding matching
                           (default True).
             step_back_threshold: Min cosine similarity for abstract entity matching
-                                (default 0.50).
+                                (default 0.50). Matched clusters are resolved to
+                                their concrete member entities as PPR seeds.
             use_ppr: Use Personalized PageRank for graph expansion instead of BFS
                     (default True). PPR scores weight facts by graph distance.
             ppr_alpha: PPR teleport probability (default 0.85). Lower = more
@@ -189,9 +190,10 @@ class ThreeDimRetriever:
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
 
         # Stage 1.5: Entity seed collection + PPR graph expansion (unified)
-        # Entity names mentioned in the query and step-back abstract entities are
-        # both used as PPR seeds — PPR's proximity scoring naturally handles
-        # relevance ranking (seeds ≈ 1.0, neighbors decay by distance).
+        # Entity names mentioned in the query are PPR seeds. Step-back resolves
+        # abstract clusters to their concrete member entities as additional seeds.
+        # PPR walks co_occur edges in the entity graph — no includes/hierarchy
+        # edges pollute the propagation, each entity's connectedness is its own.
         seed_entities: list[str] = []
         step_back_abstracts: list[str] = []
 
@@ -209,9 +211,12 @@ class ThreeDimRetriever:
         except Exception:
             pass
 
-        # 3b: Step-back — match abstract entities (clusters) via query embedding.
-        # Only the abstract entity name itself is added as a PPR seed, NOT its
-        # member entities — PPR traverses is_member_of edges automatically.
+        # 3b: Step-back — match abstract entities (clusters) via query embedding,
+        # then resolve to their concrete member entities as additional PPR seeds.
+        # This supplements entity-name matching with semantically related entities
+        # that the query doesn't mention by name — e.g. a query about "pottery"
+        # matches the "Melanie子类" cluster, adding Bailey, Oliver, Bach, etc.
+        # as PPR seeds so the graph propagates to related facts.
         if use_step_back:
             try:
                 from .embedding import get_embedding_service as _sb_svc
@@ -223,14 +228,20 @@ class ThreeDimRetriever:
                     if _abstract_matches:
                         for _am in _abstract_matches:
                             _abs_name = _am["name"]
-                            if _abs_name not in seed_entities:
-                                seed_entities.append(_abs_name)
+                            if _abs_name not in step_back_abstracts:
                                 step_back_abstracts.append(_abs_name)
+                            for _m in _am.get("member_entities", []):
+                                _mname = _m["name"]
+                                if _mname not in seed_entities:
+                                    seed_entities.append(_mname)
                         if self._debug_logging:
                             self._dlog.debug(
-                                "search: step-back matched %d abstract entities: %s",
+                                "search: step-back matched %d abstract entities (%s), "
+                                "resolved to %d member seeds",
                                 len(_abstract_matches),
                                 step_back_abstracts,
+                                sum(len(_am.get("member_entities", []))
+                                    for _am in _abstract_matches),
                             )
             except Exception:
                 pass
