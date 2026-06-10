@@ -311,11 +311,11 @@ class ThreeDimRetriever:
                     added = 0
                     for gf in graph_facts:
                         if gf.get("fact_id") not in seen_ids:
-                            # Entity-sourced facts: use entity relevance as their
-                            # entry signal (replacing fts_rank) so they stand on
-                            # equal footing with FTS5-sourced facts.
-                            _er = gf.get("_ppr_score")
-                            gf["fts_rank"] = _er if _er is not None else 0.0
+                            # Entity-sourced facts: use embedding similarity as
+                            # their fts_rank, so all facts compete on semantic
+                            # relevance rather than entity proximity to seeds.
+                            _es = gf.get("_embed_sim")
+                            gf["fts_rank"] = _es if _es is not None else 0.0
                             if "_graph_expanded" not in gf:
                                 gf["_graph_expanded"] = True
                             candidates.append(gf)
