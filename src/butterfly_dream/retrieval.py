@@ -188,49 +188,30 @@ class ThreeDimRetriever:
         # Stage 1: Get FTS5 candidates
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
 
-        # Stage 1.5: Entity lookup + graph-based entity expansion (v2)
-        # If entities mentioned in query have co_occur relations, add facts
-        # about their graph neighbors to the candidate pool.
-        # Entity name lookup happens here (needed for both graph expansion
-        # and the entity boost below).
-        matched_entities: list[str] = []
-        entity_fact_ids: set[int] = set()
-        entity_fact_map: dict[int, set[int]] = {}
-        query_entity_ids: set[int] = set()
+        # Stage 1.5: Entity seed collection + PPR graph expansion (unified)
+        # Entity names mentioned in the query and step-back abstract entities are
+        # both used as PPR seeds — PPR's proximity scoring naturally handles
+        # relevance ranking (seeds ≈ 1.0, neighbors decay by distance).
+        seed_entities: list[str] = []
+        step_back_abstracts: list[str] = []
+
+        # 3a: Entity name matching — find entities explicitly mentioned in query
         try:
             entity_rows = self.store.execute_query(
-                "SELECT name FROM entities"
+                "SELECT name FROM entities WHERE entity_type != 'abstract'"
             )
             if entity_rows:
                 q_lower = query.lower()
-                matched_entities = [
+                seed_entities = [
                     row["name"] for row in entity_rows
                     if row["name"].lower() in q_lower
                 ]
-                if matched_entities:
-                    entity_fact_ids = self.store.get_fact_ids_for_entities(matched_entities)
-                    # Get entity_ids for matched names for mismatch detection
-                    q_placeholders = ",".join("?" for _ in matched_entities)
-                    id_rows = self.store.execute_query(
-                        f"SELECT entity_id FROM entities WHERE name IN ({q_placeholders})",
-                        tuple(matched_entities),
-                    )
-                    query_entity_ids = {r["entity_id"] for r in id_rows}
-                # Build fact_id → entity_ids map for all facts linked to entities
-                fe_rows = self.store.execute_query(
-                    "SELECT fact_id, entity_id FROM fact_entities"
-                )
-                for row in fe_rows:
-                    fid = row["fact_id"]
-                    eid = row["entity_id"]
-                    if fid not in entity_fact_map:
-                        entity_fact_map[fid] = set()
-                    entity_fact_map[fid].add(eid)
         except Exception:
             pass
 
-        # Stage 1.6: Step-back — match abstract entities via query embedding
-        step_back_entities: list[str] = []
+        # 3b: Step-back — match abstract entities (clusters) via query embedding.
+        # Only the abstract entity name itself is added as a PPR seed, NOT its
+        # member entities — PPR traverses is_member_of edges automatically.
         if use_step_back:
             try:
                 from .embedding import get_embedding_service as _sb_svc
@@ -241,28 +222,24 @@ class ThreeDimRetriever:
                     )
                     if _abstract_matches:
                         for _am in _abstract_matches:
-                            for _m in _am["member_entities"]:
-                                _m_name = _m["name"]
-                                if _m_name not in matched_entities:
-                                    matched_entities.append(_m_name)
-                                    step_back_entities.append(_m_name)
-                        # Recompute entity_fact_ids with expanded entities
-                        if matched_entities:
-                            entity_fact_ids = self.store.get_fact_ids_for_entities(matched_entities)
+                            _abs_name = _am["name"]
+                            if _abs_name not in seed_entities:
+                                seed_entities.append(_abs_name)
+                                step_back_abstracts.append(_abs_name)
                         if self._debug_logging:
                             self._dlog.debug(
-                                "search: step-back matched %d abstract entities → %d concrete entities: %s",
+                                "search: step-back matched %d abstract entities: %s",
                                 len(_abstract_matches),
-                                len(step_back_entities),
-                                step_back_entities,
+                                step_back_abstracts,
                             )
             except Exception:
                 pass
 
-        if use_graph_expansion and matched_entities:
+        # 3c: PPR graph expansion from collected seed entities
+        if use_graph_expansion and seed_entities:
             try:
                 graph_result = self.store.expand_entities_for_retrieval(
-                    matched_entities,
+                    seed_entities,
                     max_depth=2,
                     max_results=limit * 2,
                     min_weight=0.3,
@@ -275,7 +252,6 @@ class ThreeDimRetriever:
                     for gf in graph_facts:
                         if gf.get("fact_id") not in seen_ids:
                             gf["fts_rank"] = 0.0
-                            # PPR mode already sets _graph_expanded per-fact
                             if "_graph_expanded" not in gf:
                                 gf["_graph_expanded"] = True
                             candidates.append(gf)
@@ -283,8 +259,8 @@ class ThreeDimRetriever:
                             added += 1
                     if self._debug_logging and added:
                         self._dlog.debug(
-                            "search: graph expansion added %d facts (entities=%s)",
-                            added, matched_entities,
+                            "search: graph expansion added %d facts (seeds=%s)",
+                            added, seed_entities,
                         )
             except Exception:
                 pass  # graph expansion is best-effort
@@ -298,17 +274,6 @@ class ThreeDimRetriever:
         # Stage 2: Score on all three dimensions
         query_tokens = self._tokenize(query)
         scored = []
-
-        # Entity boost: find entities mentioned in the query
-        _ENTITY_BOOST = 0.15  # boost for facts linked to a query entity
-
-        # entity_fact_ids / entity_fact_map / query_entity_ids / matched_entities
-        # are already populated in Stage 1.75 (graph expansion section above).
-        # Keep empty fallbacks in case that block failed:
-        if not matched_entities:
-            entity_fact_ids = set()
-            entity_fact_map = {}
-            query_entity_ids = set()
 
         # Pre-compute query neural embedding (v2)
         _qembed: Optional[np.ndarray] = None
@@ -360,29 +325,6 @@ class ThreeDimRetriever:
                 # Map [0.01, 1.0] → [0.5, 1.0] multiplier
                 boost *= (0.5 + 0.5 * max(_ppr, 0.01))
 
-            # Boost relevance if fact is linked to an entity mentioned in the query
-            if entity_fact_ids and fact.get("fact_id") in entity_fact_ids:
-                boost += _ENTITY_BOOST
-
-            # Save query relevance before entity mismatch penalty for diversity re-ranking.
-            # Entity diversity needs to evaluate minority facts by how well they match the
-            # query, not by how penalized they are for belonging to a different entity.
-            _query_relevance = min(1.0, round(relevance * boost, 4))
-
-            # Penalize facts linked to entities NOT mentioned in the query.
-            # When the query clearly names an entity (e.g. "Melanie"), facts about
-            # other entities (e.g. Caroline) should fall behind rather than compete
-            # on FTS5 relevance alone.
-            _ENTITY_MISMATCH_PENALTY = -0.3
-            fid = fact.get("fact_id")
-            if (
-                fid
-                and query_entity_ids
-                and fid in entity_fact_map
-                and not entity_fact_map[fid] & query_entity_ids
-            ):
-                boost += _ENTITY_MISMATCH_PENALTY
-
             relevance = min(1.0, relevance * boost)
 
             # --- Recency ---
@@ -405,7 +347,6 @@ class ThreeDimRetriever:
                 "_relevance": round(relevance, 4),
                 "_recency": round(recency, 4),
                 "_importance": round(importance, 4),
-                "_query_relevance": _query_relevance,
                 "score": round(score, 4),
             })
 
@@ -511,7 +452,7 @@ class ThreeDimRetriever:
                         names = fact_entity_map.get(scored[i]["fact_id"], set())
                         if names and dominant_ent not in names:
                             minority_facts.append((i, dict(scored[i])))
-                    minority_facts.sort(key=lambda x: x[1].get("_query_relevance", 0), reverse=True)
+                    minority_facts.sort(key=lambda x: x[1].get("_relevance", 0), reverse=True)
 
                     if minority_facts:
                         # Swap in proportion to result set size (ceil(limit × 20%)),
