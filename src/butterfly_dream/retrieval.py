@@ -731,10 +731,12 @@ class ThreeDimRetriever:
             r'\bwhat (are|is|were|was)\s+\w+\s+(\w+ ){0,3}(name|names|subject|type|type of)\b',
             # "what types/kinds/sorts of" — e.g. "what types of pottery"
             r'\bwhat (types|kinds|sorts) of\b',
+            # 'what do/does/did/have/has' — e.g. 'what do kids like', 'what did Melanie paint'
+            r'\bwhat (do|does|did|have|has)\b',
             # "when did/was/were/will/does"
-            r'\bwhen (did|was|were|will|does|is|are)\b',
+            r'\bwhen (did|was|were|will|does|has|have|is|are)\b',
             # "where did/was/is/are/does"
-            r'\bwhere (did|was|were|is|are|does)\b',
+            r'\bwhere (did|was|were|is|are|does|has|have)\b',
             # "how many/much/long/old/often/far"
             r'\bhow (many|much|long|old|often|far|wide|deep|tall|heavy)\b',
             # "which [noun]"
