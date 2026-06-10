@@ -138,11 +138,14 @@ class ThreeDimRetriever:
             recency_weight: Override recency weight for this call.
             relevance_weight: Override relevance weight for this call.
             importance_weight: Override importance weight for this call.
-            use_step_back: Enable step-back via abstract entity embedding matching
-                          (default True).
-            step_back_threshold: Min cosine similarity for abstract entity matching
-                                (default 0.50). Matched clusters are resolved to
-                                their concrete member entities as PPR seeds.
+            use_step_back: Enable step-back via concrete entity embedding matching
+                          (default True). Adds semantically related entities that
+                          are not explicitly mentioned in the query as extra PPR
+                          seeds — e.g. a query about "pottery" adds "Melanie"
+                          because her name embedding is close.
+            step_back_threshold: Min cosine similarity for concrete entity embedding
+                                matching (default 0.50). Entities above this
+                                threshold are added as PPR seeds.
             use_ppr: Use Personalized PageRank for graph expansion instead of BFS
                     (default True). PPR scores weight facts by graph distance.
             ppr_alpha: PPR teleport probability (default 0.85). Lower = more
@@ -190,10 +193,10 @@ class ThreeDimRetriever:
         candidates = self._fts_candidates(query, category, min_trust, limit * 3, persistent_only, fts_mode=fts_mode)
 
         # Stage 1.5: Entity seed collection + PPR graph expansion (unified)
-        # Entity names mentioned in the query are PPR seeds. Step-back resolves
-        # abstract clusters to their concrete member entities as additional seeds.
-        # PPR walks co_occur edges in the entity graph — no includes/hierarchy
-        # edges pollute the propagation, each entity's connectedness is its own.
+        # Entity names mentioned in the query are exact-matched as PPR seeds.
+        # Step-back finds semantically related entities via embedding similarity
+        # and adds those as extra seeds. PPR walks co_occur edges in the entity
+        # graph to propagate scores through connected entities.
         seed_entities: list[str] = []
         step_back_abstracts: list[str] = []
 
@@ -211,38 +214,52 @@ class ThreeDimRetriever:
         except Exception:
             pass
 
-        # 3b: Step-back — match abstract entities (clusters) via query embedding,
-        # then resolve to their concrete member entities as additional PPR seeds.
-        # This supplements entity-name matching with semantically related entities
-        # that the query doesn't mention by name — e.g. a query about "pottery"
-        # matches the "Melanie子类" cluster, adding Bailey, Oliver, Bach, etc.
-        # as PPR seeds so the graph propagates to related facts.
+        # 3b: Step-back — find concrete entities semantically related to the query
+        # via embedding similarity. This supplements exact entity-name matching
+        # (3a) with entities that the query doesn't explicitly name but is
+        # semantically related to — e.g. a query about "pottery" finds "Melanie"
+        # as a related entity via embedding space proximity.
         if use_step_back:
             try:
-                from .embedding import get_embedding_service as _sb_svc
-                _sb_embed = _sb_svc().encode_one(query)
+                from .embedding import get_embedding_service, EmbeddingService as _sb_es
+                _sb_svc = get_embedding_service()
+                _sb_embed = _sb_svc.encode_one(query)
                 if _sb_embed is not None:
-                    _abstract_matches = self.store.match_abstract_entities(
-                        _sb_embed, threshold=step_back_threshold,
+                    _sb_rows = self.store.execute_query(
+                        "SELECT entity_id, name, embedding FROM entities "
+                        "WHERE entity_type != 'abstract' AND embedding IS NOT NULL"
                     )
-                    if _abstract_matches:
-                        for _am in _abstract_matches:
-                            _abs_name = _am["name"]
-                            if _abs_name not in step_back_abstracts:
-                                step_back_abstracts.append(_abs_name)
-                            for _m in _am.get("member_entities", []):
-                                _mname = _m["name"]
-                                if _mname not in seed_entities:
-                                    seed_entities.append(_mname)
-                        if self._debug_logging:
-                            self._dlog.debug(
-                                "search: step-back matched %d abstract entities (%s), "
-                                "resolved to %d member seeds",
-                                len(_abstract_matches),
-                                step_back_abstracts,
-                                sum(len(_am.get("member_entities", []))
-                                    for _am in _abstract_matches),
+                    if _sb_rows:
+                        _sb_ids, _sb_names, _sb_vecs = [], [], []
+                        for _r in _sb_rows:
+                            _blob = _r["embedding"]
+                            if _blob is None:
+                                continue
+                            _vec = _sb_es.deserialize(bytes(_blob))
+                            if _vec is not None:
+                                _sb_ids.append(_r["entity_id"])
+                                _sb_names.append(_r["name"])
+                                _sb_vecs.append(_vec)
+                        if _sb_vecs:
+                            _sb_scores = _sb_es.cosine_similarity_batch(
+                                _sb_embed, _sb_vecs,
                             )
+                            # Collect matches above threshold, skip already-seen
+                            _matched = [
+                                (_sb_names[i], _sb_scores[i])
+                                for i in range(len(_sb_names))
+                                if _sb_scores[i] >= step_back_threshold
+                                and _sb_names[i] not in seed_entities
+                            ]
+                            _matched.sort(key=lambda x: x[1], reverse=True)
+                            for _sb_name, _sb_score in _matched[:5]:
+                                seed_entities.append(_sb_name)
+                                step_back_abstracts.append(f"{_sb_name}({_sb_score:.2f})")
+                            if step_back_abstracts and self._debug_logging:
+                                self._dlog.debug(
+                                    "search: step-back added %d entity seeds: %s",
+                                    len(step_back_abstracts), step_back_abstracts,
+                                )
             except Exception:
                 pass
 

@@ -171,14 +171,13 @@ class TestClustering:
 
 
 class TestStepBack:
-    """Step-back: abstract entity matching via query embedding (Stage 1.6)."""
+    """Step-back: concrete entity matching via query embedding (Stage 1.5)."""
 
-    def _build_three_layer(self, store):
-        """Build a minimal three-layer ontology for testing step-back.
+    def _build_concrete_graph(self, store):
+        """Build concrete entities with co_occur edges for step-back testing.
 
-        L1: concrete entities [跳绳, 游泳, 乐高]
-        L2: abstract entity '运动爱好'
-        L3: includes edges: 运动爱好 → 跳绳, 运动爱好 → 游泳
+        Entities: [小明, 跳绳, 游泳, 乐高, 小红]
+        co_occur edges: 小明↔跳绳, 小明↔游泳
         """
         # Insert facts to create concrete entities
         facts = [
@@ -188,63 +187,42 @@ class TestStepBack:
             ("游泳可以锻炼全身肌肉", "event", 4.0, ["游泳"]),
             ("小红喜欢玩乐高拼图", "preference", 6.0, ["小红", "乐高"]),
         ]
-        for content, cat, imp, entities in facts:
-            store.add_fact(content, category=cat, importance=imp, entities=entities)
+        for content, cat, imp, entities_in_fact in facts:
+            store.add_fact(content, category=cat, importance=imp, entities=entities_in_fact)
 
-        # Manually create abstract entity + cluster
-        from butterfly_dream.embedding import get_embedding_service
-        svc = get_embedding_service()
-        centroid = svc.encode_one("运动爱好活动")
-        centroid_blob = svc.serialize(centroid) if centroid is not None else None
-
-        # Find concrete entity IDs for 跳绳 and 游泳
+        # Create co_occur edges for PPR to walk
         ids = {}
-        for name in ["跳绳", "游泳"]:
+        for name in ["小明", "跳绳", "游泳", "乐高", "小红"]:
             row = store.execute_query(
                 "SELECT entity_id FROM entities WHERE name = ?", (name,)
             )
             if row:
                 ids[name] = row[0]["entity_id"]
 
-        store.create_cluster(
-            name="运动爱好",
-            cluster_type="auto",
-            member_entity_ids=list(ids.values()),
-            similarities=[0.62, 0.58],
-            centroid=centroid_blob,
-            coherence=0.60,
-            relation_type="includes",
-        )
+        if "小明" in ids and "跳绳" in ids:
+            store._conn.execute(
+                "INSERT OR IGNORE INTO entity_relations (source_id, target_id, relation, weight) VALUES (?, ?, 'co_occur', ?)",
+                (ids["小明"], ids["跳绳"], 0.8),
+            )
+        if "小明" in ids and "游泳" in ids:
+            store._conn.execute(
+                "INSERT OR IGNORE INTO entity_relations (source_id, target_id, relation, weight) VALUES (?, ?, 'co_occur', ?)",
+                (ids["小明"], ids["游泳"], 0.8),
+            )
+        store._conn.commit()
 
-    def test_step_back_matches_abstract_entity(self, store):
-        """Query about a category should match the abstract entity via embedding."""
-        self._build_three_layer(store)
-
-        from butterfly_dream.embedding import get_embedding_service
-        qvec = get_embedding_service().encode_one("有什么运动推荐")
-        matches = store.match_abstract_entities(qvec, threshold=0.40)
-
-        print(f"Abstract matches for '有什么运动推荐':")
-        for m in matches:
-            members = [e['name'] for e in m['member_entities']]
-            print(f"  {m['name']} (sim={m['similarity']}) → {members}")
-
-        assert len(matches) > 0, "Step-back should match '运动爱好' abstract entity!"
-        assert matches[0]['name'] == '运动爱好', "Top match should be '运动爱好'"
-        member_names = [e['name'] for e in matches[0]['member_entities']]
-        assert '跳绳' in member_names, "Should expand to 跳绳"
-        assert '游泳' in member_names, "Should expand to 游泳"
-
-    def test_step_back_finds_facts_via_abstract(self, store):
-        """With step-back, a vague query should find facts about cluster members
-        that FTS5 alone wouldn't find."""
-        self._build_three_layer(store)
+    def test_step_back_finds_facts_via_entity_embedding(self, store):
+        """Step-back should find concrete entities via query embedding,
+        add them as PPR seeds, and expand to related facts."""
+        self._build_concrete_graph(store)
 
         retriever = ThreeDimRetriever(store)
 
-        # Query that doesn't name any concrete entity and won't match fact text
-        with_step = retriever.search("推荐一些有意思的活动吧", limit=10, use_step_back=True)
-        no_step = retriever.search("推荐一些有意思的活动吧", limit=10, use_step_back=False)
+        # Query that doesn't name any entity but is semantically close
+        with_step = retriever.search("推荐一些有意思的活动吧", limit=10,
+                                      use_step_back=True, step_back_threshold=0.30)
+        no_step = retriever.search("推荐一些有意思的活动吧", limit=10,
+                                     use_step_back=False, step_back_threshold=0.30)
 
         print(f"With step-back: {len(with_step)} results")
         for r in with_step:
@@ -255,7 +233,7 @@ class TestStepBack:
         for r in no_step:
             print(f"  #{r['fact_id']} score={r['score']:.3f}: {r['content'][:50]}")
 
-        # With step-back should find MORE results
+        # With step-back should find MORE results via entity embedding matching + PPR
         assert len(with_step) > len(no_step), \
             f"Step-back should add more results, got {len(with_step)} <= {len(no_step)}"
 
