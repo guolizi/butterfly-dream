@@ -951,7 +951,8 @@ L5 灵魂层因此从"高级特性"升级为**矛盾检测的核心基础设施*
 | 2026-06-16 | 热路径晋升 — 高重要性事实即时处理 | ✅ 在双通道晋升基础上增加热路径：LLM 提取时检测到 importance ≥ 0.9 的事实立即写入 L1，不等睡眠周期。详见 §4-L0 热路径晋升 |
 | 2026-06-16 | 自我实现预言隔离 — 干预-因果隔离 | ✅ 新增干预标记机制：Agent 向用户表达预测时标记为 intervened，后续行为匹配时 Δp 减半，不更新 L5 人格模型，避免自我实现的反馈循环。详见 §4-L5 |
 | 2026-06-16 | 隐私擦除层 — 用户删除权 | ✅ 新增四层删除级别（L1/L3/L5/全量擦除），L5 级删除标记受影响维度后睡眠周期重新计算。与"永远保留"原则不矛盾。详见 §4-遗忘机制 |
-| 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`，新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等完整设计。详见 `v2-retrieval-design.md` |
+| 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`（早期探索版本，已废弃），新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等。后被 `retrieval_v2_design.md` 替代 |
+| 2026-06-16 | 检索算法全面重构 — Pro 模型设计 | ✅ 放弃旧方案（线性加权+L2-L5附加上下文），改为四阶段检索管道：QueryClassifier（9种query类型）→ LayerRouter → ParallelRetrieval（各层统一RetrievalSource接口）→ FusionEngine（MMR重排序+结构化上下文包）。详见 `retrieval_v2_design.md` |
 
 ---
 
@@ -1383,62 +1384,45 @@ Phase 3: 关系构建
 
 ## 八、检索路由设计
 
-> 讨论日期：2026-06-15
-> 决策：三层路由策略 — 基础检索 + 自动上下文增强 + 显式覆盖
-> 完整内容已移入独立文档：[`v2-retrieval-design.md`](v2-retrieval-design.md)
+> 讨论日期：2026-06-15 → 2026-06-16（重构）
+> 决策：四阶段检索管道 — QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
+> 完整内容已移入独立文档：[`retrieval_v2_design.md`](retrieval_v2_design.md)
 
 ### 8.1 核心思路（摘要）
 
-```
-第一层：基础检索（始终执行）
-  L0（FTS5 关键词匹配）+ L1（embedding 搜索）→ 合并排序 → top-N 事实
-
-第二层：自动上下文增强（基于 query 关键词特征）
-  因果关系 → 附带 L2 因果链
-  人物画像 → 附带 L4 叙事 + L5 人格
-  行为预测 → 附带 L5 预测
-  ...（详见独立文档 §2.2）
-
-第三层：显式覆盖（Agent 指定 memory 参数）
-  memory="reasoning" / "understand" / "narrative" / "deep" / "all"
-```
-
-### 8.2 两阶段检索（Phase 2+ 增强）
-
-> 受 MemRL (arXiv: 2601.03192) 启发。详见独立文档 §五。
-
-当前方案中 L0+L1 合并排序是静态的（embedding_sim + bm25 + heat），无法区分"语义相似但实际无用"和"语义略远但实际有用"的记忆。Phase 2 引入**两阶段检索**：
+放弃简单的"L0+L1 线性加权 + L2-L5 附加上下文"方案，改为**四阶段检索管道**：
 
 ```
-Phase A: 语义召回（标准语义搜索）
-  Query → embedding → 余弦相似度 → 候选池（Top-k1）
-  
-Phase B: 效用感知选择（Q 值重排序）
-  候选池 → 综合评分 = (1-λ) × 归一化语义相似度 + λ × 归一化 Q 值 → 选 Top-k2
+Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine → Output
 ```
 
-其中 Q 值从环境反馈中学习（详见独立文档 §六）。
+**QueryClassifier**：将 query 分为 9 种类型（fact/causal/prediction/contradiction/relation/emotion/narrative/persona/general），每种类型对应不同的目标层和路由策略。两阶段分类：关键词规则（快速路径）+ LLM 兜底（低置信度时）。
 
-### 8.3 检索结果合并
+**LayerRouter**：根据 query 类型决定查哪些层，结合渐进激活检查（未激活层优雅降级）和成本感知路由（chat 场景仅 L0+L1）。
 
-```
-L0 结果（FTS5 匹配）──┐
-                       ├─ 合并排序 → 最终 top-N
-L1 结果（embedding）──┘
-    ↑
-L2-L5 增强结果（如有）── 作为上下文附加，不参与排序竞争
-```
+**ParallelRetrieval**：各层并行检索，每层实现统一 `RetrievalSource` 接口。各层检索策略：
 
-### 8.4 与热度检索路由的关系
+| 层 | 检索策略 | 排序信号 |
+|:--|:--------|:--------|
+| L0 | FTS5 + 可选 embedding | BM25 + 时间衰减 + 语义 |
+| L1 | 增强三维评分 + 池间路由 | 三维评分 × trust × cooling_factor |
+| L2 | PPR + 四层递进因果链 + 时间链 | PPR分数 / 因果强度 / 时间接近度 |
+| L3 | 聚类匹配（query→聚类中心） | 聚类相干性 × 语义相似度 |
+| L4 | 版本化叙事主干 + 按需动态细节 | 叙事相关性 |
+| L5 | 人格维度匹配 + 行为概率检索 | 维度匹配度 × 置信度 |
+
+**FusionEngine**：异构结果归一化 → 跨层加权 → 去重 → MMR 重排序 → 结构化上下文包输出。
+
+### 8.2 与热度检索路由的关系
 
 | 路由维度 | 作用 | 说明 |
 |:--------|:----|:-----|
-| **跨层路由**（本条） | 查哪些层 | L0+L1 始终搜，L2-L5 按需附带 |
+| **跨层路由**（本条） | 查哪些层 | QueryClassifier 决定目标层 |
 | **层内热度路由**（§7.7） | 查多热的记录 | 🔥+🌤️ 默认，❄️ 需 deep，🧊 需 all |
 
 两者正交：先决定查哪些层，再决定查多热的记录。
 
-> 详见 [`docs/v2-retrieval-design.md`](v2-retrieval-design.md) — 包含两阶段检索、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等完整设计。
+> 详见 [`docs/retrieval_v2_design.md`](retrieval_v2_design.md) — 包含完整四阶段管道设计、各层检索算法、FusionEngine、MMR 重排序、热度交互、分阶段实现路径等。
 
 ---
 
