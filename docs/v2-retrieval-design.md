@@ -171,7 +171,12 @@ class QueryIntent:
     routing_hints: dict      # 额外提示 (如因果链深度、实体列表)
     query: str               # 原始 query
     embedding: np.ndarray    # query 的 embedding 向量 (预计算)
+    psych_probe: Optional[np.ndarray]  # 心理探针向量 (Phase 2+)
 ```
+
+**心理探针向量 (Psych Probe)**: 将 query 映射到 11 维心理空间（大五人格5 + 能量动机4 + 情绪效价2），用于检索历史上处于相似心理状态时的记忆。Phase 1 为 None，Phase 2+ 由轻量级分类器或 LLM 生成。
+
+> 受"认知驱动的多维混合检索"方案启发。核心创新：不是搜"相似的句子"，而是搜"相似的心情"。详见 §3.7 L5 检索。
 
 ---
 
@@ -403,12 +408,33 @@ class L2Retrieval(RetrievalSource):
 
 **数据特性**: 管道式处理 (不存储, 产出持久化在 L1 的行为模式池/静态知识池)
 
-**检索方式**: 模式匹配 + 知识检索
+**检索方式**: 模式匹配 + 知识检索 + Parent-Child 源事实回溯
 
 | 检索类型 | 策略 | 说明 |
 |---------|------|------|
 | 模式发现 | 聚类匹配 | query embedding → 最近聚类中心 |
 | 知识归纳 | 语义检索 | query → L1 静态知识池 (带抽象标记) |
+| **Parent-Child 回溯** | 抽象→源事实映射 | 检索 L3 抽象时，通过 `abstracts_from` 带回关联的 L1 原始事实 |
+
+**Parent-Child 机制**: L3 检索结果不仅返回抽象事实本身，还通过 `abstracts_from` 映射带回其下属的 L1 源事实。这样 Agent 既看到宏观模式，又看到具体证据。映射关系在 `fact_relations` 表中维护。
+
+```
+检索命中 L3 抽象事实 A
+    ↓
+通过 fact_relations.abstracts_from 找到 A 关联的 L1 源事实 [F1, F2, F3]
+    ↓
+返回结构化包: {abstract: A, source_facts: [F1, F2, F3]}
+```
+
+**排序算法**:
+```
+score = cluster_coherence × semantic_similarity × (1 + 0.2 × log(source_count))
+```
+- `cluster_coherence`: 聚类内平均相似度（GMM 分量的平均后验概率）
+- `semantic_similarity`: query embedding 与聚类中心的相似度
+- `source_count`: 该抽象事实关联的 L1 源事实数量（更多源事实 → 更可靠的抽象）
+
+**聚类匹配使用马氏距离 (Mahalanobis distance)** 替代余弦相似度，考虑 GMM 各分量的协方差结构——一个狭长的聚类在某个方向上应"容忍"更大的距离。详见下方算法。
 
 **算法**:
 ```python
@@ -419,31 +445,69 @@ class L3Retrieval(RetrievalSource):
     def retrieve(self, intent, heat_zone, limit):
         # L3 不直接存储数据, 产出在 L1 池中
         # 检索时: 从 L1 中筛选出 "抽象" 标记的事实
-        # 使用现有的聚类信息 (clustering.py)
 
-        # 1. 找到 query 所属的聚类
-        clusters = self._find_relevant_clusters(intent.embedding, top_k=3)
+        # 1. 找到 query 所属的聚类 (马氏距离)
+        clusters = self._find_relevant_clusters_mahalanobis(
+            intent.embedding, top_k=3
+        )
 
-        # 2. 从聚类中提取抽象事实
+        # 2. 从聚类中提取抽象事实 + Parent-Child 回溯
         abstract_facts = []
         for cluster in clusters:
-            facts = self.store.get_cluster_abstracts(cluster.cluster_id)
-            abstract_facts.extend(facts)
+            abstract = self.store.get_cluster_abstract(cluster.cluster_id)
+            if not abstract:
+                continue
 
-        # 3. 排序: 聚类相干性 × 语义相似度
+            # Parent-Child: 带回 L1 源事实
+            source_facts = self.store.get_abstract_source_facts(
+                abstract.fact_id  # 通过 fact_relations.abstracts_from
+            )
+
+            abstract_facts.append({
+                "abstract": abstract,
+                "source_facts": source_facts,
+                "cluster_id": cluster.cluster_id,
+                "mahalanobis_dist": cluster.distance,
+            })
+
+        # 3. 排序: 聚类相干性 × 语义相似度 × 源事实数量增益
         return self._score_abstracts(abstract_facts, intent, limit)
 
-    def _find_relevant_clusters(self, query_embed, top_k):
-        """找到与 query 最相关的实体聚类"""
-        # 使用聚类中心 embedding 进行最近邻搜索
+    def _find_relevant_clusters_mahalanobis(self, query_embed, top_k):
+        """使用马氏距离找到与 query 最相关的 GMM 聚类
+
+        马氏距离考虑 GMM 各分量的协方差结构:
+            d(x, μ_k) = sqrt((x - μ_k)^T Σ_k^{-1} (x - μ_k))
+
+        相比余弦相似度:
+        - 狭长聚类在短轴方向更"严格"，长轴方向更"宽容"
+        - 圆形聚类退化为欧氏距离
+        - 无协方差信息时回退到余弦相似度
+        """
         clusters = self.store.get_all_clusters()
+
+        # 获取 GMM 参数 (每个分量的 μ_k, Σ_k)
+        gmm_params = self.store.get_gmm_parameters()
+
         scored = []
         for c in clusters:
-            if c.get("centroid"):
-                sim = cosine_similarity(query_embed, c["centroid"])
-                scored.append((c, sim))
+            if not c.get("centroid"):
+                continue
+
+            if gmm_params and c.cluster_id in gmm_params:
+                mu = gmm_params[c.cluster_id]["mean"]
+                cov_inv = gmm_params[c.cluster_id]["cov_inv"]  # 预计算 Σ_k^{-1}
+                diff = query_embed - mu
+                dist = np.sqrt(np.dot(np.dot(diff, cov_inv), diff.T))
+                similarity = 1.0 / (1.0 + dist)  # 距离→相似度转换
+            else:
+                # 无 GMM 参数时回退到余弦相似度
+                similarity = cosine_similarity(query_embed, c["centroid"])
+
+            scored.append((c, similarity))
+
         scored.sort(key=lambda x: x[1], reverse=True)
-        return [c for c, _ in scored[:top_k]]
+        return [ClusterMatch(c, s) for c, s in scored[:top_k]]
 ```
 
 ### 3.6 L4 — 叙事层 (Narrative Layer)
@@ -512,6 +576,20 @@ class L4Retrieval(RetrievalSource):
 | 人格匹配 | 结构化属性匹配 | query → 人格维度匹配 |
 | 行为预测 | 概率分布检索 | query → 最相关的行为预测 |
 | 矛盾检测 | 惊讶度计算 | query → 与人格模型的偏离度 |
+| **心理探针检索** (Phase 2+) | 心理状态匹配 | query 心理探针 → 历史相似心理状态下的记忆 |
+
+**心理探针检索 (Psych Probe Retrieval)**: 核心创新——不是搜"相似的句子"，而是搜"相似的心情"。当 `intent.psych_probe` 不为 None 时，检索历史上处于相似心理状态时的记忆和应对结果。
+
+```
+用户 query: "我今天好累，什么都不想干"
+    ↓
+QueryClassifier 生成心理探针: [开放性=0.3, 尽责性=0.2, 外向性=0.1, ...]
+    ↓
+L5 检索: 找到历史上心理探针最相似的 N 条记忆
+    ↓
+返回: "上次类似状态(2024-10-05) → 画画释放情绪 → 效果良好"
+       "再上次(2024-07-12) → 找Melanie聊天 → 效果更好"
+```
 
 **算法**:
 ```python
@@ -540,7 +618,51 @@ class L5Retrieval(RetrievalSource):
         if intent.query_type == "contradiction":
             results.extend(self._detect_contradiction(intent, persona))
 
+        # 5. 心理探针检索 (Phase 2+, 任意 query 类型)
+        if intent.psych_probe is not None:
+            psych_results = self._psych_probe_retrieve(
+                intent.psych_probe, limit=limit
+            )
+            results.extend(psych_results)
+
         return results
+
+    def _psych_probe_retrieve(self, psych_probe, limit):
+        """心理探针检索: 找到历史上心理状态最相似的记忆
+
+        使用马氏距离计算 query 心理探针与历史记忆心理状态的相似度:
+            d(probe, memory) = sqrt((probe - μ_mem)^T Σ^{-1} (probe - μ_mem))
+
+        其中 μ_mem 是记忆发生时记录的心理探针向量，Σ 是全局协方差矩阵。
+        """
+        # 获取所有带心理探针标记的历史记忆
+        memories = self.store.get_psych_probed_memories()
+
+        if not memories:
+            return []
+
+        scored = []
+        for mem in memories:
+            mem_probe = mem.get("psych_probe")
+            if mem_probe is None:
+                continue
+
+            # 马氏距离 (或余弦相似度兜底)
+            dist = mahalanobis_distance(psych_probe, mem_probe)
+            similarity = 1.0 / (1.0 + dist)
+
+            scored.append({
+                "source": "L5",
+                "type": "psych_probe",
+                "content": mem["content"],
+                "timestamp": mem["timestamp"],
+                "psych_similarity": similarity,
+                "outcome": mem.get("outcome", ""),  # 应对结果
+                "score": similarity,
+            })
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:limit]
 
     def _match_persona(self, intent, persona):
         """人格维度匹配"""
@@ -1067,19 +1189,20 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ### Phase 2: 增强
 
-**目标**: 增加深层检索 + 重排序 + 成本感知
+**目标**: 增加深层检索 + 重排序 + 成本感知 + 心理探针
 
 | 组件 | 实现内容 | 工作量 |
 |------|---------|--------|
-| L3 检索 | 聚类匹配 + 抽象事实检索 | 2 天 |
+| L3 检索 | 聚类匹配 + Parent-Child 源事实回溯 + 马氏距离 | 2 天 |
 | L4 检索 | 叙事主干检索 + 动态细节构建 | 2 天 |
-| L5 检索 | 人格模型匹配 + 行为预测检索 | 2 天 |
+| L5 检索 | 人格模型匹配 + 行为预测检索 + 心理探针检索 | 3 天 |
 | MMR 重排序 | 多样性-相关性平衡 | 1 天 |
 | 成本感知路由 | 场景感知层选择 | 1 天 |
 | 因果链检索 | 四层递进 (符号+统计) | 2 天 |
 | 情感轨迹检索 | 情感路径搜索 | 1 天 |
+| 心理探针生成 | 轻量级分类器/LLM 生成 query 心理探针向量 | 2 天 |
 
-**Phase 2 交付**: 完整六层检索, 支持所有 query 类型
+**Phase 2 交付**: 完整六层检索, 支持所有 query 类型 + 心理状态感知检索
 
 ### Phase 3: 成熟
 
