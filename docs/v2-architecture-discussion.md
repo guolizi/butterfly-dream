@@ -1340,7 +1340,7 @@ sleep_cycle_log:
 ## 十、L5 Phase 2 行为预测 — 向量空间方案
 
 > 讨论日期：2026-06-15
-> 决策：行为向量空间替代固定类别预测，采用"核心心理学维度 + PCA 补充维度"的混合架构
+> 决策：行为向量空间替代固定类别预测，采用"核心心理学维度 + GMM 行为模式维度"的混合架构
 > 完整内容已移入独立文档：[`v2-behavior-prediction.md`](v2-behavior-prediction.md)
 
 ### 10.1 核心思路
@@ -1374,7 +1374,7 @@ sleep_cycle_log:
 | Phase | 内容 | 数据要求 |
 |:----|:----|:--------|
 | **Phase 1（MVP）** | 固定 11 维核心维度 + LLM Teacher 离线标注 + Student 多任务回归 + 条件高斯+仿射变换 + Ledoit-Wolf 收缩 | ≥ 1 条（群体先验兜底） |
-| **Phase 2（增强）** | PCA 补充维度 + embedding 映射模型训练 + 条件高斯+仿射变换 + 群体先验 | ≥ 200 条 |
+| **Phase 2（增强）** | GMM 行为模式维度 + embedding 映射模型训练 + GMM 多模式预测 + 群体先验 | ≥ 200 条 |
 | **Phase 3（演进）** | 漂移检测 + 群体先验库 + 主动学习 + 校准 | ≥ 500 条 |
 
 > 详见 [`docs/v2-behavior-prediction.md`](v2-behavior-prediction.md) — 包含维度详解、向量映射方案、条件概率预测、空间成熟度、漂移检测、矛盾检测衔接等完整设计。
