@@ -327,6 +327,7 @@ class L1Retrieval(RetrievalSource):
 | 实体图 | PPR (Personalized PageRank) | PPR 分数 |
 | 溯源 | 来源追踪 | 来源可信度 |
 | 情感轨迹 | 情感路径搜索 | 情感强度 + 方向 |
+| **因果子图游走** (Phase 2+) | L1 命中触发 L2 因果回溯 | 因果深度 × 语义相关性 |
 
 **算法**:
 ```python
@@ -402,6 +403,51 @@ class L2Retrieval(RetrievalSource):
             symbolic.extend(narrative_causal)
 
         return symbolic
+
+    def _causal_subgraph_walk(self, anchor_fact, max_depth=2):
+        """因果子图游走: 从锚点事件出发, 沿因果边反向游走
+
+        当 L1 检索命中某个高相关性事实时, 触发 L2 因果回溯:
+        - 沿着 Caused_By 边回溯前因 (反向)
+        - 沿着 Led_To 边追踪后果 (正向)
+        - 返回 1~2 跳的因果子图
+
+        评分: 因果深度 × 语义相关性
+        - 深度 1 的直接因果: × 1.0
+        - 深度 2 的间接因果: × 0.5
+        """
+        # 获取锚点事实的因果邻域
+        causes = self.store.get_causal_predecessors(
+            anchor_fact, max_depth=max_depth
+        )
+        effects = self.store.get_causal_successors(
+            anchor_fact, max_depth=max_depth
+        )
+
+        subgraph = []
+        for cause in causes:
+            subgraph.append({
+                "source": "L2",
+                "type": "causal_subgraph",
+                "relation": "caused_by",
+                "content": cause["description"],
+                "anchor": anchor_fact["description"],
+                "depth": cause["depth"],
+                "score": 1.0 / cause["depth"],  # 深度越近分数越高
+            })
+
+        for effect in effects:
+            subgraph.append({
+                "source": "L2",
+                "type": "causal_subgraph",
+                "relation": "led_to",
+                "content": effect["description"],
+                "anchor": anchor_fact["description"],
+                "depth": effect["depth"],
+                "score": 1.0 / effect["depth"],
+            })
+
+        return subgraph
 ```
 
 ### 3.5 L3 — 抽象层 (Abstraction Layer)
@@ -520,6 +566,19 @@ class L3Retrieval(RetrievalSource):
 |---------|------|------|
 | 主干检索 | 版本化叙事匹配 | query → 最匹配的叙事主干版本 |
 | 动态细节 | 按需构建 | 基于主干 + query → LLM 生成细节 |
+| **时间折叠** (Phase 2+) | L4 摘要 → 时间窗 → L1 过滤 | 宏观问题先命中 L4 叙事，再用时间窗过滤 L1 细节 |
+
+**时间折叠机制**: 宏观问题（"我大学四年怎么过的"）→ 先命中 L4 叙事摘要 → 提取时间范围 `[t_start, t_end]` → 作为 L1 检索的额外过滤条件。微观问题（"昨天发生了什么"）→ 直接 L1 检索，不经过 L4。这兼顾了宏观视野（不迷失在细节中）和微观精度，同时降低向量库的检索成本。
+
+```
+Query: "我大学四年怎么过的"
+    ↓
+L4 命中叙事摘要: "2021-2025: 考研与失恋的交织期" (time_range: [2021-09, 2025-06])
+    ↓
+L1 检索自动附加时间过滤: time BETWEEN '2021-09' AND '2025-06'
+    ↓
+返回: L4 叙事摘要 + L1 该时间窗内的关键事实
+```
 
 **算法**:
 ```python
@@ -540,18 +599,24 @@ class L4Retrieval(RetrievalSource):
         if relevance < 0.3:
             return []  # 不相关, 跳过 L4
 
-        # 3. 如果 query 需要细节, 按需构建
+        # 3. 时间折叠: 提取叙事时间窗作为 routing_hints
+        if narrative.get("time_range"):
+            intent.routing_hints["narrative_time_window"] = narrative["time_range"]
+            intent.routing_hints["narrative_id"] = narrative.get("id")
+
+        # 4. 如果 query 需要细节, 按需构建
         if intent.query_type in ("narrative", "persona", "causal"):
             details = self._build_dynamic_details(
                 narrative, intent, limit
             )
             return details
 
-        # 4. 否则返回叙事主干摘要
+        # 5. 否则返回叙事主干摘要
         return [{
             "source": "L4",
             "content": narrative["summary"],
             "version": narrative["version"],
+            "time_range": narrative.get("time_range"),
             "relevance": relevance,
             "score": relevance,
         }]
@@ -1011,32 +1076,57 @@ class RetrievalResult:
 
 ### 6.2 跨层融合算法
 
+#### 6.2.1 核心公式
+
+融合引擎将各层异构检索结果归一化后，使用**增强评分公式**：
+
+```
+FusionScore = α·relevance + β·recency + γ·importance + δ·mood_resonance(π_curr, π_doc)
+```
+
+| 因子 | 来源 | 说明 |
+|:----|:----|:----|
+| `relevance` | 各层检索的语义相关性 | 归一化到 [0, 1] |
+| `recency` | 时间衰减 | 热度权重 (🔥=1.0, 🌤️=0.7, ❄️=0.4, 🧊=0.2) |
+| `importance` | 事实重要性 | 来自 L1 三维评分 |
+| `mood_resonance` | **心境一致性共振** (Phase 2+) | 当前 GMM 模式与记忆发生时的 GMM 模式的相似度 |
+
+**心境一致性共振 (Mood Resonance)**: 计算当前 query 的 GMM 模式分布 π_curr 与历史记忆发生时的 GMM 模式分布 π_doc 的相似度。当两者模式相似时（如都处于"应激放纵模式"），即使语义稍弱也给予提权。这使 Agent 表现出"共情能力"——回忆起的不仅是事情，更是"当时的心境"。
+
+```
+mood_resonance = cosine_similarity(π_curr, π_doc)
+```
+
+其中 π 是 GMM 模式的后验概率分布（3~5 维）。Phase 1 无 GMM 数据时，mood_resonance = 0.5（中性值）。
+
+#### 6.2.2 跨层触发机制 (Phase 2+)
+
+FusionEngine 在融合过程中，根据各层检索结果**级联触发**其他层的补充检索：
+
+```
+L1 命中高相关性事实 (relevance > 0.8)
+    ↓ 自动触发
+L2 因果子图游走: 沿 Caused_By / Led_To 边提取 1~2 跳因果子图
+    ↓
+合并到上下文包: {fact, causes, effects}
+
+L4 命中叙事摘要 (含 time_range)
+    ↓ 自动触发
+L1 时间窗过滤: 附加 time BETWEEN [t_start, t_end]
+    ↓
+合并到上下文包: {narrative_summary, time_window_facts}
+```
+
+#### 6.2.3 算法
+
 ```python
 class FusionEngine:
-    """
-    多源异构结果融合引擎
+    """融合引擎: 异构结果归一化 → 跨层加权 → 去重 → MMR 重排序 → 结构化输出"""
 
-    核心思路:
-    1. 每层结果先层内归一化到 [0, 1]
-    2. 跨层加权合并 (层权重取决于 query 类型)
-    3. 去重 (内容相似度 ≥ 0.85 合并)
-    4. 重排序 (MMR: Maximal Marginal Relevance)
-    5. 上下文组装 (按层结构化输出)
-    """
+    LAYER_BASE_WEIGHTS = {0: 0.10, 1: 0.30, 2: 0.25, 3: 0.15, 4: 0.10, 5: 0.10}
 
-    # 每层的基础权重 (query 类型可调整)
-    LAYER_BASE_WEIGHTS = {
-        0: 0.10,  # L0 工作记忆 (低权重, 临时性)
-        1: 0.30,  # L1 事实池 (核心)
-        2: 0.25,  # L2 关系层
-        3: 0.15,  # L3 抽象层
-        4: 0.10,  # L4 叙事层
-        5: 0.10,  # L5 灵魂层
-    }
-
-    # Query 类型 → 层权重调整
     QUERY_TYPE_ADJUSTMENTS = {
-        "fact":         {0: 0.20, 1: 0.50, 2: 0.20, 3: 0.05, 4: 0.03, 5: 0.02},
+        "fact":         {0: 0.15, 1: 0.50, 2: 0.20, 3: 0.10, 4: 0.05, 5: 0.00},
         "causal":       {0: 0.05, 1: 0.25, 2: 0.40, 3: 0.20, 4: 0.10, 5: 0.00},
         "prediction":   {0: 0.00, 1: 0.15, 2: 0.20, 3: 0.25, 4: 0.20, 5: 0.20},
         "contradiction":{0: 0.00, 1: 0.30, 2: 0.30, 3: 0.10, 4: 0.10, 5: 0.20},
@@ -1055,6 +1145,9 @@ class FusionEngine:
     ) -> list[RetrievalResult]:
         """融合所有层的结果"""
 
+        # 0. 跨层触发: 检查是否需要级联补充检索
+        self._cascade_trigger(layer_results, intent)
+
         # 1. 获取层权重
         weights = self.QUERY_TYPE_ADJUSTMENTS.get(
             intent.query_type, self.LAYER_BASE_WEIGHTS
@@ -1065,24 +1158,32 @@ class FusionEngine:
         for layer, results in layer_results.items():
             normalized[layer] = self._normalize_layer(results)
 
-        # 3. 跨层加权合并
+        # 3. 跨层加权合并 + 心境一致性共振
         merged = []
         seen_contents = {}  # 去重用
+
+        # 获取当前 GMM 模式分布 (Phase 2+)
+        curr_gmm_pi = self._get_current_gmm_pi(intent)
 
         for layer, results in normalized.items():
             w = weights.get(layer, 0.1)
             for r in results:
+                # 心境一致性共振 (Phase 2+)
+                mood_boost = 1.0
+                if curr_gmm_pi is not None and r.gmm_pi is not None:
+                    resonance = cosine_similarity(curr_gmm_pi, r.gmm_pi)
+                    mood_boost = 1.0 + 0.3 * resonance  # 最高提权 30%
+
                 # 去重: 内容相似度检查
                 content_key = self._content_fingerprint(r.content)
                 if content_key in seen_contents:
-                    # 保留更高分的
                     existing = seen_contents[content_key]
                     if r.score > existing.score:
                         existing.score = r.score
                         existing.source_layer = layer
                     continue
 
-                r.score = r.score * w  # 应用层权重
+                r.score = r.score * w * mood_boost
                 seen_contents[content_key] = r
                 merged.append(r)
 
@@ -1091,6 +1192,31 @@ class FusionEngine:
 
         # 5. 结构化输出
         return self._assemble_output(reranked, intent)
+
+    def _cascade_trigger(self, layer_results, intent):
+        """跨层触发: 根据已有检索结果触发补充检索
+
+        1. L1 高相关性事实 → 触发 L2 因果子图游走
+        2. L4 叙事命中 → 触发 L1 时间窗过滤
+        """
+        # 1. 因果子图游走: L1 高相关性事实触发 L2 回溯
+        if 1 in layer_results and 2 in layer_results:
+            for r in layer_results[1]:
+                if r.score > 0.8 and r.source_layer == 1:
+                    l2 = L2Retrieval()
+                    subgraph = l2._causal_subgraph_walk(
+                        {"description": r.content, "fact_id": r.id}
+                    )
+                    layer_results.setdefault(2, []).extend(subgraph)
+
+        # 2. 时间折叠: L4 叙事时间窗 → L1 时间过滤
+        if 4 in layer_results and 1 in layer_results:
+            for r in layer_results[4]:
+                if r.metadata and r.metadata.get("time_range"):
+                    time_range = r.metadata["time_range"]
+                    for l1r in layer_results[1]:
+                        if hasattr(l1r, "metadata") and l1r.metadata:
+                            l1r.metadata["time_window"] = time_range
 
     def _mmr_rerank(
         self,
@@ -1288,20 +1414,22 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ### Phase 2: 增强
 
-**目标**: 增加深层检索 + 重排序 + 成本感知 + 心理探针
+**目标**: 增加深层检索 + 重排序 + 成本感知 + 心理探针 + 状态感知
 
 | 组件 | 实现内容 | 工作量 |
 |------|---------|--------|
 | L3 检索 | 聚类匹配 + Parent-Child 源事实回溯 + 马氏距离 | 2 天 |
-| L4 检索 | 叙事主干检索 + 动态细节构建 | 2 天 |
+| L4 检索 | 叙事主干检索 + 动态细节构建 + 时间折叠 | 2 天 |
 | L5 检索 | 人格模型匹配 + 行为预测检索 + 心理探针检索 + 反差检索 | 3 天 |
 | MMR 重排序 | 多样性-相关性平衡 | 1 天 |
 | 成本感知路由 | 场景感知层选择 | 1 天 |
-| 因果链检索 | 四层递进 (符号+统计) | 2 天 |
+| 因果链检索 | 四层递进 (符号+统计) + 因果子图游走 | 2 天 |
 | 情感轨迹检索 | 情感路径搜索 | 1 天 |
 | 心理探针生成 | 轻量级分类器/LLM 生成 query 心理探针向量 | 2 天 |
+| 心境一致性共振 | FusionEngine 增加 mood_resonance 评分因子 | 1 天 |
+| 跨层触发机制 | FusionEngine 级联触发因果子图 + 时间折叠 | 1 天 |
 
-**Phase 2 交付**: 完整六层检索, 支持所有 query 类型 + 心理状态感知检索
+**Phase 2 交付**: 完整六层检索, 支持所有 query 类型 + 心理状态感知检索 + 跨层级联触发
 
 ### Phase 3: 成熟
 

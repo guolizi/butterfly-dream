@@ -956,6 +956,7 @@ L5 灵魂层因此从"高级特性"升级为**矛盾检测的核心基础设施*
 | 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`（早期探索版本，已废弃），新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等。后被新 `v2-retrieval-design.md` 替代 |
 | 2026-06-16 | 检索算法全面重构 — Pro 模型设计 | ✅ 放弃旧方案（线性加权+L2-L5附加上下文），改为四阶段检索管道：QueryClassifier（9种query类型）→ LayerRouter → ParallelRetrieval（各层统一RetrievalSource接口）→ FusionEngine（MMR重排序+结构化上下文包）。详见 `v2-retrieval-design.md` |
 | 2026-06-16 | 认知检索融合 — Parent-Child + 心理探针 + 马氏距离 + 反差检索 | ✅ 吸收外部方案，新增四个检索维度：① L3 Parent-Child 机制（抽象事实带回 L1 源事实）；② L5 心理探针检索（query 心理探针 → 历史相似心理状态记忆）；③ L3 聚类匹配使用马氏距离替代余弦相似度；④ L5 反差检索（检索历史上预测失败的反例记忆，用于自我修正）。详见 `v2-retrieval-design.md` §3.5/§3.7 |
+| 2026-06-16 | SARR 状态感知检索融合 — 心境共振 + 因果子图 + 时间折叠 | ✅ 吸收 SARR 方案，新增三个机制：① FusionEngine 心境一致性共振评分（GMM 模式相似度提权）；② L2 因果子图游走（L1 命中触发因果回溯）；③ L4 时间折叠（叙事时间窗过滤 L1）。详见 `v2-retrieval-design.md` §3.4/§3.6/§6 |
 
 ---
 
@@ -1414,9 +1415,9 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
 |:--|:--------|:--------|
 | L0 | FTS5 + 可选 embedding | BM25 + 时间衰减 + 语义 |
 | L1 | 增强三维评分 + 池间路由 | 三维评分 × trust × heat_zone_weight |
-| L2 | PPR + 四层递进因果链 + 时间链 | PPR分数 / 因果强度 / 时间接近度 |
+| L2 | PPR + 四层递进因果链 + 时间链 + 因果子图游走（Phase 2+） | PPR分数 / 因果强度 / 时间接近度 / 因果深度 |
 | L3 | 聚类匹配（马氏距离）+ Parent-Child 源事实回溯 | 聚类相干性 × 语义相似度 × 源事实增益 |
-| L4 | 版本化叙事主干 + 按需动态细节 | 叙事相关性 |
+| L4 | 版本化叙事主干 + 按需动态细节 + 时间折叠（Phase 2+） | 叙事相关性 / 时间窗过滤 |
 | L5 | 人格维度匹配 + 行为概率检索 + 心理探针检索 + 反差检索（Phase 2+） | 维度匹配度 × 置信度 / 心理状态相似度 / 反差分数 |
 
 **FusionEngine**：异构结果归一化 → 跨层加权 → 去重 → MMR 重排序 → 结构化上下文包输出。
