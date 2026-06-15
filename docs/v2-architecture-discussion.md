@@ -951,8 +951,8 @@ L5 灵魂层因此从"高级特性"升级为**矛盾检测的核心基础设施*
 | 2026-06-16 | 热路径晋升 — 高重要性事实即时处理 | ✅ 在双通道晋升基础上增加热路径：LLM 提取时检测到 importance ≥ 0.9 的事实立即写入 L1，不等睡眠周期。详见 §4-L0 热路径晋升 |
 | 2026-06-16 | 自我实现预言隔离 — 干预-因果隔离 | ✅ 新增干预标记机制：Agent 向用户表达预测时标记为 intervened，后续行为匹配时 Δp 减半，不更新 L5 人格模型，避免自我实现的反馈循环。详见 §4-L5 |
 | 2026-06-16 | 隐私擦除层 — 用户删除权 | ✅ 新增四层删除级别（L1/L3/L5/全量擦除），L5 级删除标记受影响维度后睡眠周期重新计算。与"永远保留"原则不矛盾。详见 §4-遗忘机制 |
-| 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`（早期探索版本，已废弃），新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等。后被 `retrieval_v2_design.md` 替代 |
-| 2026-06-16 | 检索算法全面重构 — Pro 模型设计 | ✅ 放弃旧方案（线性加权+L2-L5附加上下文），改为四阶段检索管道：QueryClassifier（9种query类型）→ LayerRouter → ParallelRetrieval（各层统一RetrievalSource接口）→ FusionEngine（MMR重排序+结构化上下文包）。详见 `retrieval_v2_design.md` |
+| 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`（早期探索版本，已废弃），新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等。后被新 `v2-retrieval-design.md` 替代 |
+| 2026-06-16 | 检索算法全面重构 — Pro 模型设计 | ✅ 放弃旧方案（线性加权+L2-L5附加上下文），改为四阶段检索管道：QueryClassifier（9种query类型）→ LayerRouter → ParallelRetrieval（各层统一RetrievalSource接口）→ FusionEngine（MMR重排序+结构化上下文包）。详见 `v2-retrieval-design.md` |
 
 ---
 
@@ -1386,7 +1386,7 @@ Phase 3: 关系构建
 
 > 讨论日期：2026-06-15 → 2026-06-16（重构）
 > 决策：四阶段检索管道 — QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
-> 完整内容已移入独立文档：[`retrieval_v2_design.md`](retrieval_v2_design.md)
+> 完整内容已移入独立文档：[`v2-retrieval-design.md`](v2-retrieval-design.md)
 
 ### 8.1 核心思路（摘要）
 
@@ -1422,7 +1422,7 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
 
 两者正交：先决定查哪些层，再决定查多热的记录。
 
-> 详见 [`docs/retrieval_v2_design.md`](retrieval_v2_design.md) — 包含完整四阶段管道设计、各层检索算法、FusionEngine、MMR 重排序、热度交互、分阶段实现路径等。
+> 详见 [`docs/v2-retrieval-design.md`](v2-retrieval-design.md) — 包含完整四阶段管道设计、各层检索算法、FusionEngine、MMR 重排序、热度交互、分阶段实现路径等。
 
 ---
 

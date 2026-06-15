@@ -1,343 +1,1198 @@
-# 🦋 Butterfly Dream v2 — 检索路由与排序设计
+# Butterfly Dream v2 — 六层记忆架构检索算法设计
 
-> 开始时间：2026-06-16
-> 参与者：guolizi（主人）、Neko-chan
-> 状态：**已废弃** — 被 [`retrieval_v2_design.md`](retrieval_v2_design.md) 替代
->
-> 本文档是检索设计的早期探索版本（三层路由 + 两阶段检索 + Q 值学习）。
-> 2026-06-16 由 Pro 模型设计了全面匹配六层架构的四阶段检索管道，
-> 详见 [`retrieval_v2_design.md`](retrieval_v2_design.md)。
->
-> 以下内容保留供参考。
+> **设计目标**：为 Butterfly Dream v2 的六层记忆架构（L0-L5）设计一个全面匹配的检索算法，替代当前简陋的 L0+FTS5 + L1+embedding 线性加权方案。
 
 ---
 
-## 一、设计原则
+## 1. 整体架构概览
 
-1. **大多数 query 只需要 L0+L1**，不触发深层检索，保持低成本
-2. **需要深层信息时自动附带**，Agent 不需要手动指定
-3. **同时保留 Agent 显式覆盖的接口**
-4. **query 特征检测用关键词规则实现**，零 LLM 成本
-5. **检索结果应附带效用反馈**，让系统从实际使用中学习什么是有用的
-6. **跨层路由与层内热度路由正交**，先决定查哪些层，再决定查多热的记录
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    QUERY CLASSIFIER (QueryRouter)                    │
+│  输入: 用户 query                                                    │
+│  输出: {query_type, target_layers, heat_zones, routing_hints}       │
+└──────────────────────┬──────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    LAYER ROUTER (正交于热度路由)                      │
+│  决定: 查哪些层 → 每层用什么检索策略 → 每层查多热的记录                │
+└──────┬──────┬──────┬──────┬──────┬──────┬───────────────────────────┘
+       │      │      │      │      │      │
+       ▼      ▼      ▼      ▼      ▼      ▼
+    ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐
+    │ L0 │ │ L1 │ │ L2 │ │ L3 │ │ L4 │ │ L5 │
+    └─┬──┘ └─┬──┘ └─┬──┘ └─┬──┘ └─┬──┘ └─┬──┘
+      │      │      │      │      │      │
+      ▼      ▼      ▼      ▼      ▼      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   FUSION ENGINE (Multi-Source Merger)                │
+│  输入: 各层检索结果 (异构)                                            │
+│  处理: 归一化 → 加权 → 去重 → 重排序 → 上下文组装                     │
+│  输出: 统一排序结果 + 结构化上下文包                                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.1 核心设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **检索路由与热度路由正交** | 先决定查哪些层，再决定查多热的记录 |
+| **渐进激活** | 未激活的层优雅降级，不报错 |
+| **异构归一化** | 每层检索结果归一化到统一分数空间 [0,1] |
+| **插件式扩展** | 新增层/检索源只需实现 `RetrievalSource` 接口 |
+| **永远保留** | 冰数据仅 FTS5 索引，冷数据 fp16 量化 embedding |
+| **冷却系数叠加** | 热度受 L1-L5 各层叠加影响 |
 
 ---
 
-## 二、三层路由策略
+## 2. Query Classifier (查询分类器)
 
-### 2.1 第一层：基础检索（始终执行）
+### 2.1 Query Type Taxonomy
 
+| 类型 | 描述 | 示例 | 目标层 |
+|------|------|------|--------|
+| `fact` | 事实查询 | "Caroline 喜欢什么颜色？" | L0+L1 |
+| `causal` | 因果推理 | "为什么 Caroline 选择做心理咨询师？" | L1+L2+L3 |
+| `prediction` | 行为预测 | "Caroline 接下来会做什么？" | L3+L4+L5 |
+| `contradiction` | 矛盾检测 | "Caroline 的说法前后矛盾吗？" | L1+L2+L5 |
+| `relation` | 关系查询 | "Caroline 和 Melanie 是什么关系？" | L1+L2 |
+| `emotion` | 情感理解 | "Caroline 最近心情怎么样？" | L1+L2+L3 |
+| `narrative` | 叙事查询 | "Caroline 最近经历了什么？" | L1+L2+L4 |
+| `persona` | 人格查询 | "Caroline 是个什么样的人？" | L3+L4+L5 |
+| `general` | 通用查询 | 无法分类的开放查询 | L0+L1+L2 |
+
+### 2.2 分类算法
+
+```python
+class QueryClassifier:
+    """
+    两阶段分类:
+    1. 规则匹配 (快速路径, regex patterns)
+    2. LLM 分类 (慢速路径, 仅当规则匹配置信度 < 阈值时)
+    """
+
+    RULES = {
+        "fact": [
+            r"\bwhat\s+(name|color|type|subject|date)\b",
+            r"\bwhen\s+(did|was|were|will)\b",
+            r"\bwhere\s+(did|was|is|are)\b",
+            r"\bhow\s+(many|much|long|old)\b",
+            r"\bwhich\s+(one|of|of the)\b",
+        ],
+        "causal": [
+            r"\bwhy\s+(did|does|is|are|was|were)\b",
+            r"\bwhat\s+(caused|led to|resulted in)\b",
+            r"\breason\b",
+            r"\bbecause\b",
+        ],
+        "prediction": [
+            r"\b(will|would|going to|likely|probably)\b.*\b(next|future|eventually)\b",
+            r"\bwhat\s+(will|would)\b.*\bdo\b",
+            r"\bprediction\b",
+            r"\bexpect\b",
+        ],
+        "contradiction": [
+            r"\b(contradict|conflict|inconsistent|contradiction)\b",
+            r"\b(change|changed|different)\s+(mind|opinion|view)\b",
+        ],
+        "relation": [
+            r"\b(relationship|relation|connected|related)\b",
+            r"\bhow\s+(are|is)\s+\w+\s+and\s+\w+\s+(related|connected)\b",
+        ],
+        "emotion": [
+            r"\b(feel|feeling|emotion|mood|sentiment|happy|sad|angry|anxious)\b",
+            r"\bhow\s+(is|are)\s+\w+\s+(feeling|doing)\b",
+        ],
+        "narrative": [
+            r"\b(experience|story|journey|timeline|history|background)\b",
+            r"\bwhat\s+(happened|occurred|transpired)\b",
+            r"\btell me about\b",
+        ],
+        "persona": [
+            r"\b(personality|character|temperament|person|like)\b",
+            r"\bwhat\s+kind\s+of\s+(person|personality)\b",
+            r"\bdescribe\s+\w+\b",
+        ],
+    }
+
+    def classify(self, query: str) -> QueryIntent:
+        # Phase 1: Rule-based
+        scores = {}
+        for qtype, patterns in self.RULES.items():
+            scores[qtype] = sum(
+                1 for p in patterns if re.search(p, query.lower())
+            )
+
+        best_type = max(scores, key=scores.get)
+        best_score = scores[best_type]
+
+        if best_score >= 2:  # 高置信度
+            return self._build_intent(best_type, query)
+        elif best_score == 1:
+            return self._build_intent(best_type, query)
+        else:
+            # Phase 2: LLM fallback (仅当规则无法确定)
+            return self._llm_classify(query)
 ```
-L0（FTS5 关键词匹配）+ L1（embedding 搜索）→ 合并排序 → top-N 事实
+
+### 2.3 路由决策输出
+
+```python
+@dataclass
+class QueryIntent:
+    query_type: str          # fact | causal | prediction | ...
+    target_layers: list[int] # [0,1,2,3,4,5] — 要检索的层
+    heat_zones: dict         # {layer: [hot, warm, cold, ice]} — 每层查哪些热度
+    routing_hints: dict      # 额外提示 (如因果链深度、实体列表)
+    query: str               # 原始 query
+    embedding: np.ndarray    # query 的 embedding 向量 (预计算)
 ```
-
-这是记忆系统的主干，任何 query 都会执行。
-
-### 2.2 第二层：自动上下文增强（基于 query 特征）
-
-根据 query 的关键词特征自动决定附带哪些层：
-
-| Query 特征 | 触发关键词（示例） | 自动附带层 | 原因 |
-|:----------|:----------------|:----------|:----|
-| 因果关系 | 为什么、原因、导致、因为、所以 | L2 因果链 | 需要因果关系 |
-| 关系查询 | 关系、和谁、朋友、同事、家人 | L2 实体图 | 需要关系网络 |
-| 人物画像 | 什么样的人、性格、特点、怎样的人 | L4 叙事 + L5 人格 | 需要人物画像 |
-| 行为预测 | 会怎样、预测、接下来、如果 | L5 预测 | 需要预测 |
-| 故事经历 | 故事、经历、过去、回忆、成长 | L4 叙事 | 需要故事线 |
-| 情感相关 | 心情、感觉、情绪、开心、难过 | L2 情感轨迹 + L3 情感模式 | 需要情感理解 |
-| 一般事实查询（默认） | 无匹配 | 仅 L0+L1 | 基础检索已足够 |
-
-**实现方式：** 简单的关键词列表匹配，无需 LLM 参与。当关键词规则未匹配时（即默认"一般事实查询"），使用 query embedding 与各层描述 embedding 的余弦相似度做兜底路由——选择相似度最高的层附带。
-
-> 受 Store Routing (arXiv: 2603.15658) 启发。该论文实验表明，纯关键词规则路由覆盖率仅 57%，而结合 embedding 相似度兜底后可提升至 94%。详见 §十参考。
-
-### 2.3 第三层：显式覆盖（Agent 指定）
-
-| 参数 | 附带层 | 冷却范围 | 适用场景 |
-|:----|:------|:--------|:--------|
-| `memory="auto"`（默认） | 第一层 + 自动第二层 | 🔥 + 🌤️ | 通用查询 |
-| `memory="reasoning"` | 强制带 L2 因果链 | 🔥 + 🌤️ | 需要推理因果关系 |
-| `memory="understand"` | 强制带 L3 模式 + L5 人格 | 🔥 + 🌤️ | 需要深层理解人物 |
-| `memory="narrative"` | 强制带 L4 叙事 | 🔥 + 🌤️ | 需要故事线 |
-| `memory="deep"` | 全部层 | 🔥 + 🌤️ + ❄️ | 需要冷记忆 |
-| `memory="all"` | 全部层 | 🔥 + 🌤️ + ❄️ + 🧊 | 考古检索 |
 
 ---
 
-## 三、检索结果合并（当前方案）
+## 3. 各层检索方式
 
-### 3.1 基础合并
+### 3.1 检索源接口 (Plugin Architecture)
 
+所有层实现统一接口，方便扩展：
+
+```python
+class RetrievalSource(ABC):
+    """所有检索源的统一接口"""
+
+    layer_id: int           # 0-5
+    name: str               # "L0_WorkingMemory", "L1_FactPool", ...
+
+    @abstractmethod
+    def retrieve(
+        self,
+        intent: QueryIntent,
+        heat_zone: str,      # "hot" | "warm" | "cold" | "ice"
+        limit: int,
+    ) -> list[RetrievalResult]:
+        ...
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """渐进激活: 检查该层是否有数据"""
+        ...
+
+    @abstractmethod
+    def estimate_cost(self, intent: QueryIntent) -> float:
+        """估计检索成本 (ms 或 ops), 用于成本感知路由"""
+        ...
 ```
-L0 结果（FTS5 匹配）──┐
-                       ├─ 合并排序 → 最终 top-N
-L1 结果（embedding）──┘
-    ↑
-L2-L5 增强结果（如有）── 作为上下文附加，不参与排序竞争
+
+### 3.2 L0 — 工作记忆 (Working Memory)
+
+**数据特性**: 原始对话轮次 + 微事实索引 (FTS5 关键词)
+
+**检索方式**:
+
+| 热度 | 策略 | 说明 |
+|------|------|------|
+| 🔥 热 | FTS5 + 完整 embedding | 最近 N 轮对话全文搜索 |
+| 🌤️ 温 | FTS5 仅 | 关键词匹配 |
+| ❄️ 冷 | FTS5 仅 | 关键词匹配 |
+| 🧊 冰 | FTS5 仅 | 关键词匹配 (全部历史) |
+
+**排序算法**:
+```
+score = BM25 × 0.5 + recency_decay × 0.3 + query_embed_sim × 0.2
+```
+- recency_decay: 指数衰减 (半衰期 = 对话轮次数 / 2)
+- query_embed_sim: query embedding 与对话片段的余弦相似度
+
+**实现**:
+```python
+class L0Retrieval(RetrievalSource):
+    layer_id = 0
+    name = "L0_WorkingMemory"
+
+    def retrieve(self, intent, heat_zone, limit):
+        # FTS5 关键词匹配
+        fts_results = self.store.fts_search(
+            intent.query, limit=limit * 3
+        )
+
+        # 热路径: 补充 embedding 排序
+        if heat_zone in ("hot", "warm"):
+            embed_results = self.store.embedding_search(
+                intent.embedding, limit=limit * 2
+            )
+            return self._merge_fts_embed(fts_results, embed_results)
+
+        return fts_results
 ```
 
-- L0 和 L1 的结果**合并排序**，按综合评分取 top-N
-- L2-L5 的增强结果**不参与排序竞争**，而是作为附加上下文提供给 Agent
-- 这样 L2-L5 不会"挤掉"基础检索的结果，同时 Agent 可以感知到深层信息的存在
+### 3.3 L1 — 三池 (Fact Pools)
 
-### 3.2 合并排序公式（MVP）
+**数据特性**: 事件记录池 / 静态知识池 / 行为模式池 (统一 facts 表, type 字段区分)
 
+**检索方式**:
+
+| 热度 | 策略 | 说明 |
+|------|------|------|
+| 🔥 热 | 完整 embedding (float32) + FTS5 | 全量语义搜索 |
+| 🌤️ 温 | 完整 embedding (float32) + FTS5 | 全量语义搜索 |
+| ❄️ 冷 | fp16 量化 embedding + FTS5 | 精度降低但存储减半 |
+| 🧊 冰 | FTS5 仅 | 无 embedding |
+
+**三维评分 (现有 ThreeDimRetriever 的增强版)**:
 ```
-score(fact) = α × embedding_sim(query, fact) + β × bm25_score(query, fact) + γ × heat_score(fact)
+score = (α × relevance + β × recency + γ × importance) × trust × cooling_factor
 ```
 
-其中：
-- `embedding_sim`：语义相似度（余弦相似度）
-- `bm25_score`：FTS5 关键词匹配分
-- `heat_score`：热度权重（🔥=1.0, 🌤️=0.7, ❄️=0.4, 🧊=0.2）
-- α, β, γ：可配置权重，MVP 阶段取 α=0.5, β=0.3, γ=0.2
+**池间路由**: 根据 query 类型优先检索特定池
+
+| Query 类型 | 优先池 | 理由 |
+|-----------|--------|------|
+| fact (事件) | 事件记录池 | 有时间锚点 |
+| fact (知识) | 静态知识池 | 去时间化稳定知识 |
+| prediction | 行为模式池 | 条件-行为规律 |
+| emotion | 事件记录池 + 情感维度 | 情感轨迹 |
+
+**实现**:
+```python
+class L1Retrieval(RetrievalSource):
+    layer_id = 1
+    name = "L1_FactPool"
+
+    def retrieve(self, intent, heat_zone, limit):
+        # 1. 选择优先池
+        pool = self._select_pool(intent.query_type)
+
+        # 2. 根据热度选择检索策略
+        if heat_zone in ("hot", "warm"):
+            return self._dense_retrieve(intent, pool, limit)
+        elif heat_zone == "cold":
+            return self._quantized_retrieve(intent, pool, limit)
+        else:  # ice
+            return self._fts_only_retrieve(intent, pool, limit)
+
+    def _dense_retrieve(self, intent, pool, limit):
+        # FTS5 候选池 (limit × 3)
+        fts_candidates = self._fts_search(intent, pool, limit * 3)
+
+        # Embedding 候选池 (limit × 3)
+        embed_candidates = self._embed_search(intent, pool, limit * 3)
+
+        # 合并 + 三维评分
+        candidates = self._merge_candidates(fts_candidates, embed_candidates)
+        return self._score_and_sort(candidates, intent)
+```
+
+### 3.4 L2 — 关系层 (Relation Layer)
+
+**数据特性**: 时间链 / 因果链 / 实体图 / 溯源 / 情感轨迹
+
+**检索方式**: 图遍历 + 路径搜索
+
+| 关系类型 | 检索策略 | 排序信号 |
+|---------|---------|---------|
+| 时间链 | 时间窗口 + 排序 | 时间接近度 |
+| 因果链 | 四层递进 (符号→短程统计→中程LLM→长程叙事) | 因果强度 |
+| 实体图 | PPR (Personalized PageRank) | PPR 分数 |
+| 溯源 | 来源追踪 | 来源可信度 |
+| 情感轨迹 | 情感路径搜索 | 情感强度 + 方向 |
+
+**算法**:
+```python
+class L2Retrieval(RetrievalSource):
+    layer_id = 2
+    name = "L2_RelationLayer"
+
+    def retrieve(self, intent, heat_zone, limit):
+        results = []
+
+        # 1. 实体图 PPR (始终执行)
+        if intent.routing_hints.get("entities"):
+            ppr_results = self._ppr_search(
+                seed_entities=intent.routing_hints["entities"],
+                alpha=0.85,
+                max_depth=2,
+                limit=limit,
+            )
+            results.extend(ppr_results)
+
+        # 2. 因果链 (仅 causal 类型)
+        if intent.query_type == "causal":
+            causal_results = self._causal_chain_search(
+                intent, limit=limit
+            )
+            results.extend(causal_results)
+
+        # 3. 时间链 (仅 narrative/emotion 类型)
+        if intent.query_type in ("narrative", "emotion"):
+            timeline = self._timeline_search(
+                intent, limit=limit
+            )
+            results.extend(timeline)
+
+        # 4. 情感轨迹 (仅 emotion 类型)
+        if intent.query_type == "emotion":
+            emotion_path = self._emotion_trajectory(
+                intent, limit=limit
+            )
+            results.extend(emotion_path)
+
+        return self._dedup_and_sort(results, limit)
+
+    def _ppr_search(self, seed_entities, alpha, max_depth, limit):
+        """Personalized PageRank on entity graph"""
+        # 使用现有 store.expand_entities_for_retrieval()
+        # 增强: 支持 PPR alpha 参数, seed_scores
+        return self.store.expand_entities_for_retrieval(
+            seed_entities,
+            max_depth=max_depth,
+            max_results=limit,
+            ppr_alpha=alpha,
+        )
+
+    def _causal_chain_search(self, intent, limit):
+        """四层递进因果链检索"""
+        # Level 1: 符号规则 (快速, 关键词匹配)
+        symbolic = self._symbolic_causal(intent)
+
+        # Level 2: 短程统计 (co-occurrence 统计)
+        if len(symbolic) < limit:
+            statistical = self._statistical_causal(intent, limit - len(symbolic))
+            symbolic.extend(statistical)
+
+        # Level 3: 中程 LLM (需要时调用)
+        if len(symbolic) < limit and self._should_use_llm():
+            llm_causal = self._llm_causal(intent, limit - len(symbolic))
+            symbolic.extend(llm_causal)
+
+        # Level 4: 长程叙事 (来自 L4)
+        if len(symbolic) < limit:
+            narrative_causal = self._narrative_causal(intent)
+            symbolic.extend(narrative_causal)
+
+        return symbolic
+```
+
+### 3.5 L3 — 抽象层 (Abstraction Layer)
+
+**数据特性**: 管道式处理 (不存储, 产出持久化在 L1 的行为模式池/静态知识池)
+
+**检索方式**: 模式匹配 + 知识检索
+
+| 检索类型 | 策略 | 说明 |
+|---------|------|------|
+| 模式发现 | 聚类匹配 | query embedding → 最近聚类中心 |
+| 知识归纳 | 语义检索 | query → L1 静态知识池 (带抽象标记) |
+
+**算法**:
+```python
+class L3Retrieval(RetrievalSource):
+    layer_id = 3
+    name = "L3_AbstractionLayer"
+
+    def retrieve(self, intent, heat_zone, limit):
+        # L3 不直接存储数据, 产出在 L1 池中
+        # 检索时: 从 L1 中筛选出 "抽象" 标记的事实
+        # 使用现有的聚类信息 (clustering.py)
+
+        # 1. 找到 query 所属的聚类
+        clusters = self._find_relevant_clusters(intent.embedding, top_k=3)
+
+        # 2. 从聚类中提取抽象事实
+        abstract_facts = []
+        for cluster in clusters:
+            facts = self.store.get_cluster_abstracts(cluster.cluster_id)
+            abstract_facts.extend(facts)
+
+        # 3. 排序: 聚类相干性 × 语义相似度
+        return self._score_abstracts(abstract_facts, intent, limit)
+
+    def _find_relevant_clusters(self, query_embed, top_k):
+        """找到与 query 最相关的实体聚类"""
+        # 使用聚类中心 embedding 进行最近邻搜索
+        clusters = self.store.get_all_clusters()
+        scored = []
+        for c in clusters:
+            if c.get("centroid"):
+                sim = cosine_similarity(query_embed, c["centroid"])
+                scored.append((c, sim))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [c for c, _ in scored[:top_k]]
+```
+
+### 3.6 L4 — 叙事层 (Narrative Layer)
+
+**数据特性**: 双层叙事 (持久化人生主干 + 按需动态细节)
+
+**检索方式**:
+
+| 检索类型 | 策略 | 说明 |
+|---------|------|------|
+| 主干检索 | 版本化叙事匹配 | query → 最匹配的叙事主干版本 |
+| 动态细节 | 按需构建 | 基于主干 + query → LLM 生成细节 |
+
+**算法**:
+```python
+class L4Retrieval(RetrievalSource):
+    layer_id = 4
+    name = "L4_NarrativeLayer"
+
+    def retrieve(self, intent, heat_zone, limit):
+        # 1. 获取当前叙事主干 (最新版本)
+        narrative = self.store.get_latest_narrative()
+
+        if not narrative:
+            return []  # 渐进激活: 无叙事数据
+
+        # 2. 计算 query 与叙事主干的语义相关性
+        relevance = self._narrative_relevance(intent, narrative)
+
+        if relevance < 0.3:
+            return []  # 不相关, 跳过 L4
+
+        # 3. 如果 query 需要细节, 按需构建
+        if intent.query_type in ("narrative", "persona", "causal"):
+            details = self._build_dynamic_details(
+                narrative, intent, limit
+            )
+            return details
+
+        # 4. 否则返回叙事主干摘要
+        return [{
+            "source": "L4",
+            "content": narrative["summary"],
+            "version": narrative["version"],
+            "relevance": relevance,
+            "score": relevance,
+        }]
+
+    def _narrative_relevance(self, intent, narrative):
+        """计算 query 与叙事主干的语义相关性"""
+        # 使用 narrative 的 embedding
+        narr_embed = narrative.get("embedding")
+        if narr_embed is not None:
+            return cosine_similarity(intent.embedding, narr_embed)
+        return 0.5  # 无 embedding 时中性值
+```
+
+### 3.7 L5 — 灵魂层 (Soul Layer)
+
+**数据特性**: 人格模型 (结构化) + 行为预测 (概率分布)
+
+**检索方式**:
+
+| 检索类型 | 策略 | 说明 |
+|---------|------|------|
+| 人格匹配 | 结构化属性匹配 | query → 人格维度匹配 |
+| 行为预测 | 概率分布检索 | query → 最相关的行为预测 |
+| 矛盾检测 | 惊讶度计算 | query → 与人格模型的偏离度 |
+
+**算法**:
+```python
+class L5Retrieval(RetrievalSource):
+    layer_id = 5
+    name = "L5_SoulLayer"
+
+    def retrieve(self, intent, heat_zone, limit):
+        # 1. 获取人格模型
+        persona = self.store.get_persona_model()
+
+        if not persona:
+            return []  # 渐进激活
+
+        results = []
+
+        # 2. 人格匹配 (persona 类型)
+        if intent.query_type == "persona":
+            results.extend(self._match_persona(intent, persona))
+
+        # 3. 行为预测 (prediction 类型)
+        if intent.query_type == "prediction":
+            results.extend(self._match_prediction(intent, persona))
+
+        # 4. 矛盾检测 (contradiction 类型)
+        if intent.query_type == "contradiction":
+            results.extend(self._detect_contradiction(intent, persona))
+
+        return results
+
+    def _match_persona(self, intent, persona):
+        """人格维度匹配"""
+        # 将 query 映射到人格维度空间
+        query_dims = self._query_to_dimensions(intent.query)
+        matched = []
+
+        for dim, value in persona["dimensions"].items():
+            if dim in query_dims:
+                matched.append({
+                    "source": "L5",
+                    "dimension": dim,
+                    "value": value,
+                    "relevance": query_dims[dim],
+                    "score": query_dims[dim] * value.get("confidence", 0.5),
+                })
+
+        return matched
+
+    def _match_prediction(self, intent, persona):
+        """行为预测检索"""
+        predictions = persona.get("predictions", [])
+
+        # 找到与 query 最相关的预测
+        scored = []
+        for pred in predictions:
+            sim = self._prediction_relevance(intent, pred)
+            scored.append((pred, sim))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [{
+            "source": "L5",
+            "type": "prediction",
+            "content": p["description"],
+            "probability": p["probability"],
+            "relevance": s,
+            "score": s * p["probability"],
+        } for p, s in scored[:3]]
+
+    def _detect_contradiction(self, intent, persona):
+        """矛盾检测: 惊讶度 × 置信度"""
+        # 计算 query 与人格模型的偏离度
+        surprise = self._compute_surprise(intent, persona)
+        confidence = persona.get("confidence", 0.5)
+
+        return [{
+            "source": "L5",
+            "type": "contradiction_check",
+            "surprise": surprise,
+            "confidence": confidence,
+            "contradiction_score": surprise * confidence,
+            "score": surprise * confidence,
+        }]
+```
 
 ---
 
-## 四、与热度检索路由的关系
+## 4. 跨层路由策略
 
-| 路由维度 | 作用 | 说明 |
-|:--------|:----|:-----|
-| **跨层路由**（本条） | 查哪些层 | L0+L1 始终搜，L2-L5 按需附带 |
-| **层内热度路由**（§7.7） | 查多热的记录 | 🔥+🌤️ 默认，❄️ 需 deep，🧊 需 all |
+### 4.1 路由矩阵
 
-两者正交：先决定查哪些层，再决定查多热的记录。
+```
+Query Type    | L0  | L1  | L2  | L3  | L4  | L5
+--------------|-----|-----|-----|-----|-----|-----
+fact          | ✅  | ✅  | ⬜  | ⬜  | ⬜  | ⬜
+causal        | ✅  | ✅  | ✅  | ✅  | ⬜  | ⬜
+prediction    | ⬜  | ✅  | ✅  | ✅  | ✅  | ✅
+contradiction | ⬜  | ✅  | ✅  | ⬜  | ⬜  | ✅
+relation      | ⬜  | ✅  | ✅  | ⬜  | ⬜  | ⬜
+emotion       | ✅  | ✅  | ✅  | ✅  | ⬜  | ⬜
+narrative     | ⬜  | ✅  | ✅  | ✅  | ✅  | ⬜
+persona       | ⬜  | ✅  | ⬜  | ✅  | ✅  | ✅
+general       | ✅  | ✅  | ✅  | ⬜  | ⬜  | ⬜
+```
+
+- ✅ = 必须检索
+- ⬜ = 可选 (根据 query 具体内容决定)
+
+### 4.2 渐进激活降级
+
+```python
+def resolve_active_layers(intent: QueryIntent, store) -> list[int]:
+    """渐进激活: 检查每层是否有数据, 无数据则优雅降级"""
+    active = []
+
+    # L0: 始终可用 (工作记忆)
+    active.append(0)
+
+    # L1: 始终可用 (facts 表)
+    active.append(1)
+
+    # L2: 检查是否有实体关系
+    if store.has_entity_relations():
+        active.append(2)
+
+    # L3: 检查是否有聚类
+    if store.has_clusters():
+        active.append(3)
+
+    # L4: 检查是否有叙事主干
+    if store.has_narrative():
+        active.append(4)
+
+    # L5: 检查是否有人格模型
+    if store.has_persona_model():
+        active.append(5)
+
+    # 取交集: 目标层 ∩ 可用层
+    return [l for l in intent.target_layers if l in active]
+```
+
+### 4.3 成本感知路由
+
+```python
+def cost_aware_route(intent: QueryIntent, active_layers: list[int]) -> list[int]:
+    """
+    成本感知路由: 对延迟敏感的场景 (chat) 减少深层检索
+    对深度推理场景 (qa, longterm) 启用全量检索
+    """
+    scenario = intent.routing_hints.get("scenario", "balanced")
+
+    if scenario == "chat":
+        # 聊天场景: 快速响应, 仅 L0+L1
+        return [l for l in active_layers if l <= 1]
+
+    if scenario == "qa":
+        # QA 场景: 需要深度检索
+        return active_layers
+
+    if scenario == "longterm":
+        # 长期记忆: 启用 L3-L5
+        return active_layers
+
+    # balanced: 根据 query 类型智能选择
+    return active_layers
+```
 
 ---
 
-## 五、两阶段检索（Phase 2+ 增强方案）
+## 5. 热度与检索的交互
 
-> 受 MemRL (arXiv: 2601.03192) 启发。MemRL 提出将检索从"被动语义匹配"升级为"主动决策过程"——先语义召回候选池，再用学习到的效用值（Q-value）重排序。
-
-### 5.1 问题
-
-当前方案（§三）的合并排序是**静态的**——embedding_sim 和 bm25_score 都是固定相似度计算，无法区分"语义相似但实际无用"和"语义略远但实际有用"的记忆。
-
-例如：
-- Query: "Caroline 最近有什么开心的事？"
-- 事实 A: "Caroline 在公园散步"（语义相似度 0.85，但只是日常，不特别开心）
-- 事实 B: "Caroline 收到领养批准信"（语义相似度 0.72，但非常开心，是正确答案）
-
-静态排序会优先返回 A，但实际有用的其实是 B。
-
-### 5.2 两阶段检索架构
+### 5.1 热度路由 (正交于检索路由)
 
 ```
-Phase A: 语义召回（标准语义搜索）
-  Query → embedding → 余弦相似度 → 候选池（Top-k1）
-  
-Phase B: 效用感知选择（Q 值重排序）
-  候选池 → 综合评分 = (1-λ) × 归一化语义相似度 + λ × 归一化 Q 值 → 选 Top-k2
+检索路由: 决定查哪些层
+热度路由: 决定查多热的记录 (同一层内)
 ```
 
-其中：
-- **k1**：第一阶段召回的候选数（默认 10~20）
-- **k2**：第二阶段最终返回数（默认 5~10）
-- **λ**：探索-利用平衡系数（默认 0.5，可配置）
-- **Q 值**：每条事实的效用评分，从环境反馈中学习（详见 §六）
+### 5.2 冷却系数叠加
 
-### 5.3 参数调优
-
-| 配置 | k1 | k2 | λ | 适用场景 |
-|:----|:--:|:--:|:-:|:--------|
-| **稀疏** | 5 | 3 | 0.3 | 高精度需求，低噪声容忍 |
-| **适中（默认）** | 10 | 5 | 0.5 | 通用场景，平衡信号-噪声比 |
-| **密集** | 20 | 10 | 0.7 | 探索型 query，需要广泛参考 |
-
-> MemRL 实验表明：λ=0.5 达到最优平衡。λ=0（纯语义）和 λ=1（纯 Q 值）都低于混合方案。k1=5, k2=3 的稀疏配置在噪声敏感场景表现更好。
-
-### 5.4 与三层路由的整合
-
-两阶段检索作用于**每一层内部**的排序，不改变跨层路由逻辑：
+每条事实的冷却系数 = 各层叠加影响:
 
 ```
-第一层：跨层路由（查哪些层）
-  ↓
-第二层：层内两阶段检索（怎么排序）
-  Phase A: 语义召回 → 候选池
-  Phase B: Q 值重排序 → 最终结果
-  ↓
-第三层：跨层结果合并（L0+L1 排序 + L2-L5 附加上下文）
+cooling_factor = 1.0
+  - L1_boost:  importance / 10.0                    (0.1 ~ 1.0)
+  - L2_boost:  relation_density / max_density        (0.0 ~ 1.0)
+  - L3_boost:  has_abstract ? 0.8 : 1.0             (0.8 or 1.0)
+  - L4_boost:  is_narrative_key ? 0.9 : 1.0         (0.9 or 1.0)
+  - L5_boost:  is_core_trait ? 0.7 : 1.0            (0.7 or 1.0)
+
+cooling_factor = min(1.0, L1_boost × L2_boost × L3_boost × L4_boost × L5_boost)
 ```
 
-### 5.5 实现路径
+- cooling_factor 越接近 0 → 越应该保留在热区
+- cooling_factor 越接近 1 → 越容易冷却
 
-| Phase | 检索方式 | 说明 |
-|:----|:--------|:----|
-| **Phase 1（MVP）** | 当前方案（§三）：静态合并排序 | 先跑通整个链路，无 Q 值 |
-| **Phase 2（增强）** | 两阶段检索：语义召回 + Q 值重排序 | 引入 Q 值，λ 固定为 0.5 |
-| **Phase 3（成熟）** | 自适应两阶段检索 | λ 动态调整，k1/k2 自动选择 |
+### 5.3 热度 → 检索策略映射
+
+```python
+HEAT_STRATEGY = {
+    "hot": {
+        "embedding": "float32_full",     # 完整精度 embedding
+        "fts": "full_query",              # 完整 query
+        "graph": "full_ppr",              # 完整 PPR
+        "priority": 1.0,                  # 检索优先级
+    },
+    "warm": {
+        "embedding": "float32_full",
+        "fts": "full_query",
+        "graph": "pruned_ppr",            # 剪枝 PPR (深度=1)
+        "priority": 0.8,
+    },
+    "cold": {
+        "embedding": "float16_quantized", # fp16 量化
+        "fts": "full_query",
+        "graph": "none",                  # 无图检索
+        "priority": 0.4,
+    },
+    "ice": {
+        "embedding": "none",              # 无 embedding
+        "fts": "keyword_only",            # 仅关键词
+        "graph": "none",
+        "priority": 0.1,
+    },
+}
+```
+
+### 5.4 热度晋升/降级
+
+```
+热晋升 (查询驱动):
+  - 缺失计数 ≥ 3 的冰数据 → 晋升为冷
+  - 查询命中率高的冷数据 → 晋升为温
+
+冷晋升 (睡眠周期):
+  - 批量 LLM 提取冰数据摘要 → 写入 L1
+  - 摘要 embedding (fp16) → 冷区
+
+热路径晋升:
+  - importance ≥ 0.9 的事实 → 立即写入 L1 (跳过 L0)
+
+降级:
+  - 长期未命中 + 低冷却系数 → 降级
+  - 被 L3 抽象替代的原始事实 → 降级
+```
 
 ---
 
-## 六、效用驱动更新（Utility-Driven Update）
+## 6. 结果融合/排序算法
 
-> 受 MemRL 的 Utility-Driven Update 启发。MemRL 将记忆检索建模为 MDP，通过环境反馈（reward）更新每条记忆的 Q 值，使检索从"被动语义匹配"变为"主动决策过程"。
+### 6.1 异构结果归一化
 
-### 6.1 核心思路
+每层检索结果格式:
 
-每条事实除了三维评分（relevance × recency × importance）外，增加一个**效用评分 Q**，从实际使用反馈中学习：
-
-```
-Q_new = Q_old + α × (reward - Q_old)
-```
-
-- **reward**：该事实被检索后，Agent 是否成功使用了它
-  - reward=1.0：Agent 直接引用了该事实回答问题
-  - reward=0.5：Agent 参考了该事实但未直接引用
-  - reward=0.0：该事实被检索到但 Agent 未使用
-  - reward=-0.5：该事实被检索到但 Agent 明确排除了它（"不对，不是这个"）
-- **α**：学习率（默认 0.1，控制更新速度）
-- **Q 值范围**：[0, 1]，初始值 = 三维评分归一化
-
-### 6.2 反馈收集
-
-反馈不是自动产生的，需要在 Agent 调用记忆系统后收集：
-
-```
-Agent 检索记忆 → 返回 top-N 事实
-    ↓
-Agent 生成回答
-    ↓
-分析 Agent 的回答：
-  - 直接引用的事实 → reward=1.0
-  - 间接参考的事实 → reward=0.5
-  - 未被引用的事实 → reward=0.0
-  - 被否定的事实   → reward=-0.5
-    ↓
-更新每条被检索到的事实的 Q 值
+```python
+@dataclass
+class RetrievalResult:
+    source_layer: int       # 0-5
+    content: str            # 事实内容
+    score: float            # 层内归一化分数 [0, 1]
+    confidence: float       # 置信度 [0, 1]
+    metadata: dict          # 层特定元数据
 ```
 
-**实现方式：** Agent 在生成回答后，可以输出一个 `used_fact_ids` 列表，标记实际使用的事实。如果 Agent 不支持显式输出，可以通过 LLM 后处理分析回答中引用的事实。
+### 6.2 跨层融合算法
 
-### 6.3 与三维评分的关系
+```python
+class FusionEngine:
+    """
+    多源异构结果融合引擎
 
-| 评分维度 | 来源 | 更新频率 | 含义 |
-|:--------|:----|:--------|:----|
-| **relevance** | 检索时计算 | 每次检索 | query 与事实的语义相似度 |
-| **recency** | 时间衰减 | 每天 | 事实的新鲜度 |
-| **importance** | LLM 提取时标注 | 写入时固定 | 事实本身的重要性 |
-| **Q（utility）** | 环境反馈学习 | 每次被检索后 | 事实在实际使用中的效用 |
+    核心思路:
+    1. 每层结果先层内归一化到 [0, 1]
+    2. 跨层加权合并 (层权重取决于 query 类型)
+    3. 去重 (内容相似度 ≥ 0.85 合并)
+    4. 重排序 (MMR: Maximal Marginal Relevance)
+    5. 上下文组装 (按层结构化输出)
+    """
 
-**融合方式：**
+    # 每层的基础权重 (query 类型可调整)
+    LAYER_BASE_WEIGHTS = {
+        0: 0.10,  # L0 工作记忆 (低权重, 临时性)
+        1: 0.30,  # L1 事实池 (核心)
+        2: 0.25,  # L2 关系层
+        3: 0.15,  # L3 抽象层
+        4: 0.10,  # L4 叙事层
+        5: 0.10,  # L5 灵魂层
+    }
 
+    # Query 类型 → 层权重调整
+    QUERY_TYPE_ADJUSTMENTS = {
+        "fact":         {0: 0.20, 1: 0.50, 2: 0.20, 3: 0.05, 4: 0.03, 5: 0.02},
+        "causal":       {0: 0.05, 1: 0.25, 2: 0.40, 3: 0.20, 4: 0.10, 5: 0.00},
+        "prediction":   {0: 0.00, 1: 0.15, 2: 0.20, 3: 0.25, 4: 0.20, 5: 0.20},
+        "contradiction":{0: 0.00, 1: 0.30, 2: 0.30, 3: 0.10, 4: 0.10, 5: 0.20},
+        "relation":     {0: 0.00, 1: 0.30, 2: 0.50, 3: 0.10, 4: 0.10, 5: 0.00},
+        "emotion":      {0: 0.10, 1: 0.30, 2: 0.30, 3: 0.20, 4: 0.10, 5: 0.00},
+        "narrative":    {0: 0.00, 1: 0.20, 2: 0.25, 3: 0.20, 4: 0.35, 5: 0.00},
+        "persona":      {0: 0.00, 1: 0.20, 2: 0.05, 3: 0.20, 4: 0.25, 5: 0.30},
+        "general":      {0: 0.15, 1: 0.35, 2: 0.25, 3: 0.10, 4: 0.10, 5: 0.05},
+    }
+
+    def fuse(
+        self,
+        layer_results: dict[int, list[RetrievalResult]],
+        intent: QueryIntent,
+        limit: int,
+    ) -> list[RetrievalResult]:
+        """融合所有层的结果"""
+
+        # 1. 获取层权重
+        weights = self.QUERY_TYPE_ADJUSTMENTS.get(
+            intent.query_type, self.LAYER_BASE_WEIGHTS
+        )
+
+        # 2. 层内归一化 (确保每层分数在 [0, 1])
+        normalized = {}
+        for layer, results in layer_results.items():
+            normalized[layer] = self._normalize_layer(results)
+
+        # 3. 跨层加权合并
+        merged = []
+        seen_contents = {}  # 去重用
+
+        for layer, results in normalized.items():
+            w = weights.get(layer, 0.1)
+            for r in results:
+                # 去重: 内容相似度检查
+                content_key = self._content_fingerprint(r.content)
+                if content_key in seen_contents:
+                    # 保留更高分的
+                    existing = seen_contents[content_key]
+                    if r.score > existing.score:
+                        existing.score = r.score
+                        existing.source_layer = layer
+                    continue
+
+                r.score = r.score * w  # 应用层权重
+                seen_contents[content_key] = r
+                merged.append(r)
+
+        # 4. MMR 重排序 (多样性与相关性平衡)
+        reranked = self._mmr_rerank(merged, intent.embedding, limit)
+
+        # 5. 结构化输出
+        return self._assemble_output(reranked, intent)
+
+    def _mmr_rerank(
+        self,
+        results: list[RetrievalResult],
+        query_embed: np.ndarray,
+        limit: int,
+        lambda_param: float = 0.7,
+    ) -> list[RetrievalResult]:
+        """
+        Maximal Marginal Relevance 重排序
+
+        score = λ × relevance(query, doc) - (1-λ) × max_similarity(doc, selected)
+
+        λ = 0.7: 偏向相关性
+        λ = 0.5: 平衡
+        λ = 0.3: 偏向多样性
+        """
+        if not results:
+            return []
+
+        selected = []
+        candidates = list(results)
+
+        while len(selected) < limit and candidates:
+            best_idx = -1
+            best_score = -float("inf")
+
+            for i, candidate in enumerate(candidates):
+                # 相关性
+                relevance = candidate.score
+
+                # 多样性惩罚: 与已选结果的最大相似度
+                max_sim = 0.0
+                for sel in selected:
+                    sim = self._content_similarity(candidate, sel)
+                    max_sim = max(max_sim, sim)
+
+                mmr_score = lambda_param * relevance - (1 - lambda_param) * max_sim
+
+                if mmr_score > best_score:
+                    best_score = mmr_score
+                    best_idx = i
+
+            if best_idx >= 0:
+                selected.append(candidates.pop(best_idx))
+
+        return selected
+
+    def _assemble_output(
+        self,
+        results: list[RetrievalResult],
+        intent: QueryIntent,
+    ) -> dict:
+        """组装结构化输出"""
+        return {
+            "query": intent.query,
+            "query_type": intent.query_type,
+            "results": results[:10],  # top-10
+            "layer_breakdown": self._layer_breakdown(results),
+            "context": self._build_context(results, intent),
+        }
+
+    def _build_context(self, results, intent):
+        """构建结构化上下文包 (供 LLM 使用)"""
+        context = {
+            "facts": [],       # L1 事实
+            "relations": [],   # L2 关系
+            "patterns": [],    # L3 模式
+            "narrative": None, # L4 叙事
+            "persona": None,   # L5 人格
+        }
+
+        for r in results:
+            if r.source_layer == 1:
+                context["facts"].append(r.content)
+            elif r.source_layer == 2:
+                context["relations"].append(r.metadata)
+            elif r.source_layer == 3:
+                context["patterns"].append(r.content)
+            elif r.source_layer == 4 and context["narrative"] is None:
+                context["narrative"] = r.content
+            elif r.source_layer == 5 and context["persona"] is None:
+                context["persona"] = r.content
+
+        return context
 ```
-综合评分（Phase 1 MVP）= α × embedding_sim + β × bm25 + γ × heat
-综合评分（Phase 2+）   = (1-λ) × 语义相似度 + λ × 归一化 Q 值
-                        ↑ 替代了静态的 embedding_sim+bm25+heat
+
+### 6.3 内容相似度与去重
+
+```python
+def _content_fingerprint(self, content: str) -> str:
+    """内容指纹: 用于快速去重"""
+    # 使用 jieba 分词后的 token 集合的 hash
+    tokens = tokenize(content)
+    return hashlib.md5(" ".join(sorted(tokens)).encode()).hexdigest()
+
+def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
+    """内容相似度: 用于 MMR 多样性计算"""
+    # 同层: 使用 embedding 余弦相似度
+    if a.source_layer == b.source_layer:
+        return cosine_similarity(a.embedding, b.embedding)
+    # 跨层: 使用 Jaccard 相似度
+    return jaccard_similarity(tokenize(a.content), tokenize(b.content))
 ```
-
-> Q 值不替代三维评分，而是在两阶段检索的 Phase B 中作为**重排序信号**。三维评分仍然用于 Phase A 的语义召回和热度路由。
-
-### 6.4 冷启动
-
-新事实没有 Q 值，初始化为三维评分归一化值：
-
-```
-Q_init = normalize(embedding_sim_avg + bm25_avg + heat_score)
-```
-
-其中 `embedding_sim_avg` 和 `bm25_avg` 使用该事实所在池的平均值作为代理。
-
-### 6.5 Q 值的衰减与重置
-
-- Q 值随冷却衰减（与热度挂钩）：长时间未被检索的事实的 Q 值向初始值衰减
-- 如果事实被标记为 `deleted` 或 `superseded`，Q 值归零
-- 如果事实的上下文发生重大变化（如 L5 人格模型更新），Q 值重置为初始值
 
 ---
 
-## 七、检索反馈闭环
-
-### 7.1 闭环架构
+## 7. 完整检索流程
 
 ```
-Query → 检索 → 返回结果 → Agent 生成回答 → 分析引用
-                                              ↓
-                              ← 更新 Q 值 ← 收集反馈
-                                              ↓
-                              ← 下次检索受益于更新的 Q 值
+┌─────────────────────────────────────────────────────────────────────┐
+│ 1. QUERY CLASSIFICATION                                              │
+│    query → QueryClassifier → QueryIntent                             │
+│    {query_type, target_layers, heat_zones, embedding}                 │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 2. LAYER RESOLUTION                                                  │
+│    QueryIntent.target_layers ∩ active_layers → resolved_layers       │
+│    渐进激活检查 + 成本感知路由                                         │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 3. HEAT ZONE RESOLUTION                                              │
+│    对每个 resolved_layer, 根据冷却系数决定查多热的记录                  │
+│    hot → warm → cold → ice (按优先级降序)                              │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 4. PARALLEL LAYER RETRIEVAL                                          │
+│    ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                 │
+│    │ L0  │ │ L1  │ │ L2  │ │ L3  │ │ L4  │ │ L5  │                 │
+│    │FTS5 │ │3D   │ │PPR  │ │Clus-│ │Narr-│ │Pers-│                 │
+│    │     │ │Score│ │Caus-│ │ter  │ │ative│ │ona  │                 │
+│    │     │ │     │ │al   │ │Match│ │     │ │Match│                 │
+│    └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘                 │
+│       │       │       │       │       │       │                    │
+│       └───────┴───────┴───────┴───────┴───────┘                    │
+│                              │                                      │
+│                              ▼                                      │
+└─────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 5. FUSION                                                            │
+│    层内归一化 → 跨层加权 → 去重 → MMR 重排序 → 上下文组装              │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 6. OUTPUT                                                            │
+│    {                                                                 │
+│      "results": [...],          # 统一排序结果                       │
+│      "context": {               # 结构化上下文包                      │
+│        "facts": [...],                                               │
+│        "relations": [...],                                           │
+│        "patterns": [...],                                            │
+│        "narrative": "...",                                           │
+│        "persona": {...}                                              │
+│      },                                                              │
+│      "layer_breakdown": {...}   # 每层贡献统计                       │
+│    }                                                                 │
+└─────────────────────────────────────────────────────────────────────┘
 ```
-
-### 7.2 与睡眠周期的整合
-
-睡眠周期中增加 Q 值评估阶段：
-
-```
-Phase X: Q 值评估（新增，低成本）
-  扫描近期被检索过的事实（距上次评估 < N 小时）
-  检查"被检索后 Agent 是否成功使用了它"
-  更新 utility_score
-  对长期未被检索的事实，Q 值向初始值衰减
-```
-
-### 7.3 与冷却系数的联动
-
-Q 值可以影响冷却速度：
-
-```
-冷却系数综合 = 各层系数相乘 × f(Q)
-  f(Q) = 1.0 - 0.5 × Q  （Q 越高，冷却越慢）
-```
-
-即高 Q 值的事实冷却更慢（更容易保持在 🔥 热状态），低 Q 值的事实冷却更快。
 
 ---
 
-## 八、多步迭代检索（Phase 3 可选）
+## 8. 分阶段实现路径
 
-> 受 MemCoT（Memory-driven Chain-of-Thought）启发。对于复杂 query，单次检索可能不够——先搜到一些事实，用这些事实决定下一步搜什么。
+### Phase 1: MVP (最小可行产品)
 
-### 8.1 触发条件
+**目标**: 替换当前简陋方案, 实现核心六层路由框架
 
-以下情况触发多步迭代检索：
+| 组件 | 实现内容 | 工作量 |
+|------|---------|--------|
+| QueryClassifier | 规则匹配分类器 (8 种类型) | 1-2 天 |
+| RetrievalSource 接口 | 抽象基类 + 注册机制 | 0.5 天 |
+| L0 检索 | 现有 FTS5 封装为 RetrievalSource | 0.5 天 |
+| L1 检索 | 现有 ThreeDimRetriever 封装 + 池间路由 | 1 天 |
+| L2 检索 | 现有 PPR 封装 + 时间链检索 | 1 天 |
+| FusionEngine v1 | 层内归一化 + 跨层加权 + 简单去重 | 1 天 |
+| 渐进激活 | 检查每层是否有数据 | 0.5 天 |
+| 热度路由 | 冷却系数计算 + 热度分级检索 | 1 天 |
 
-1. **信息缺口检测**：单次检索后，Agent 判断"信息不足以回答"
-2. **因果链断裂**：检索到的因果链有缺口（中间缺失环节）
-3. **矛盾信号**：检索到的事实之间存在矛盾，需要更多信息判断
+**Phase 1 交付**: 可运行的检索管道, 支持 fact/causal/relation/general 四种 query 类型
 
-### 8.2 迭代流程
+**Phase 1 不包含**:
+- L3/L4/L5 检索 (渐进激活降级)
+- MMR 重排序
+- 成本感知路由
+- LLM 分类器
 
-```
-Step 1: 初始检索
-  Query → 标准检索 → 返回结果
-    ↓
-Step 2: 信息缺口分析
-  Agent 分析已有结果 → 识别缺少的信息
-  "我知道 Caroline 参加了支持小组，但不知道她为什么去"
-    ↓
-Step 3: 二次检索
-  缺口 → 转化为新 query → 检索（可指定层）
-  "Caroline 为什么参加支持小组" → 查 L2 因果链
-    ↓
-Step 4: 合并与终止
-  合并两次结果 → 检查是否还有缺口
-  无缺口 → 终止
-  有缺口 → 回到 Step 2（最多 3 轮）
-```
+### Phase 2: 增强
 
-### 8.3 终止条件
+**目标**: 增加深层检索 + 重排序 + 成本感知
 
-- 最大迭代轮次：3 轮（防止无限循环）
-- 信息增益阈值：新结果的信息量 < 已有结果的 30%（信息增益不足时终止）
-- Agent 自检："现有信息是否足够回答问题？"
+| 组件 | 实现内容 | 工作量 |
+|------|---------|--------|
+| L3 检索 | 聚类匹配 + 抽象事实检索 | 2 天 |
+| L4 检索 | 叙事主干检索 + 动态细节构建 | 2 天 |
+| L5 检索 | 人格模型匹配 + 行为预测检索 | 2 天 |
+| MMR 重排序 | 多样性-相关性平衡 | 1 天 |
+| 成本感知路由 | 场景感知层选择 | 1 天 |
+| 因果链检索 | 四层递进 (符号+统计) | 2 天 |
+| 情感轨迹检索 | 情感路径搜索 | 1 天 |
+
+**Phase 2 交付**: 完整六层检索, 支持所有 query 类型
+
+### Phase 3: 成熟
+
+**目标**: 优化 + 自适应 + 自监督
+
+| 组件 | 实现内容 | 工作量 |
+|------|---------|--------|
+| LLM Query Classifier | LLM 辅助分类 (低置信度回退) | 2 天 |
+| 自适应层权重 | 基于反馈自动调整 QUERY_TYPE_ADJUSTMENTS | 2 天 |
+| 自监督热度管理 | 基于检索命中率自动调整冷却系数 | 2 天 |
+| 检索缓存 | 相似 query 结果缓存 (LRU) | 1 天 |
+| 异步预检索 | 空闲时预计算常见 query 的检索结果 | 2 天 |
+| 性能监控 | 每层延迟/召回率/精确率仪表盘 | 1 天 |
+| A/B 测试框架 | 检索策略对比测试 | 2 天 |
+
+**Phase 3 交付**: 自适应的智能检索系统
 
 ---
 
-## 九、待讨论的问题
+## 9. 与现有架构的整合点
 
-- [ ] 两阶段检索的 k1/k2 默认值选择（MemRL 建议 k1=5, k2=3 或 k1=10, k2=5，需要实际数据验证）
-- [ ] λ 的动态调整策略（固定 0.5 vs 根据任务类型自适应）
-- [ ] Q 值反馈的可靠性——如何判断 Agent "使用了"某条事实？（精确引用 vs 语义参考）
-- [ ] 多步迭代检索的成本控制——LLM 调用次数增加，如何防止过度检索？
-- [ ] Q 值跨用户迁移——不同用户的 Q 值是否可以共享？（群体先验 Q 值）
-- [ ] 与热度路由的交互——Q 值高的冷事实是否应该"加热"？
-- [ ] 检索日志的存储与查询——如何高效分析检索效果？
+### 9.1 现有代码复用
+
+| 现有组件 | 新架构中的角色 | 修改程度 |
+|---------|--------------|---------|
+| `ThreeDimRetriever` | L1 检索的核心评分引擎 | 封装为 RetrievalSource |
+| `store.expand_entities_for_retrieval()` | L2 PPR 检索 | 直接复用 |
+| `clustering.py` | L3 聚类信息 | 增加抽象事实检索方法 |
+| `embedding.py` | 所有层的 embedding 服务 | 直接复用 |
+| `retrieval.py` 的 query 分类逻辑 | QueryClassifier 的规则部分 | 迁移到新类 |
+| `store.py` 的 facts 表 | L1 数据源 | 无需修改 |
+| `store.py` 的 entity_relations 表 | L2 数据源 | 无需修改 |
+
+### 9.2 新增存储需求
+
+| 新增数据 | 用途 | 存储位置 |
+|---------|------|---------|
+| `narratives` 表 | L4 叙事主干 | 新表 |
+| `persona_models` 表 | L5 人格模型 | 新表 |
+| `behavior_predictions` 表 | L5 行为预测 | 新表 |
+| `retrieval_cache` 表 | Phase 3 检索缓存 | 新表 |
+| `heat_metadata` 列 | 冷却系数追踪 | facts 表新增列 |
+
+### 9.3 向后兼容
+
+- 新检索算法通过 `ButterflyDreamProvider` 的 `search()` 方法暴露
+- 现有 `ThreeDimRetriever.search()` 保持不动 (作为 L1 的内部实现)
+- 新增 `retrieval_v2.py` 模块, 不修改现有 `retrieval.py`
+- 通过配置开关 `use_v2_retrieval: bool` 控制新旧切换
 
 ---
 
-## 十、参考
+## 10. 性能考虑
 
-- MemRL: Self-Evolving Agents via Runtime Reinforcement Learning on Episodic Memory (arXiv: 2601.03192, 2026)
-- MemCoT: Test-Time Scaling through Memory-Driven Chain-of-Thought (arXiv, 2026)
-- Did You Check the Right Pocket? Cost-Sensitive Store Routing for Memory-Augmented Agents (arXiv, 2026)
+### 10.1 延迟预算
+
+| 阶段 | 目标延迟 | 说明 |
+|------|---------|------|
+| Query Classification | < 5ms | 规则匹配 |
+| Layer Resolution | < 1ms | 配置查找 |
+| Heat Zone Resolution | < 1ms | 冷却系数计算 |
+| L0 Retrieval | < 10ms | FTS5 |
+| L1 Retrieval | < 50ms | FTS5 + embedding |
+| L2 Retrieval | < 100ms | PPR + 图遍历 |
+| L3 Retrieval | < 20ms | 聚类匹配 |
+| L4 Retrieval | < 30ms | 叙事检索 |
+| L5 Retrieval | < 20ms | 人格匹配 |
+| Fusion | < 20ms | 归一化 + 重排序 |
+| **Total** | **< 250ms** | 全量六层 |
+
+### 10.2 并行策略
+
+```python
+# 各层检索并行执行
+with ThreadPoolExecutor(max_workers=6) as executor:
+    futures = {
+        executor.submit(source.retrieve, intent, heat, limit):
+        layer for layer, source in sources.items()
+    }
+    for future in as_completed(futures):
+        layer = futures[future]
+        layer_results[layer] = future.result()
+```
+
+### 10.3 缓存策略
+
+```python
+class RetrievalCache:
+    """LRU 检索缓存 (Phase 3)"""
+
+    def __init__(self, max_size=1000, ttl_seconds=300):
+        self.cache = OrderedDict()
+        self.max_size = max_size
+        self.ttl = ttl_seconds
+
+    def get(self, query: str, query_type: str) -> Optional[dict]:
+        key = self._make_key(query, query_type)
+        if key in self.cache:
+            entry = self.cache[key]
+            if time.time() - entry["time"] < self.ttl:
+                self.cache.move_to_end(key)
+                return entry["result"]
+            del self.cache[key]
+        return None
+
+    def set(self, query: str, query_type: str, result: dict):
+        key = self._make_key(query, query_type)
+        self.cache[key] = {"result": result, "time": time.time()}
+        if len(self.cache) > self.max_size:
+            self.cache.popitem(last=False)
+```
+
+---
+
+## 11. 附录: 关键数据结构
+
+### 11.1 QueryIntent
+
+```python
+@dataclass
+class QueryIntent:
+    query_type: str                     # fact | causal | prediction | ...
+    target_layers: list[int]            # [0,1,2,3,4,5]
+    heat_zones: dict[int, str]          # {0: "hot", 1: "warm", ...}
+    routing_hints: dict                 # {scenario, entities, ...}
+    query: str                          # 原始 query
+    embedding: Optional[np.ndarray]     # 预计算 embedding
+```
+
+### 11.2 RetrievalResult
+
+```python
+@dataclass
+class RetrievalResult:
+    source_layer: int                   # 0-5
+    source_name: str                    # "L1_FactPool"
+    content: str                        # 事实内容
+    score: float                        # 归一化分数 [0, 1]
+    confidence: float                    # 置信度 [0, 1]
+    embedding: Optional[np.ndarray]     # 内容 embedding
+    metadata: dict                      # 层特定元数据
+    fact_id: Optional[int]              # 关联的事实 ID
+```
+
+### 11.3 FusionOutput
+
+```python
+@dataclass
+class FusionOutput:
+    results: list[RetrievalResult]      # 统一排序结果
+    context: dict                       # 结构化上下文包
+    layer_breakdown: dict[int, int]     # 每层贡献了多少结果
+    query_type: str                     # 分类结果
+    latency_ms: float                   # 总延迟
+```
