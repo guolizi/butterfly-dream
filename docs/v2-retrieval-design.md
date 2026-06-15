@@ -53,7 +53,7 @@
 | 类型 | 描述 | 示例 | 目标层 |
 |------|------|------|--------|
 | `fact` | 事实查询 | "Caroline 喜欢什么颜色？" | L0+L1 |
-| `causal` | 因果推理 | "为什么 Caroline 选择做心理咨询师？" | L1+L2+L3 |
+| `causal` | 因果推理 | "为什么 Caroline 选择做心理咨询师？" | L1+L2+L3+L4 |
 | `prediction` | 行为预测 | "Caroline 接下来会做什么？" | L3+L4+L5 |
 | `contradiction` | 矛盾检测 | "Caroline 的说法前后矛盾吗？" | L1+L2+L5 |
 | `relation` | 关系查询 | "Caroline 和 Melanie 是什么关系？" | L1+L2 |
@@ -222,7 +222,7 @@ class RetrievalSource(ABC):
 | 热度 | 策略 | 说明 |
 |------|------|------|
 | 🔥 热 | FTS5 + 完整 embedding | 最近 N 轮对话全文搜索 |
-| 🌤️ 温 | FTS5 仅 | 关键词匹配 |
+| 🌤️ 温 | FTS5 + 完整 embedding | 关键词 + 语义搜索 |
 | ❄️ 冷 | FTS5 仅 | 关键词匹配 |
 | 🧊 冰 | FTS5 仅 | 关键词匹配 (全部历史) |
 
@@ -452,7 +452,7 @@ class L2Retrieval(RetrievalSource):
 
 ### 3.5 L3 — 抽象层 (Abstraction Layer)
 
-**数据特性**: 管道式处理 (不存储, 产出持久化在 L1 的行为模式池/静态知识池)
+**数据特性**: 管道式处理（输入来自 L1 事件池，产出持久化在 L1 行为模式池/静态知识池）。GMM 聚类参数（μ_k, Σ_k, 聚类中心）作为检索基础设施元数据存储，不属于 L3 持久化数据——类似 FTS5 索引，由检索层管理而非 L3 负责。
 
 **检索方式**: 模式匹配 + 知识检索 + Parent-Child 源事实回溯
 
