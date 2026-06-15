@@ -576,7 +576,8 @@ class L4Retrieval(RetrievalSource):
 | 人格匹配 | 结构化属性匹配 | query → 人格维度匹配 |
 | 行为预测 | 概率分布检索 | query → 最相关的行为预测 |
 | 矛盾检测 | 惊讶度计算 | query → 与人格模型的偏离度 |
-| **心理探针检索** (Phase 2+) | 心理状态匹配 | query 心理探针 → 历史相似心理状态下的记忆 |
+| 心理探针检索 (Phase 2+) | 心理状态匹配 | query 心理探针 → 历史相似心理状态下的记忆 |
+| 反差检索 (Phase 2+) | 预测-实际反例匹配 | 检索历史上预测失败的反例记忆，用于自我修正 |
 
 **心理探针检索 (Psych Probe Retrieval)**: 核心创新——不是搜"相似的句子"，而是搜"相似的心情"。当 `intent.psych_probe` 不为 None 时，检索历史上处于相似心理状态时的记忆和应对结果。
 
@@ -625,6 +626,13 @@ class L5Retrieval(RetrievalSource):
             )
             results.extend(psych_results)
 
+        # 6. 反差检索 (Phase 2+, prediction/contradiction/emotion 类型)
+        if intent.query_type in ("prediction", "contradiction", "emotion"):
+            contrast_results = self._contrastive_retrieve(
+                intent, persona, limit=limit
+            )
+            results.extend(contrast_results)
+
         return results
 
     def _psych_probe_retrieve(self, psych_probe, limit):
@@ -659,6 +667,97 @@ class L5Retrieval(RetrievalSource):
                 "psych_similarity": similarity,
                 "outcome": mem.get("outcome", ""),  # 应对结果
                 "score": similarity,
+            })
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored[:limit]
+
+**反差检索 (Contrastive Retrieval)**: 检索历史上"预测失败"的反例记忆——当 L5 预测用户应该做 A，但用户实际做了 B，这些 B 就是反差记忆。与矛盾检测互补：矛盾检测输出"当前 query 与人格模型的偏离度"（一个分数），反差检索输出"历史上预测失败的具体记忆"（一组证据）。
+
+```
+L5 预测: "Caroline 压力大时会画画放松"（概率 0.8）
+当前: Caroline 压力很大，但没有画画
+
+标准检索: 找到画画放松的记忆 → "建议你去画画"
+反差检索: 找到上次预测"会画画"但实际没画的记忆
+  → "2024-10-05: 压力大但没画画，因为被 deadline 压着"
+  → "2024-07-12: 压力大但选择了跑步，因为画画工具不在身边"
+
+结果: Agent 不是盲目建议"去画画"，而是说
+  "上次压力大你也没画画，因为被 deadline 压着。这次要不要试试短时间放松？"
+```
+
+**触发条件**: `prediction` 类型（自动附带，自我修正预测）、`contradiction` 类型（提供矛盾的历史证据）、`emotion` 类型（可选附带，发现情绪变化的反常模式）。
+
+**反差记忆的存储**: 反差检索需要"预测 vs 实际"的对比数据。在睡眠周期 L5 更新阶段记录：
+
+```sql
+CREATE TABLE prediction_counterfactuals (
+    id INTEGER PRIMARY KEY,
+    person TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    predicted_behavior TEXT NOT NULL,   -- 预测的行为
+    predicted_prob REAL NOT NULL,       -- 预测概率
+    actual_behavior TEXT NOT NULL,      -- 实际发生的行为
+    actual_match REAL NOT NULL,         -- 匹配度 [0, 1]
+    trigger_event TEXT,                 -- 触发反差的外部事件
+    prediction_context TEXT,            -- 预测时的上下文
+    embedding BLOB                      -- 用于检索的向量
+);
+```
+
+```python
+    def _contrastive_retrieve(self, intent, persona, limit):
+        """反差检索: 找到历史上预测失败的反例记忆
+
+        核心思路:
+        1. 获取当前人格模型的预测分布
+        2. 找到历史上"预测概率高但实际行为不同"的记忆
+        3. 这些记忆是人格模型的"反例"——能揭示模型的盲区
+
+        评分公式:
+            contrast_score = predicted_prob × (1 - actual_match)
+                          × recency_weight × trigger_relevance
+
+        其中:
+        - predicted_prob: 人格模型对该行为的预测概率
+        - actual_match: 实际行为与预测的匹配度 (0=完全不匹配)
+        - recency_weight: 时间衰减
+        - trigger_relevance: 与当前 query 的语义相关性
+        """
+        # 获取所有带预测-实际对比标记的记忆
+        counterfactuals = self.store.get_prediction_counterfactuals()
+
+        if not counterfactuals:
+            return []
+
+        scored = []
+        for cf in counterfactuals:
+            predicted_prob = cf.get("predicted_prob", 0.5)
+            actual_match = cf.get("actual_match", 1.0)
+
+            # 反差分数: 预测越自信、实际越偏离 → 越值得检索
+            contrast_score = predicted_prob * (1 - actual_match)
+
+            if contrast_score < 0.2:
+                continue  # 低反差价值，跳过
+
+            # 与当前 query 的相关性
+            query_relevance = self._contrastive_relevance(
+                intent, cf
+            )
+
+            scored.append({
+                "source": "L5",
+                "type": "contrastive",
+                "content": cf["description"],
+                "predicted": cf["predicted_behavior"],
+                "actual": cf["actual_behavior"],
+                "trigger": cf.get("trigger_event", ""),
+                "contrast_score": contrast_score,
+                "query_relevance": query_relevance,
+                "score": contrast_score * query_relevance,
+                "timestamp": cf["timestamp"],
             })
 
         scored.sort(key=lambda x: x["score"], reverse=True)
@@ -1195,7 +1294,7 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 |------|---------|--------|
 | L3 检索 | 聚类匹配 + Parent-Child 源事实回溯 + 马氏距离 | 2 天 |
 | L4 检索 | 叙事主干检索 + 动态细节构建 | 2 天 |
-| L5 检索 | 人格模型匹配 + 行为预测检索 + 心理探针检索 | 3 天 |
+| L5 检索 | 人格模型匹配 + 行为预测检索 + 心理探针检索 + 反差检索 | 3 天 |
 | MMR 重排序 | 多样性-相关性平衡 | 1 天 |
 | 成本感知路由 | 场景感知层选择 | 1 天 |
 | 因果链检索 | 四层递进 (符号+统计) | 2 天 |
