@@ -1,0 +1,587 @@
+{
+  "results": [
+    {
+      "question_id": "Q0",
+      "category": 1,
+      "question": "What did Caroline research?",
+      "ground_truth": "Adoption agencies",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 2215.3
+    },
+    {
+      "question_id": "Q1",
+      "category": 1,
+      "question": "What is Caroline's identity?",
+      "ground_truth": "Transgender woman",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.4
+    },
+    {
+      "question_id": "Q2",
+      "category": 1,
+      "question": "What is Caroline's relationship status?",
+      "ground_truth": "Single",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.2
+    },
+    {
+      "question_id": "Q3",
+      "category": 1,
+      "question": "Where did Caroline move from 4 years ago?",
+      "ground_truth": "Sweden",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 27.3
+    },
+    {
+      "question_id": "Q4",
+      "category": 1,
+      "question": "What career path has Caroline decided to persue?",
+      "ground_truth": "counseling or mental health for Transgender people",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 23.4
+    },
+    {
+      "question_id": "Q5",
+      "category": 1,
+      "question": "What activities does Melanie partake in?",
+      "ground_truth": "pottery, camping, painting, swimming",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 18.5
+    },
+    {
+      "question_id": "Q6",
+      "category": 1,
+      "question": "Where has Melanie camped?",
+      "ground_truth": "beach, mountains, forest",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 17.4
+    },
+    {
+      "question_id": "Q7",
+      "category": 1,
+      "question": "What do Melanie's kids like?",
+      "ground_truth": "dinosaurs, nature",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.3
+    },
+    {
+      "question_id": "Q8",
+      "category": 1,
+      "question": "What books has Melanie read?",
+      "ground_truth": "\"Nothing is Impossible\", \"Charlotte's Web\"",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 30.2
+    },
+    {
+      "question_id": "Q9",
+      "category": 1,
+      "question": "What does Melanie do to destress?",
+      "ground_truth": "Running, pottery",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 11.8
+    },
+    {
+      "question_id": "Q10",
+      "category": 1,
+      "question": "What LGBTQ+ events has Caroline participated in?",
+      "ground_truth": "Pride parade, school speech, support group",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 7.0
+    },
+    {
+      "question_id": "Q11",
+      "category": 1,
+      "question": "What events has Caroline participated in to help children?",
+      "ground_truth": "Mentoring program, school speech",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 18.6
+    },
+    {
+      "question_id": "Q12",
+      "category": 1,
+      "question": "What did Melanie paint recently?",
+      "ground_truth": "sunset",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 14.2
+    },
+    {
+      "question_id": "Q13",
+      "category": 1,
+      "question": "What activities has Melanie done with her family?",
+      "ground_truth": "Pottery, painting, camping, museum, swimming, hiking",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 9.1
+    },
+    {
+      "question_id": "Q14",
+      "category": 1,
+      "question": "In what ways is Caroline participating in the LGBTQ community?",
+      "ground_truth": "Joining activist group, going to pride parades, participating in an art show, mentoring program",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 22.7
+    },
+    {
+      "question_id": "Q15",
+      "category": 1,
+      "question": "How many times has Melanie gone to the beach in 2023?",
+      "ground_truth": "2",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 21.2
+    },
+    {
+      "question_id": "Q16",
+      "category": 1,
+      "question": "What kind of art does Caroline make?",
+      "ground_truth": "abstract art",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.9
+    },
+    {
+      "question_id": "Q17",
+      "category": 1,
+      "question": "Who supports Caroline when she has a negative experience?",
+      "ground_truth": "Her mentors, family, and friends",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.9
+    },
+    {
+      "question_id": "Q18",
+      "category": 1,
+      "question": "What types of pottery have Melanie and her kids made?",
+      "ground_truth": "bowls, cup",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 16.2
+    },
+    {
+      "question_id": "Q19",
+      "category": 1,
+      "question": "What has Melanie painted?",
+      "ground_truth": "Horse, sunset, sunrise",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 6.6
+    },
+    {
+      "question_id": "Q20",
+      "category": 1,
+      "question": "What are Melanie's pets' names?",
+      "ground_truth": "Oliver, Luna, Bailey",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 20.9
+    },
+    {
+      "question_id": "Q21",
+      "category": 1,
+      "question": "What subject have Caroline and Melanie both painted?",
+      "ground_truth": "Sunsets",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 16.7
+    },
+    {
+      "question_id": "Q22",
+      "category": 1,
+      "question": "What symbols are important to Caroline?",
+      "ground_truth": "Rainbow flag, transgender symbol",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 7.9
+    },
+    {
+      "question_id": "Q23",
+      "category": 1,
+      "question": "What instruments does Melanie play?",
+      "ground_truth": "clarinet and violin",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 13.0
+    },
+    {
+      "question_id": "Q24",
+      "category": 1,
+      "question": "What musical artists/bands has Melanie seen?",
+      "ground_truth": "Summer Sounds, Matt Patterson",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 18.8
+    },
+    {
+      "question_id": "Q25",
+      "category": 1,
+      "question": "What are some changes Caroline has faced during her transition journey?",
+      "ground_truth": "Changes to her body, losing unsupportive friends",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 15.7
+    },
+    {
+      "question_id": "Q26",
+      "category": 1,
+      "question": "What does Melanie do with her family on hikes?",
+      "ground_truth": "Roast marshmallows, tell stories",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 7.1
+    },
+    {
+      "question_id": "Q27",
+      "category": 1,
+      "question": "What transgender-specific events has Caroline attended?",
+      "ground_truth": "Poetry reading, conference",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 13.9
+    },
+    {
+      "question_id": "Q28",
+      "category": 1,
+      "question": "What book did Melanie read from Caroline's suggestion?",
+      "ground_truth": "\"Becoming Nicole\"",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 11.5
+    },
+    {
+      "question_id": "Q29",
+      "category": 1,
+      "question": "How many children does Melanie have?",
+      "ground_truth": "3",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 7.2
+    },
+    {
+      "question_id": "Q30",
+      "category": 1,
+      "question": "When did Melanie go on a hike after the roadtrip?",
+      "ground_truth": "19 October 2023",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 11.3
+    },
+    {
+      "question_id": "Q31",
+      "category": 1,
+      "question": "What items has Melanie bought?",
+      "ground_truth": "Figurines, shoes",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 0,
+      "search_time_ms": 10.7
+    }
+  ],
+  "details": [
+    {
+      "question_id": "Q0",
+      "question": "What did Caroline research?",
+      "score": 1,
+      "ground_truth": "Adoption agencies",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q1",
+      "question": "What is Caroline's identity?",
+      "score": 1,
+      "ground_truth": "Transgender woman",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q2",
+      "question": "What is Caroline's relationship status?",
+      "score": 1,
+      "ground_truth": "Single",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q3",
+      "question": "Where did Caroline move from 4 years ago?",
+      "score": 1,
+      "ground_truth": "Sweden",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q4",
+      "question": "What career path has Caroline decided to persue?",
+      "score": 1,
+      "ground_truth": "counseling or mental health for Transgender people",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q5",
+      "question": "What activities does Melanie partake in?",
+      "score": 1,
+      "ground_truth": "pottery, camping, painting, swimming",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q6",
+      "question": "Where has Melanie camped?",
+      "score": 1,
+      "ground_truth": "beach, mountains, forest",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q7",
+      "question": "What do Melanie's kids like?",
+      "score": 1,
+      "ground_truth": "dinosaurs, nature",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q8",
+      "question": "What books has Melanie read?",
+      "score": 1,
+      "ground_truth": "\"Nothing is Impossible\", \"Charlotte's Web\"",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q9",
+      "question": "What does Melanie do to destress?",
+      "score": 1,
+      "ground_truth": "Running, pottery",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q10",
+      "question": "What LGBTQ+ events has Caroline participated in?",
+      "score": 1,
+      "ground_truth": "Pride parade, school speech, support group",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q11",
+      "question": "What events has Caroline participated in to help children?",
+      "score": 1,
+      "ground_truth": "Mentoring program, school speech",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q12",
+      "question": "What did Melanie paint recently?",
+      "score": 1,
+      "ground_truth": "sunset",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q13",
+      "question": "What activities has Melanie done with her family?",
+      "score": 1,
+      "ground_truth": "Pottery, painting, camping, museum, swimming, hiking",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q14",
+      "question": "In what ways is Caroline participating in the LGBTQ community?",
+      "score": 1,
+      "ground_truth": "Joining activist group, going to pride parades, participating in an art show, me",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q15",
+      "question": "How many times has Melanie gone to the beach in 2023?",
+      "score": 1,
+      "ground_truth": "2",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q16",
+      "question": "What kind of art does Caroline make?",
+      "score": 1,
+      "ground_truth": "abstract art",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q17",
+      "question": "Who supports Caroline when she has a negative experience?",
+      "score": 1,
+      "ground_truth": "Her mentors, family, and friends",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q18",
+      "question": "What types of pottery have Melanie and her kids made?",
+      "score": 1,
+      "ground_truth": "bowls, cup",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q19",
+      "question": "What has Melanie painted?",
+      "score": 1,
+      "ground_truth": "Horse, sunset, sunrise",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q20",
+      "question": "What are Melanie's pets' names?",
+      "score": 1,
+      "ground_truth": "Oliver, Luna, Bailey",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q21",
+      "question": "What subject have Caroline and Melanie both painted?",
+      "score": 1,
+      "ground_truth": "Sunsets",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q22",
+      "question": "What symbols are important to Caroline?",
+      "score": 1,
+      "ground_truth": "Rainbow flag, transgender symbol",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q23",
+      "question": "What instruments does Melanie play?",
+      "score": 1,
+      "ground_truth": "clarinet and violin",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q24",
+      "question": "What musical artists/bands has Melanie seen?",
+      "score": 1,
+      "ground_truth": "Summer Sounds, Matt Patterson",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q25",
+      "question": "What are some changes Caroline has faced during her transition journey?",
+      "score": 1,
+      "ground_truth": "Changes to her body, losing unsupportive friends",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q26",
+      "question": "What does Melanie do with her family on hikes?",
+      "score": 1,
+      "ground_truth": "Roast marshmallows, tell stories",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q27",
+      "question": "What transgender-specific events has Caroline attended?",
+      "score": 1,
+      "ground_truth": "Poetry reading, conference",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q28",
+      "question": "What book did Melanie read from Caroline's suggestion?",
+      "score": 1,
+      "ground_truth": "\"Becoming Nicole\"",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q29",
+      "question": "How many children does Melanie have?",
+      "score": 1,
+      "ground_truth": "3",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q30",
+      "question": "When did Melanie go on a hike after the roadtrip?",
+      "score": 1,
+      "ground_truth": "19 October 2023",
+      "predicted": "No information available.",
+      "top_facts": []
+    },
+    {
+      "question_id": "Q31",
+      "question": "What items has Melanie bought?",
+      "score": 1,
+      "ground_truth": "Figurines, shoes",
+      "predicted": "No information available.",
+      "top_facts": []
+    }
+  ],
+  "summary": {
+    "avg": 1.0,
+    "acc": 0.0,
+    "total": 32
+  }
+}

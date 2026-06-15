@@ -1,0 +1,1846 @@
+[
+  {
+    "question_id": "",
+    "question": "What did Caroline research?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 11,
+    "changed": true,
+    "added": [
+      1,
+      3,
+      4,
+      18,
+      123
+    ],
+    "removed": [
+      51,
+      86,
+      92,
+      141,
+      159
+    ],
+    "base_top3": [
+      {
+        "fid": 11,
+        "rel": 0.7584,
+        "content": "Caroline is going to do some research."
+      },
+      {
+        "fid": 301,
+        "rel": 0.6605,
+        "content": "Caroline advised Melanie to research ado"
+      },
+      {
+        "fid": 13,
+        "rel": 0.6093,
+        "content": "Melanie ran a charity race for mental he"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 11,
+        "rel": 0.8774,
+        "ce": 0.9568,
+        "content": "Caroline is going to do some research."
+      },
+      {
+        "fid": 309,
+        "rel": 0.2807,
+        "ce": 0.0796,
+        "content": "Caroline has been experimenting with abs"
+      },
+      {
+        "fid": 19,
+        "rel": 0.273,
+        "ce": 0.0638,
+        "content": "Caroline is researching adoption agencie"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What is Caroline's identity?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 11,
+    "changed": true,
+    "added": [
+      85,
+      122,
+      125,
+      138,
+      147
+    ],
+    "removed": [
+      13,
+      20,
+      36,
+      112,
+      115
+    ],
+    "base_top3": [
+      {
+        "fid": 279,
+        "rel": 0.6215,
+        "content": "During the roadtrip, Melanie's son was i"
+      },
+      {
+        "fid": 280,
+        "rel": 0.6026,
+        "content": "Melanie's son was okay after the acciden"
+      },
+      {
+        "fid": 224,
+        "rel": 0.6579,
+        "content": "Painting helps Caroline explore her iden"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 305,
+        "rel": 0.2712,
+        "ce": 0.0001,
+        "content": "Pottery is Melanie's method of self‑expr"
+      },
+      {
+        "fid": 224,
+        "rel": 0.2632,
+        "ce": 0.0001,
+        "content": "Painting helps Caroline explore her iden"
+      },
+      {
+        "fid": 128,
+        "rel": 0.2624,
+        "ce": 0.0,
+        "content": "Caroline's favorite book is \"Becoming Ni"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What is Caroline's relationship status?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 9,
+    "changed": true,
+    "added": [
+      3,
+      7,
+      8,
+      21,
+      122
+    ],
+    "removed": [
+      13,
+      20,
+      50,
+      111,
+      112
+    ],
+    "base_top3": [
+      {
+        "fid": 271,
+        "rel": 0.7654,
+        "content": "Caroline's relationships changed after h"
+      },
+      {
+        "fid": 280,
+        "rel": 0.5686,
+        "content": "Melanie's son was okay after the acciden"
+      },
+      {
+        "fid": 177,
+        "rel": 0.612,
+        "content": "Caroline's recent painting expresses her"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 271,
+        "rel": 0.77,
+        "ce": 0.7731,
+        "content": "Caroline's relationships changed after h"
+      },
+      {
+        "fid": 326,
+        "rel": 0.5719,
+        "ce": 0.5239,
+        "content": "Caroline believes love and acceptance sh"
+      },
+      {
+        "fid": 234,
+        "rel": 0.3355,
+        "ce": 0.1232,
+        "content": "Caroline is transitioning and has joined"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "Where did Caroline move from 4 years ago?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 15,
+    "changed": true,
+    "added": [
+      34,
+      105,
+      124,
+      208,
+      296
+    ],
+    "removed": [
+      6,
+      43,
+      50,
+      166,
+      304
+    ],
+    "base_top3": [
+      {
+        "fid": 35,
+        "rel": 0.7034,
+        "content": "Melanie is married and has been married "
+      },
+      {
+        "fid": 249,
+        "rel": 0.6907,
+        "content": "Caroline plays guitar, primarily acousti"
+      },
+      {
+        "fid": 29,
+        "rel": 0.687,
+        "content": "Caroline started transitioning three yea"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 29,
+        "rel": 0.3429,
+        "ce": 0.1135,
+        "content": "Caroline started transitioning three yea"
+      },
+      {
+        "fid": 34,
+        "rel": 0.3023,
+        "ce": 0.0769,
+        "content": "Caroline experienced a tough breakup aft"
+      },
+      {
+        "fid": 33,
+        "rel": 0.2818,
+        "ce": 0.0172,
+        "content": "Caroline has known her current friends f"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What career path has Caroline decided to persue?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 12,
+    "changed": true,
+    "added": [
+      6,
+      8,
+      85,
+      94,
+      122
+    ],
+    "removed": [
+      13,
+      35,
+      159,
+      177,
+      193
+    ],
+    "base_top3": [
+      {
+        "fid": 83,
+        "rel": 0.6689,
+        "content": "Caroline is motivated to pursue counseli"
+      },
+      {
+        "fid": 209,
+        "rel": 0.6678,
+        "content": "Caroline applied to adoption agencies."
+      },
+      {
+        "fid": 321,
+        "rel": 0.6475,
+        "content": "Caroline passed the adoption agency inte"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 7,
+        "rel": 0.8888,
+        "ce": 0.9996,
+        "content": "Caroline intends to explore career optio"
+      },
+      {
+        "fid": 6,
+        "rel": 0.8175,
+        "ce": 0.9506,
+        "content": "Caroline plans to continue her education"
+      },
+      {
+        "fid": 123,
+        "rel": 0.7301,
+        "ce": 0.7828,
+        "content": "Caroline is looking into counseling and "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What activities does Melanie partake in?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 10,
+    "changed": true,
+    "added": [
+      16,
+      18,
+      30,
+      39,
+      157
+    ],
+    "removed": [
+      5,
+      11,
+      14,
+      28,
+      143
+    ],
+    "base_top3": [
+      {
+        "fid": 3,
+        "rel": 0.6492,
+        "content": "Caroline attended an LGBTQ support group"
+      },
+      {
+        "fid": 258,
+        "rel": 0.6457,
+        "content": "Melanie roasted marshmallows and shared "
+      },
+      {
+        "fid": 287,
+        "rel": 0.6291,
+        "content": "The kids loved the activity shown in the"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 16,
+        "rel": 0.5718,
+        "ce": 0.5602,
+        "content": "Melanie carves out daily me-time by runn"
+      },
+      {
+        "fid": 289,
+        "rel": 0.5001,
+        "ce": 0.4202,
+        "content": "Melanie described camping as a chance to"
+      },
+      {
+        "fid": 157,
+        "rel": 0.2772,
+        "ce": 0.0,
+        "content": "Caroline joined a new LGBTQ activist gro"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "Where has Melanie camped?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      29,
+      142,
+      214,
+      257,
+      283
+    ],
+    "removed": [
+      26,
+      92,
+      158,
+      174,
+      185
+    ],
+    "base_top3": [
+      {
+        "fid": 80,
+        "rel": 0.741,
+        "content": "Melanie says family camping brings them "
+      },
+      {
+        "fid": 66,
+        "rel": 0.7373,
+        "content": "Melanie said the camping trip created ne"
+      },
+      {
+        "fid": 289,
+        "rel": 0.7323,
+        "content": "Melanie described camping as a chance to"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 50,
+        "rel": 0.4214,
+        "ce": 0.2394,
+        "content": "Melanie took her family camping in the m"
+      },
+      {
+        "fid": 51,
+        "rel": 0.2992,
+        "ce": 0.0211,
+        "content": "During the camping trip, Melanie's famil"
+      },
+      {
+        "fid": 80,
+        "rel": 0.2986,
+        "ce": 0.0037,
+        "content": "Melanie says family camping brings them "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What do Melanie's kids like?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 20,
+    "changed": false,
+    "added": [],
+    "removed": [],
+    "base_top3": [
+      {
+        "fid": 12,
+        "rel": 0.7521,
+        "content": "Mel is going swimming with the kids."
+      },
+      {
+        "fid": 17,
+        "rel": 0.7392,
+        "content": "Melanie's kids are excited about their s"
+      },
+      {
+        "fid": 55,
+        "rel": 0.7306,
+        "content": "The two younger kids in Melanie's family"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 36,
+        "rel": 0.8106,
+        "ce": 0.8677,
+        "content": "Melanie has a husband and kids who motiv"
+      },
+      {
+        "fid": 63,
+        "rel": 0.6611,
+        "ce": 0.6265,
+        "content": "Melanie has two younger kids who love na"
+      },
+      {
+        "fid": 55,
+        "rel": 0.4438,
+        "ce": 0.2526,
+        "content": "The two younger kids in Melanie's family"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What books has Melanie read?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 19,
+    "changed": true,
+    "added": [
+      71
+    ],
+    "removed": [
+      328
+    ],
+    "base_top3": [
+      {
+        "fid": 306,
+        "rel": 0.7971,
+        "content": "Melanie has been reading a book Caroline"
+      },
+      {
+        "fid": 76,
+        "rel": 0.7668,
+        "content": "Caroline has lots of kids' books, includ"
+      },
+      {
+        "fid": 74,
+        "rel": 0.7534,
+        "content": "Caroline is creating a library for when "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 306,
+        "rel": 0.6191,
+        "ce": 0.5004,
+        "content": "Melanie has been reading a book Caroline"
+      },
+      {
+        "fid": 76,
+        "rel": 0.3071,
+        "ce": 0.0007,
+        "content": "Caroline has lots of kids' books, includ"
+      },
+      {
+        "fid": 74,
+        "rel": 0.3014,
+        "ce": 0.0,
+        "content": "Caroline is creating a library for when "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What does Melanie do to destress?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 10,
+    "changed": true,
+    "added": [
+      23,
+      40,
+      175,
+      224,
+      225
+    ],
+    "removed": [
+      26,
+      59,
+      65,
+      115,
+      117
+    ],
+    "base_top3": [
+      {
+        "fid": 138,
+        "rel": 0.6544,
+        "content": "Running helps Mel de-stress and clear he"
+      },
+      {
+        "fid": 307,
+        "rel": 0.6391,
+        "content": "Melanie has been painting to stay busy w"
+      },
+      {
+        "fid": 336,
+        "rel": 0.6361,
+        "content": "Melanie values being there for each othe"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 138,
+        "rel": 0.283,
+        "ce": 0.0354,
+        "content": "Running helps Mel de-stress and clear he"
+      },
+      {
+        "fid": 225,
+        "rel": 0.2652,
+        "ce": 0.0,
+        "content": "Caroline values supportive people, promo"
+      },
+      {
+        "fid": 300,
+        "rel": 0.2605,
+        "ce": 0.0,
+        "content": "Caroline offered to help Melanie with ad"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What LGBTQ+ events has Caroline participated in?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 15,
+    "changed": true,
+    "added": [
+      4,
+      96,
+      209,
+      235,
+      255
+    ],
+    "removed": [
+      100,
+      110,
+      166,
+      202,
+      298
+    ],
+    "base_top3": [
+      {
+        "fid": 160,
+        "rel": 0.7438,
+        "content": "Connected LGBTQ Activists plans events a"
+      },
+      {
+        "fid": 82,
+        "rel": 0.7044,
+        "content": "Caroline said the parade showed how much"
+      },
+      {
+        "fid": 93,
+        "rel": 0.7041,
+        "content": "Caroline is excited to meet other people"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 122,
+        "rel": 0.6474,
+        "ce": 0.6369,
+        "content": "Caroline wants to help make a difference"
+      },
+      {
+        "fid": 3,
+        "rel": 0.6239,
+        "ce": 0.5784,
+        "content": "Caroline attended an LGBTQ support group"
+      },
+      {
+        "fid": 259,
+        "rel": 0.4539,
+        "ce": 0.3062,
+        "content": "Caroline is inspired by her volunteer wo"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What events has Caroline participated in to help children?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      2,
+      6,
+      19,
+      37,
+      70
+    ],
+    "removed": [
+      36,
+      74,
+      93,
+      100,
+      153
+    ],
+    "base_top3": [
+      {
+        "fid": 24,
+        "rel": 0.7895,
+        "content": "Caroline is thrilled to create a family "
+      },
+      {
+        "fid": 334,
+        "rel": 0.7487,
+        "content": "Melanie appreciates Caroline's passion f"
+      },
+      {
+        "fid": 297,
+        "rel": 0.7313,
+        "content": "Caroline wants to provide a safe, loving"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 211,
+        "rel": 0.845,
+        "ce": 0.9541,
+        "content": "Caroline received help from an adoption "
+      },
+      {
+        "fid": 84,
+        "rel": 0.8253,
+        "ce": 0.8946,
+        "content": "Caroline wants to use her story to help "
+      },
+      {
+        "fid": 209,
+        "rel": 0.6378,
+        "ce": 0.6146,
+        "content": "Caroline applied to adoption agencies."
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What did Melanie paint recently?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 17,
+    "changed": true,
+    "added": [
+      46,
+      148,
+      262
+    ],
+    "removed": [
+      10,
+      193,
+      311
+    ],
+    "base_top3": [
+      {
+        "fid": 220,
+        "rel": 0.7808,
+        "content": "Melanie painted a horse recently."
+      },
+      {
+        "fid": 149,
+        "rel": 0.7512,
+        "content": "Caroline posted a painting she created f"
+      },
+      {
+        "fid": 177,
+        "rel": 0.7502,
+        "content": "Caroline's recent painting expresses her"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 263,
+        "rel": 0.5096,
+        "ce": 0.39,
+        "content": "Melanie's artistic mediums include paint"
+      },
+      {
+        "fid": 239,
+        "rel": 0.3831,
+        "ce": 0.1997,
+        "content": "Melanie's favorite type of art is painti"
+      },
+      {
+        "fid": 220,
+        "rel": 0.3447,
+        "ce": 0.0539,
+        "content": "Melanie painted a horse recently."
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What activities has Melanie done with her family?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 12,
+    "changed": true,
+    "added": [
+      18,
+      32,
+      36,
+      50,
+      66
+    ],
+    "removed": [
+      24,
+      28,
+      45,
+      129,
+      144
+    ],
+    "base_top3": [
+      {
+        "fid": 116,
+        "rel": 0.7867,
+        "content": "Melanie says creativity and family keep "
+      },
+      {
+        "fid": 117,
+        "rel": 0.7697,
+        "content": "Melanie's family helped her during a mov"
+      },
+      {
+        "fid": 294,
+        "rel": 0.7666,
+        "content": "Caroline expressed that she is ready to "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 37,
+        "rel": 0.8892,
+        "ce": 0.9998,
+        "content": "Melanie and her family played games, ate"
+      },
+      {
+        "fid": 117,
+        "rel": 0.8605,
+        "ce": 0.921,
+        "content": "Melanie's family helped her during a mov"
+      },
+      {
+        "fid": 288,
+        "rel": 0.816,
+        "ce": 0.8769,
+        "content": "Melanie said she loves camping trips wit"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "In what ways is Caroline participating in the LGBTQ communit",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      20,
+      82,
+      84,
+      92,
+      94
+    ],
+    "removed": [
+      29,
+      50,
+      160,
+      202,
+      209
+    ],
+    "base_top3": [
+      {
+        "fid": 234,
+        "rel": 0.7003,
+        "content": "Caroline is transitioning and has joined"
+      },
+      {
+        "fid": 279,
+        "rel": 0.6513,
+        "content": "During the roadtrip, Melanie's son was i"
+      },
+      {
+        "fid": 259,
+        "rel": 0.6813,
+        "content": "Caroline is inspired by her volunteer wo"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 122,
+        "rel": 0.8151,
+        "ce": 0.9257,
+        "content": "Caroline wants to help make a difference"
+      },
+      {
+        "fid": 225,
+        "rel": 0.8145,
+        "ce": 0.9408,
+        "content": "Caroline values supportive people, promo"
+      },
+      {
+        "fid": 234,
+        "rel": 0.6215,
+        "ce": 0.5689,
+        "content": "Caroline is transitioning and has joined"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "How many times has Melanie gone to the beach in 2023?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 17,
+    "changed": true,
+    "added": [
+      165,
+      273,
+      277
+    ],
+    "removed": [
+      1,
+      169,
+      185
+    ],
+    "base_top3": [
+      {
+        "fid": 164,
+        "rel": 0.7555,
+        "content": "Melanie's kids enjoyed the beach and the"
+      },
+      {
+        "fid": 163,
+        "rel": 0.7237,
+        "content": "Melanie went to the beach recently with "
+      },
+      {
+        "fid": 232,
+        "rel": 0.7165,
+        "content": "Caroline painted the sunset after visiti"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 164,
+        "rel": 0.5893,
+        "ce": 0.4785,
+        "content": "Melanie's kids enjoyed the beach and the"
+      },
+      {
+        "fid": 163,
+        "rel": 0.2896,
+        "ce": 0.0002,
+        "content": "Melanie went to the beach recently with "
+      },
+      {
+        "fid": 232,
+        "rel": 0.2866,
+        "ce": 0.0,
+        "content": "Caroline painted the sunset after visiti"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What kind of art does Caroline make?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 16,
+    "changed": true,
+    "added": [
+      10,
+      98,
+      176,
+      265
+    ],
+    "removed": [
+      153,
+      172,
+      220,
+      308
+    ],
+    "base_top3": [
+      {
+        "fid": 148,
+        "rel": 0.7279,
+        "content": "Caroline plans to hold an LGBTQ art show"
+      },
+      {
+        "fid": 149,
+        "rel": 0.7121,
+        "content": "Caroline posted a painting she created f"
+      },
+      {
+        "fid": 262,
+        "rel": 0.7057,
+        "content": "Melanie has been creating art for seven "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 261,
+        "rel": 0.4972,
+        "ce": 0.3739,
+        "content": "Caroline has been creating art since she"
+      },
+      {
+        "fid": 260,
+        "rel": 0.4868,
+        "ce": 0.3467,
+        "content": "Caroline creates art as part of her volu"
+      },
+      {
+        "fid": 309,
+        "rel": 0.4661,
+        "ce": 0.3172,
+        "content": "Caroline has been experimenting with abs"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "Who supports Caroline when she has a negative experience?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      84,
+      138,
+      200,
+      224,
+      225
+    ],
+    "removed": [
+      3,
+      26,
+      35,
+      177,
+      282
+    ],
+    "base_top3": [
+      {
+        "fid": 115,
+        "rel": 0.7567,
+        "content": "Caroline says realizing she can be herse"
+      },
+      {
+        "fid": 235,
+        "rel": 0.7946,
+        "content": "Caroline values a supportive community w"
+      },
+      {
+        "fid": 185,
+        "rel": 0.7462,
+        "content": "Caroline said on 17 August 2023 at 1:50 "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 271,
+        "rel": 0.8369,
+        "ce": 0.9181,
+        "content": "Caroline's relationships changed after h"
+      },
+      {
+        "fid": 84,
+        "rel": 0.7271,
+        "ce": 0.7416,
+        "content": "Caroline wants to use her story to help "
+      },
+      {
+        "fid": 32,
+        "rel": 0.6343,
+        "ce": 0.5665,
+        "content": "Caroline has been supported by friends, "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What types of pottery have Melanie and her kids made?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      12,
+      84,
+      86,
+      90,
+      117
+    ],
+    "removed": [
+      19,
+      26,
+      74,
+      76,
+      266
+    ],
+    "base_top3": [
+      {
+        "fid": 101,
+        "rel": 0.7826,
+        "content": "Melanie's kids made their own pots at th"
+      },
+      {
+        "fid": 100,
+        "rel": 0.7712,
+        "content": "Melanie said she took her kids to a pott"
+      },
+      {
+        "fid": 285,
+        "rel": 0.7626,
+        "content": "Melanie said her kids are tough and resi"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 36,
+        "rel": 0.8859,
+        "ce": 0.9834,
+        "content": "Melanie has a husband and kids who motiv"
+      },
+      {
+        "fid": 101,
+        "rel": 0.5743,
+        "ce": 0.4354,
+        "content": "Melanie's kids made their own pots at th"
+      },
+      {
+        "fid": 117,
+        "rel": 0.3308,
+        "ce": 0.0945,
+        "content": "Melanie's family helped her during a mov"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What has Melanie painted?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 17,
+    "changed": true,
+    "added": [
+      239,
+      262,
+      263
+    ],
+    "removed": [
+      9,
+      46,
+      178
+    ],
+    "base_top3": [
+      {
+        "fid": 149,
+        "rel": 0.754,
+        "content": "Caroline posted a painting she created f"
+      },
+      {
+        "fid": 220,
+        "rel": 0.7538,
+        "content": "Melanie painted a horse recently."
+      },
+      {
+        "fid": 231,
+        "rel": 0.7424,
+        "content": "Caroline has been busy painting and rece"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 263,
+        "rel": 0.787,
+        "ce": 0.8546,
+        "content": "Melanie's artistic mediums include paint"
+      },
+      {
+        "fid": 239,
+        "rel": 0.6588,
+        "ce": 0.6453,
+        "content": "Melanie's favorite type of art is painti"
+      },
+      {
+        "fid": 262,
+        "rel": 0.382,
+        "ce": 0.1816,
+        "content": "Melanie has been creating art for seven "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What are Melanie's pets' names?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 11,
+    "changed": true,
+    "added": [
+      35,
+      36,
+      52,
+      55,
+      134
+    ],
+    "removed": [
+      19,
+      20,
+      26,
+      83,
+      177
+    ],
+    "base_top3": [
+      {
+        "fid": 214,
+        "rel": 0.7131,
+        "content": "Melanie has a cat named Bailey."
+      },
+      {
+        "fid": 135,
+        "rel": 0.75,
+        "content": "Mel's dog is named Luna."
+      },
+      {
+        "fid": 323,
+        "rel": 0.5721,
+        "content": "Caroline wants to build her own family a"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 214,
+        "rel": 0.8774,
+        "ce": 0.987,
+        "content": "Melanie has a cat named Bailey."
+      },
+      {
+        "fid": 135,
+        "rel": 0.8734,
+        "ce": 0.9556,
+        "content": "Mel's dog is named Luna."
+      },
+      {
+        "fid": 134,
+        "rel": 0.8351,
+        "ce": 0.9969,
+        "content": "Mel has a dog and a cat."
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What subject have Caroline and Melanie both painted?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      150,
+      151,
+      221,
+      239,
+      262
+    ],
+    "removed": [
+      47,
+      61,
+      62,
+      152,
+      193
+    ],
+    "base_top3": [
+      {
+        "fid": 231,
+        "rel": 0.6837,
+        "content": "Caroline has been busy painting and rece"
+      },
+      {
+        "fid": 177,
+        "rel": 0.6816,
+        "content": "Caroline's recent painting expresses her"
+      },
+      {
+        "fid": 222,
+        "rel": 0.6805,
+        "content": "Caroline likes painting and created a se"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 263,
+        "rel": 0.8521,
+        "ce": 0.9955,
+        "content": "Melanie's artistic mediums include paint"
+      },
+      {
+        "fid": 239,
+        "rel": 0.8477,
+        "ce": 0.9857,
+        "content": "Melanie's favorite type of art is painti"
+      },
+      {
+        "fid": 151,
+        "rel": 0.7853,
+        "ce": 0.8898,
+        "content": "Caroline wanted to capture unity and str"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What symbols are important to Caroline?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      70,
+      82,
+      84,
+      92,
+      94
+    ],
+    "removed": [
+      15,
+      50,
+      110,
+      141,
+      172
+    ],
+    "base_top3": [
+      {
+        "fid": 95,
+        "rel": 0.6973,
+        "content": "Mel responded positively to Caroline's e"
+      },
+      {
+        "fid": 121,
+        "rel": 0.6606,
+        "content": "Caroline believes it is important to fig"
+      },
+      {
+        "fid": 175,
+        "rel": 0.6573,
+        "content": "Caroline believes it is important to kee"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 44,
+        "rel": 0.8486,
+        "ce": 0.9891,
+        "content": "The necklace symbolizes love, faith, and"
+      },
+      {
+        "fid": 70,
+        "rel": 0.7018,
+        "ce": 0.7332,
+        "content": "Caroline is passionate about helping peo"
+      },
+      {
+        "fid": 84,
+        "rel": 0.6837,
+        "ce": 0.7313,
+        "content": "Caroline wants to use her story to help "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What instruments does Melanie play?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      71,
+      143,
+      145,
+      153,
+      253
+    ],
+    "removed": [
+      20,
+      37,
+      63,
+      174,
+      285
+    ],
+    "base_top3": [
+      {
+        "fid": 87,
+        "rel": 0.6562,
+        "content": "Caroline is learning to play the piano."
+      },
+      {
+        "fid": 251,
+        "rel": 0.6493,
+        "content": "Melanie plays the clarinet and started w"
+      },
+      {
+        "fid": 242,
+        "rel": 0.6368,
+        "content": "Melanie's kids had fun exploring and pla"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 252,
+        "rel": 0.8343,
+        "ce": 0.9964,
+        "content": "Melanie enjoys classical music by Bach a"
+      },
+      {
+        "fid": 251,
+        "rel": 0.523,
+        "ce": 0.4387,
+        "content": "Melanie plays the clarinet and started w"
+      },
+      {
+        "fid": 87,
+        "rel": 0.263,
+        "ce": 0.0009,
+        "content": "Caroline is learning to play the piano."
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What musical artists/bands has Melanie seen?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      148,
+      239,
+      251,
+      253,
+      275
+    ],
+    "removed": [
+      63,
+      76,
+      102,
+      177,
+      215
+    ],
+    "base_top3": [
+      {
+        "fid": 252,
+        "rel": 0.7536,
+        "content": "Melanie enjoys classical music by Bach a"
+      },
+      {
+        "fid": 246,
+        "rel": 0.7168,
+        "content": "Melanie loves live music."
+      },
+      {
+        "fid": 247,
+        "rel": 0.7055,
+        "content": "Melanie attended a concert where the ban"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 252,
+        "rel": 0.8971,
+        "ce": 0.9928,
+        "content": "Melanie enjoys classical music by Bach a"
+      },
+      {
+        "fid": 253,
+        "rel": 0.6995,
+        "ce": 0.6537,
+        "content": "Melanie also likes modern music such as "
+      },
+      {
+        "fid": 251,
+        "rel": 0.4823,
+        "ce": 0.4039,
+        "content": "Melanie plays the clarinet and started w"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What are some changes Caroline has faced during her transiti",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 16,
+    "changed": true,
+    "added": [
+      75,
+      117,
+      237,
+      304
+    ],
+    "removed": [
+      36,
+      59,
+      86,
+      288
+    ],
+    "base_top3": [
+      {
+        "fid": 226,
+        "rel": 0.7345,
+        "content": "Melanie wished Caroline the best on her "
+      },
+      {
+        "fid": 271,
+        "rel": 0.7226,
+        "content": "Caroline's relationships changed after h"
+      },
+      {
+        "fid": 270,
+        "rel": 0.7201,
+        "content": "Caroline feels proud of her authentic se"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 271,
+        "rel": 0.883,
+        "ce": 0.99,
+        "content": "Caroline's relationships changed after h"
+      },
+      {
+        "fid": 329,
+        "rel": 0.6422,
+        "ce": 0.6283,
+        "content": "Caroline's transition and acceptance wer"
+      },
+      {
+        "fid": 234,
+        "rel": 0.327,
+        "ce": 0.0779,
+        "content": "Caroline is transitioning and has joined"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What does Melanie do with her family on hikes?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 15,
+    "changed": true,
+    "added": [
+      18,
+      32,
+      36,
+      53,
+      204
+    ],
+    "removed": [
+      24,
+      129,
+      130,
+      185,
+      229
+    ],
+    "base_top3": [
+      {
+        "fid": 117,
+        "rel": 0.7745,
+        "content": "Melanie's family helped her during a mov"
+      },
+      {
+        "fid": 169,
+        "rel": 0.7561,
+        "content": "Melanie said she feels lucky to have her"
+      },
+      {
+        "fid": 294,
+        "rel": 0.7495,
+        "content": "Caroline expressed that she is ready to "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 117,
+        "rel": 0.8039,
+        "ce": 0.8236,
+        "content": "Melanie's family helped her during a mov"
+      },
+      {
+        "fid": 36,
+        "rel": 0.7464,
+        "ce": 0.7799,
+        "content": "Melanie has a husband and kids who motiv"
+      },
+      {
+        "fid": 37,
+        "rel": 0.7453,
+        "ce": 0.77,
+        "content": "Melanie and her family played games, ate"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What transgender-specific events has Caroline attended?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 13,
+    "changed": true,
+    "added": [
+      29,
+      95,
+      158,
+      295,
+      309
+    ],
+    "removed": [
+      85,
+      103,
+      110,
+      202,
+      247
+    ],
+    "base_top3": [
+      {
+        "fid": 4,
+        "rel": 0.7642,
+        "content": "Caroline found the transgender stories a"
+      },
+      {
+        "fid": 92,
+        "rel": 0.7601,
+        "content": "Caroline plans to attend a transgender c"
+      },
+      {
+        "fid": 234,
+        "rel": 0.7122,
+        "content": "Caroline is transitioning and has joined"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 234,
+        "rel": 0.738,
+        "ce": 0.7551,
+        "content": "Caroline is transitioning and has joined"
+      },
+      {
+        "fid": 145,
+        "rel": 0.6305,
+        "ce": 0.5863,
+        "content": "Caroline and her mentee attended an LGBT"
+      },
+      {
+        "fid": 3,
+        "rel": 0.4458,
+        "ce": 0.2926,
+        "content": "Caroline attended an LGBTQ support group"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What book did Melanie read from Caroline's suggestion?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 18,
+    "changed": true,
+    "added": [
+      112,
+      333
+    ],
+    "removed": [
+      98,
+      328
+    ],
+    "base_top3": [
+      {
+        "fid": 128,
+        "rel": 0.7846,
+        "content": "Caroline's favorite book is \"Becoming Ni"
+      },
+      {
+        "fid": 306,
+        "rel": 0.7719,
+        "content": "Melanie has been reading a book Caroline"
+      },
+      {
+        "fid": 77,
+        "rel": 0.7317,
+        "content": "Melanie's favorite childhood book is \"Ch"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 306,
+        "rel": 0.9027,
+        "ce": 0.9898,
+        "content": "Melanie has been reading a book Caroline"
+      },
+      {
+        "fid": 130,
+        "rel": 0.3623,
+        "ce": 0.1276,
+        "content": "The book gave Caroline hope for her own "
+      },
+      {
+        "fid": 77,
+        "rel": 0.3598,
+        "ce": 0.1118,
+        "content": "Melanie's favorite childhood book is \"Ch"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "How many children does Melanie have?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 16,
+    "changed": true,
+    "added": [
+      100,
+      163,
+      241,
+      242
+    ],
+    "removed": [
+      19,
+      20,
+      72,
+      287
+    ],
+    "base_top3": [
+      {
+        "fid": 24,
+        "rel": 0.7564,
+        "content": "Caroline is thrilled to create a family "
+      },
+      {
+        "fid": 285,
+        "rel": 0.725,
+        "content": "Melanie said her kids are tough and resi"
+      },
+      {
+        "fid": 74,
+        "rel": 0.7214,
+        "content": "Caroline is creating a library for when "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 36,
+        "rel": 0.3289,
+        "ce": 0.075,
+        "content": "Melanie has a husband and kids who motiv"
+      },
+      {
+        "fid": 24,
+        "rel": 0.3026,
+        "ce": 0.0,
+        "content": "Caroline is thrilled to create a family "
+      },
+      {
+        "fid": 285,
+        "rel": 0.29,
+        "ce": 0.0,
+        "content": "Melanie said her kids are tough and resi"
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "When did Melanie go on a hike after the roadtrip?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      201,
+      216,
+      273,
+      274,
+      275
+    ],
+    "removed": [
+      65,
+      94,
+      210,
+      230,
+      295
+    ],
+    "base_top3": [
+      {
+        "fid": 279,
+        "rel": 0.7558,
+        "content": "During the roadtrip, Melanie's son was i"
+      },
+      {
+        "fid": 278,
+        "rel": 0.733,
+        "content": "Caroline and Melanie went on a roadtrip "
+      },
+      {
+        "fid": 188,
+        "rel": 0.7101,
+        "content": "Mel apologized for the hike and said it "
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 279,
+        "rel": 0.303,
+        "ce": 0.0011,
+        "content": "During the roadtrip, Melanie's son was i"
+      },
+      {
+        "fid": 278,
+        "rel": 0.3026,
+        "ce": 0.0157,
+        "content": "Caroline and Melanie went on a roadtrip "
+      },
+      {
+        "fid": 188,
+        "rel": 0.2841,
+        "ce": 0.0,
+        "content": "Mel apologized for the hike and said it "
+      }
+    ]
+  },
+  {
+    "question_id": "",
+    "question": "What items has Melanie bought?",
+    "base_count": 20,
+    "ce_count": 20,
+    "same": 14,
+    "changed": true,
+    "added": [
+      61,
+      100,
+      109,
+      148,
+      273
+    ],
+    "removed": [
+      92,
+      185,
+      214,
+      215,
+      293
+    ],
+    "base_top3": [
+      {
+        "fid": 322,
+        "rel": 0.6653,
+        "content": "Melanie bought figurines yesterday."
+      },
+      {
+        "fid": 306,
+        "rel": 0.6564,
+        "content": "Melanie has been reading a book Caroline"
+      },
+      {
+        "fid": 336,
+        "rel": 0.6525,
+        "content": "Melanie values being there for each othe"
+      }
+    ],
+    "ce_top3": [
+      {
+        "fid": 336,
+        "rel": 0.4215,
+        "ce": 0.2675,
+        "content": "Melanie values being there for each othe"
+      },
+      {
+        "fid": 258,
+        "rel": 0.4027,
+        "ce": 0.2495,
+        "content": "Melanie roasted marshmallows and shared "
+      },
+      {
+        "fid": 109,
+        "rel": 0.3124,
+        "ce": 0.1231,
+        "content": "Melanie says roses stand for love and be"
+      }
+    ]
+  }
+]

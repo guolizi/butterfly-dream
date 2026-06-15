@@ -360,6 +360,26 @@ class ThreeDimRetriever:
             except Exception:
                 _qembed = None
 
+        # Batch-load entity associations for all candidate facts.
+        # Used for entity relevance penalty below.
+        _candidate_entity_map: dict[int, set[str]] = {}
+        _candidate_ids = [c["fact_id"] for c in candidates if c.get("fact_id")]
+        if _candidate_ids and _exact_seed_set:
+            try:
+                _erows = self.store.execute_query(
+                    """SELECT fe.fact_id, e.name
+                       FROM fact_entities fe
+                       JOIN entities e ON fe.entity_id = e.entity_id
+                       WHERE fe.fact_id IN ({})""".format(
+                        ",".join("?" * len(_candidate_ids))
+                    ),
+                    tuple(_candidate_ids),
+                )
+                for _erow in _erows:
+                    _candidate_entity_map.setdefault(_erow["fact_id"], set()).add(_erow["name"])
+            except Exception:
+                pass
+
         for fact in candidates:
             # --- Relevance: embedding similarity (primary signal) ---
             embed_sim = 0.5
@@ -375,6 +395,19 @@ class ThreeDimRetriever:
 
             relevance = embed_sim  # semantic similarity, same for all candidates
 
+            # --- Entity relevance penalty ---
+            # Facts about entities NOT mentioned in the query get discounted.
+            # E.g. "What do Melanie's kids like?" — Caroline's facts get ×0.70
+            # so they don't drown out Melanie's facts via semantic similarity.
+            # Facts with no entity tag get a milder ×0.85 penalty.
+            # Only applied when the query explicitly mentions at least one entity.
+            if _exact_seed_set:
+                _fact_entities = _candidate_entity_map.get(fact.get("fact_id") or 0, set())
+                if _fact_entities:
+                    if not _fact_entities & _exact_seed_set:
+                        relevance *= 0.70  # no overlap → penalty
+                else:
+                    relevance *= 0.85  # no entity info → mild penalty
 
             relevance = min(1.0, relevance)
 
@@ -620,6 +653,8 @@ class ThreeDimRetriever:
         # best FTS5 match gets 1.0 and the worst gets 0.0.
         # BM25 returns negative values (more negative = better match).
         raw_ranks = [float(r["rank"]) for r in rows] if rows else [0]
+        if not raw_ranks:
+            raw_ranks = [0]
         bm25_min = min(raw_ranks)
         bm25_max = max(raw_ranks)
         bm25_range = bm25_max - bm25_min if bm25_max > bm25_min else 1.0
@@ -871,7 +906,11 @@ class ThreeDimRetriever:
             '没有', '看', '好', '自己', '这', '他', '她', '它', '们', '那', '被',
             '从', '把', '些', '所', '过', '对', '里', '为', '与', '及', '等',
         }
-        tokens_clean = [t for t in safe.split() if t.lower() not in STOP_WORDS]
+        tokens_clean = [
+            t for t in safe.split()
+            if t.lower() not in STOP_WORDS
+            and (len(t) >= 2 or re.search(r'[\u4e00-\u9fff]', t))
+        ]
         if not tokens_clean:
             # Fallback: if all tokens were stop words, keep original
             tokens_clean = safe.split()
@@ -904,10 +943,10 @@ class ThreeDimRetriever:
                     syn_terms = []
                 else:
                     syns = safe_syns
-                    syn_terms = [
-                        s + '*' if len(s) >= 3 or re.search(r'[\u4e00-\u9fff]', s) else s
-                        for s in syns
-                    ]
+                    # Synonyms are exact-match only — no prefix expansion.
+                    # Prefix matching on synonyms (e.g. fry* → frying, shaver* → shaving)
+                    # introduces massive noise without improving recall quality.
+                    syn_terms = list(syns)
                     # Deduplicate: avoid repeating the base term as a synonym
                     syn_terms = [st for st in syn_terms if st != base]
                 if syn_terms:

@@ -189,11 +189,24 @@ def process_conversation(provider: ButterflyDreamMemoryProvider, conv: dict):
         for attempt in range(4):
             provider._last_extracted_idx = 0
             provider.on_session_end(session_msgs)
-            # Wait for extraction to complete (max 100s per attempt)
+            # Wait for async extraction thread to finish adding ALL facts.
+            # Poll until the fact count has been stable for 1.5s (3 checks)
+            # after seeing new facts, or until 100s timeout.
+            stable_count = 0
+            last_count = before
             for _ in range(200):
                 time.sleep(0.5)
-                if provider._store and provider._store.count_facts() > before:
-                    break
+                if not provider._store:
+                    continue
+                current = provider._store.count_facts()
+                if current > before:
+                    if current == last_count:
+                        stable_count += 1
+                        if stable_count >= 3:  # no change for 1.5s → extraction done
+                            break
+                    else:
+                        stable_count = 0  # still adding, keep waiting
+                    last_count = current
             if provider._store and provider._store.count_facts() > before:
                 new_facts = provider._store.count_facts() - before
                 _log(f"[{idx+1}/{total}] {sname}: ✅ extracted {new_facts} facts ({n_turns} turns, attempt {attempt+1})")
@@ -223,7 +236,7 @@ def answer_question(provider: ButterflyDreamMemoryProvider, question: str, categ
 
     retriever = ThreeDimRetriever(provider._store)
     t0 = time.perf_counter()
-    results = retriever.search(query=question, scenario="chat", limit=20)
+    results = retriever.search(query=question, scenario="chat", limit=15)
     search_time = time.perf_counter() - t0
 
     if not results:

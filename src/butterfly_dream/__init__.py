@@ -185,6 +185,7 @@ Output strictly a JSON array of objects. Each object has:
   * Correct: ["小明", "跳绳", "清华大学", "运动爱好", "复仇者联盟"]
   * Wrong: ["小明喜欢跳绳这项运动", "专业支持小组", "the user went to the store", "t easy and acceptance"]
   * At minimum include the primary subject person/thing name
+  * ALIAS DETECTION: If a person is referred to by different names/nicknames (e.g. "Mel" and "Melanie", "Bob" and "Robert", "Mike" and "Michael"), they are THE SAME entity. Output only the FULL/CANONICAL name as the entity. Add the alias as a tag (e.g. "alias:Mel"). NEVER create separate entities for the same person.
 - "tags": str — comma-separated keywords
 - "importance": int 1-10 (7-9 major life events, 4-6 significant details/plans/preferences, 1-3 minor)
 - "is_persistent": bool
@@ -479,7 +480,30 @@ def _init_butterfly_logger(log_dir: str) -> logging.Logger:
 
 
 def _resolve_provider_credentials(provider: str) -> tuple[str, str]:
-    """Resolve (base_url, api_key) for a given provider name."""
+    """Resolve (base_url, api_key) for a given provider name.
+
+    Supports:
+    - ``custom:<name>`` — looks up Hermes config.yaml → custom_providers
+    - Named providers (deepseek, openai, etc.) — env var or default base URL
+    """
+    # Custom provider: look up Hermes config.yaml → custom_providers
+    if provider.startswith("custom:"):
+        name = provider[len("custom:"):].strip()
+        try:
+            from hermes_constants import get_hermes_home
+            import yaml
+            config_path = get_hermes_home() / "config.yaml"
+            if config_path.exists():
+                with open(config_path, encoding="utf-8") as f:
+                    all_cfg = yaml.safe_load(f) or {}
+                for cp in all_cfg.get("custom_providers", []):
+                    if cp.get("name") == name:
+                        return cp.get("base_url", "").rstrip("/"), cp.get("api_key", "")
+        except Exception:
+            logger.debug("ButterflyDream: failed to resolve custom provider '%s'", name)
+        return "", ""
+
+    # Standard provider: env var or default base URL
     prefix = provider.upper().replace("-", "_")
     api_key = os.environ.get(f"{prefix}_API_KEY", "")
     base_url = os.environ.get(f"{prefix}_BASE_URL", _DEFAULT_BASE_URLS.get(provider, ""))
@@ -531,14 +555,74 @@ def _call_extraction_llm(
         lang_hint = "\n\nCRITICAL: The conversation is in English. You MUST output all extracted facts in English, matching the conversation's language."
 
     url = f"{base_url}/chat/completions"
+
+    # Build user prompt (not f-string to avoid brace conflicts with CoT text)
+    _cot_prompt = (
+        "Conversation turns:\n\n"
+        + messages_text
+        + "\n\nI'll extract every concrete detail from this conversation as separate facts. "
+        "Let me work through this step by step:\n\n"
+        "**Step 1 — Sentence-by-sentence scan:** I'll go through each sentence in every turn. "
+        "For each sentence, I'll check:\n"
+        "- Does it contain a TIME reference? (dates, days, months, years, \"last week\", \"yesterday\", etc.)\n"
+        "- Does it contain a LOCATION or PLACE? (city, country, venue, home, beach, etc.)\n"
+        "- Does it describe a PERSON's ACTION or ACTIVITY? (went to, painted, played, signed up, etc.)\n"
+        "- Does it describe a STATE, PREFERENCE, or OPINION? (loves, thinks, believes, wants, etc.)\n"
+        "- Does it mention a NUMBER or QUANTITY? (3 kids, 5 years, twice a year, etc.)\n"
+        "- Does it mention a proper NOUN or NAME? (book title, pet name, organization, etc.)\n\n"
+        "**Step 2 — Identify complete events:** For each candidate sentence, I'll determine:\n"
+        "- Who is the subject? (person name)\n"
+        "- What happened? (action, state, or event)\n"
+        "- When did it happen? (specific date, or relative date I can compute)\n"
+        "- Where did it happen? (location, if mentioned)\n"
+        "- Are there any related details in nearby sentences that complete the picture?\n\n"
+        "**Step 3 — Write standalone facts:** For each complete event/detail I identified, "
+        "I'll write ONE standalone fact sentence. I will NOT merge different events into one fact. "
+        "Each fact must:\n"
+        "- Start with a person's name as subject\n"
+        "- Contain exactly one specific piece of information\n"
+        "- Preserve exact numbers (\"3 kids\", not \"several kids\")\n"
+        "- Use the ACTUAL names from the conversation (never \"User\", \"Participant\")\n\n"
+        "**Step 4 — Re-read for missed details:** I'll go through the conversation one more time. "
+        "For every detail I might have missed:\n"
+        "- Pet names, children's names, book titles, song names\n"
+        "- Dates of events, durations, frequencies\n"
+        "- Relationships between people\n"
+        "- Plans, intentions, future events\n"
+        "- Preferences, dislikes, opinions\n"
+        "- Past experiences, memories\n\n"
+        "**Step 5 — Deduplicate:** I'll review my fact list. If two facts say the EXACT same thing, "
+        "I'll keep one. If they describe different aspects of the same topic, I'll KEEP BOTH.\n\n"
+        "**Step 6 — Format each fact:**\n"
+        "- category: place/time/person/event/activity/preference/identity/goal/project/tool/"
+        "possession/state/opinion/general\n"
+        "- importance: 1-10 (7-9 major life events, 4-6 significant details/plans/preferences, 1-3 minor)\n"
+        "- entities: ONLY proper nouns - person names, place names, thing names. NEVER sentences or "
+        "fragments. NEVER common English words. ALWAYS use the canonical/full name, with aliases as "
+        "alias:Nickname in the name.\n"
+        "- tags: comma-separated keywords\n"
+        "- is_persistent: bool\n"
+        "- content_date: YYYY-MM-DD or null. This is the EVENT's actual date, computed from the "
+        "session date.\n\n"
+        "**Step 7 — Final validation:**\n"
+        "1. Did I extract EVERY concrete detail from the conversation?\n"
+        "2. Are all numbers preserved exactly (3 kids, not several kids)?\n"
+        "3. Are all entity names specific proper nouns (not common words like support, group)?\n"
+        "4. Are all dates computed to actual dates (not relative like last week)?\n"
+        "5. Does every fact have a person's name as subject (no The-starting facts)?\n"
+        "6. Is the JSON valid with no trailing commas?\n\n"
+        "Now I'll output ONLY the JSON array, no extra text."
+    )
+
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": base_prompt + lang_hint},
-            {"role": "user", "content": f"Conversation turns:\n\n{messages_text}\n\n=== STEP 1: EXTRACT EVERY FACT ===\nRead through each turn. For EVERY concrete detail, write a separate standalone fact.\nDo NOT merge, do NOT filter, do NOT skip. Extract ALL specific information.\n\n=== STEP 2: DEDUPLICATE ===\nNow review your facts. If two facts say the EXACT same thing, keep one.\nIf two facts are about different aspects of the same topic, KEEP BOTH.\n\n=== STEP 3: FORMAT ===\nAdd category, importance, entities, tags, is_persistent, content_date to each fact.\n\n=== STEP 4: FINAL CHECKS (8) ===\n1. COVERAGE: Re-read the conversation. Is EVERY concrete detail extracted?\n2. SPECIFICITY: Entity names must be specific — \"a bonsai tree\" not \"an item\"\n3. NUMBERS: All numbers preserved exactly — \"3 kids\" not \"several kids\"\n4. DATES: content_date must be the EVENT's date, not the conversation date. For \"last week\", \"a few days ago\", \"yesterday\" — compute the actual date from the session date. Never leave relative dates unresolved.\n5. RELATIONS: \"X suggested Y to Z\" relations must be preserved — who did/said what to whom\n6. NAMES: No fact may contain \"User\", \"Assistant\", \"Participant 1\", \"Participant 2\", or any generic role label. Every entity name must be a real name from the conversation content.\n7. SUBJECT: Every fact must contain a person's name (Evan, Sam, etc.) as subject or explicit owner. Avoid \"The\"-starting facts — rewrite \"The road trip included...\" to \"Evan's road trip included...\" or \"The painting instructor\" to \"Evan's painting instructor\".\n8. JSON: Valid JSON with no trailing commas, proper escaping\n\nOutput ONLY the JSON array, no extra text."},
+            {"role": "user", "content": _cot_prompt},
         ],
         "temperature": 0.2,
         "max_tokens": 16384,
+        "reasoning": {"max_tokens": 4096},
     }
     # Some providers support response_format for guaranteed JSON output,
     # but not all (e.g. owl-alpha). Only add it for known-good providers.
@@ -1037,7 +1121,7 @@ class ButterflyDreamMemoryProvider(MemoryProvider):
                         if facts:
                             logger.info("ButterflyDream session-end extracted %d facts", len(facts))
                             self._dlog.info("session-end: extracted %d facts", len(facts))
-                        # Reflection: check after extraction for accurate count
+                            # Reflection: check after extraction for accurate count
                         if self._reflection_enabled:
                             with self._extraction_lock:
                                 count = self._extraction_count

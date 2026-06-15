@@ -17,7 +17,7 @@ import sqlite3
 import threading
 from pathlib import Path
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 import jieba
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS facts (
     helpful_count   INTEGER DEFAULT 0,
     is_persistent   INTEGER DEFAULT 0,         -- 1 = long-lived fact, survives prefetch filtering
     content_date    TEXT,                       -- event date from conversation (e.g. '2023-01-19')
-    created_at      TEXT DEFAULT (datetime('now')),
-    updated_at      TEXT DEFAULT (datetime('now')),
+    created_at      TEXT DEFAULT (datetime('now','localtime')),
+    updated_at      TEXT DEFAULT (datetime('now','localtime')),
     embedding       BLOB                        -- 512-dim float32 dense vector (bge-small-zh)
 );
 
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS entities (
     entity_type TEXT DEFAULT 'unknown',
     aliases     TEXT DEFAULT '',
     embedding   BLOB,                           -- 512-dim float32 dense vector
-    created_at  TEXT DEFAULT (datetime('now'))
+    created_at  TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS fact_entities (
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS entity_relations (
     target_id   INTEGER NOT NULL REFERENCES entities(entity_id) ON DELETE CASCADE,
     relation    TEXT DEFAULT 'related_to',
     weight      REAL DEFAULT 1.0,
-    created_at  TEXT DEFAULT (datetime('now')),
+    created_at  TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(source_id, target_id, relation)
 );
 
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS merge_log (
     absorbed_fact_id INTEGER REFERENCES facts(fact_id) ON DELETE CASCADE,
     merged_content TEXT,
     merge_reason  TEXT DEFAULT 'auto',
-    created_at    TEXT DEFAULT (datetime('now'))
+    created_at    TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS media_attachments (
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS media_attachments (
     description   TEXT NOT NULL DEFAULT '',
     caption       TEXT DEFAULT '',
     transcript    TEXT DEFAULT '',
-    created_at    TEXT DEFAULT (datetime('now'))
+    created_at    TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS media_attachments_fts
@@ -333,8 +333,8 @@ class MemoryStore:
                 member_count INTEGER DEFAULT 0,
                 centroid     BLOB,
                 coherence    REAL DEFAULT 0.0,
-                created_at   TEXT DEFAULT (datetime('now')),
-                updated_at   TEXT DEFAULT (datetime('now'))
+                created_at   TEXT DEFAULT (datetime('now','localtime')),
+                updated_at   TEXT DEFAULT (datetime('now','localtime'))
             );
 
             CREATE TABLE IF NOT EXISTS cluster_members (
@@ -418,6 +418,27 @@ class MemoryStore:
                 extracted.extend(entities)
             extracted = list(dict.fromkeys(extracted))  # dedup
 
+            # Resolve entity aliases at insert time: if an entity name matches
+            # an existing canonical entity (prefix/subsequence/Levenshtein),
+            # use the canonical name and update fact content text accordingly.
+            resolved = []
+            for ent_name in extracted:
+                canonical = self._resolve_entity_alias(ent_name)
+                if canonical and canonical != ent_name:
+                    resolved.append(canonical)
+                    # Replace alias in content text for FTS5 searchability
+                    is_cjk = bool(re.search(r'[\u4e00-\u9fff]', ent_name))
+                    if is_cjk:
+                        pat = re.compile(re.escape(ent_name))
+                    else:
+                        pat = re.compile(
+                            r'\b' + re.escape(ent_name) + r'\b', re.IGNORECASE
+                        )
+                    content = pat.sub(canonical, content)
+                else:
+                    resolved.append(ent_name)
+            extracted = list(dict.fromkeys(resolved))
+
             # Level 1: Exact content match
             existing = self._conn.execute(
                 "SELECT fact_id, importance, trust_score, content, tags, is_persistent FROM facts WHERE content = ?",
@@ -466,7 +487,7 @@ class MemoryStore:
         self._conn.execute(
             """UPDATE facts SET importance=?, trust_score=?, tags=?,
                is_persistent=?, embedding=COALESCE(?, embedding),
-               updated_at=datetime('now') WHERE fact_id=?""",
+               updated_at=datetime('now','localtime') WHERE fact_id=?""",
             (new_importance, new_trust, merged_tags, new_persistent, embed_blob, fact_id),
         )
         self._conn.commit()
@@ -647,7 +668,7 @@ class MemoryStore:
         self._conn.execute(
             """UPDATE facts SET
                category=?, importance=?, trust_score=?, is_persistent=?, embedding=COALESCE(?, embedding),
-               updated_at=datetime('now')
+               updated_at=datetime('now','localtime')
                WHERE fact_id=?""",
             (new_category, new_importance,
              new_trust, new_persistent, embed_blob, fact_id),
@@ -832,7 +853,7 @@ class MemoryStore:
         updates = {k: v for k, v in kwargs.items() if k in allowed}
         if not updates:
             return False
-        updates["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        updates["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Build safe column list — keys are already whitelisted above
         columns = list(updates.keys())
         set_clause = ", ".join(f"{col}=?" for col in columns)
@@ -1140,7 +1161,7 @@ class MemoryStore:
                 importance = max(_IMPORTANCE_MIN, importance - _IMPORTANCE_DELTA)
             self._conn.execute(
                 """UPDATE facts SET trust_score=?, importance=?, helpful_count=?,
-                   retrieval_count=?, updated_at=datetime('now') WHERE fact_id=?""",
+                   retrieval_count=?, updated_at=datetime('now','localtime') WHERE fact_id=?""",
                 (trust, importance, helpful_count, retrieval_count, fact_id),
             )
             self._conn.commit()
@@ -1252,6 +1273,97 @@ class MemoryStore:
             and e.lower() not in _STOP_ENTITIES
             and MemoryStore._is_valid_entity(e)
         ]
+
+    @staticmethod
+    def _clean_entity_name(name: str) -> str:
+        """Universal entity name cleaning — model-agnostic sentence-fragment removal.
+
+        1. Strip generic/indefinite prefixes (Everyone, Someone, Whenever...)
+        2. Strip trailing verb fragments (is, was, have, has, does, did, do)
+        3. Collapse whitespace
+
+        These are safe universal rules: no proper entity name starts with 'Everyone'
+        or ends with ' is' as a separate word.
+        """
+        import re
+        # Strip generic indefinite pronoun prefixes
+        name = re.sub(
+            r'^(Everyone|Someone|Nobody|Anybody|Whoever|Somebody|Whenever)\s+',
+            '', name
+        )
+        # Strip trailing verb fragments (sentence fragments like "Caroline is")
+        name = re.sub(
+            r'\s+(is|was|are|were|has|have|had|does|did|do)$',
+            '', name
+        )
+        # Handle possessive confusion: "Caroline is's" → after stripping " is" → "Caroline"
+        # (the " is" was already stripped above if it was standalone)
+        return name.strip()
+
+    def _resolve_entity_alias(self, name: str) -> Optional[str]:
+        """Check if name is an alias or corrupted form of an existing entity.
+        Returns canonical name or None.
+
+        Two directions:
+        - Short alias → existing longer canonical (e.g., "Mel" → "Melanie")
+        - Long corrupted → existing shorter clean  (e.g., "Caroline is" → "Caroline")
+
+        Also runs universal cleaning first to strip common sentence-fragment
+        patterns (Everyone/Whenever/... prefixes, trailing verbs).
+        """
+        import re
+
+        # Step 1: Universal cleaning
+        cleaned = self._clean_entity_name(name)
+        if cleaned != name and cleaned:
+            # If cleaning produced a different name, check if the cleaned
+            # version already exists as an entity
+            existing_clean = self._conn.execute(
+                "SELECT name FROM entities WHERE name = ?", (cleaned,)
+            ).fetchone()
+            if existing_clean:
+                return existing_clean["name"]
+
+        # Step 2: Alias matching (short → long)
+        # Existing entity is LONGER than the candidate name
+        longer = self._conn.execute(
+            "SELECT name FROM entities WHERE LENGTH(name) > LENGTH(?) "
+            "AND name NOT LIKE '%category' AND name NOT LIKE '%子类' "
+            "AND name NOT LIKE '%抽象' AND name NOT LIKE '%abstract'",
+            (name,),
+        ).fetchall()
+        sn = name.lower()
+        for row in longer:
+            ln = row["name"].lower()
+            if (ln.startswith(sn)
+                    or self._is_subsequence(sn, ln)
+                    or self._levenshtein_ratio(sn, ln) >= 0.40):
+                return row["name"]
+
+        # Step 3: Reverse alias matching (long → short / corrupted)
+        # Existing entity is SHORTER than the candidate name, and is a
+        # prefix or subsequence — likely a corrupted longer form.
+        shorter = self._conn.execute(
+            "SELECT name FROM entities WHERE LENGTH(name) < LENGTH(?) "
+            "AND name NOT LIKE '%category' AND name NOT LIKE '%子类' "
+            "AND name NOT LIKE '%抽象' AND name NOT LIKE '%abstract'",
+            (name,),
+        ).fetchall()
+        ln = name.lower()
+        for row in shorter:
+            short_name = row["name"]
+            sn = short_name.lower()
+            # short is prefix of long: "Caroline" → "Caroline is"
+            if ln.startswith(sn):
+                return short_name
+            # short is subsequence of long: "Melanie" → "Everyone Melanie"
+            if self._is_subsequence(sn, ln):
+                return short_name
+            # fuzzy match
+            if self._levenshtein_ratio(sn, ln) >= 0.40:
+                return short_name
+
+        return None
 
     def _link_entities(self, fact_id: int, entity_names: list[str],
                        importance: float = 5.0) -> None:
@@ -1776,7 +1888,226 @@ class MemoryStore:
                 "active_entities": active_entities,
                 "avg_weight": round(avg_weight or 0, 3),
                 "relation_types": {r["relation"]: r["cnt"] for r in relation_types},
-            }
+        }
+
+    @staticmethod
+    def _is_subsequence(short: str, long: str) -> bool:
+        """Check if all chars of short appear in order in long (case-insensitive).
+        E.g. 'bob' in 'robert' → b→o→b ✓,  'liz' in 'elizabeth' → l→i→z ✓
+        """
+        it = iter(long.lower())
+        return all(c in it for c in short.lower())
+
+    @staticmethod
+    def _levenshtein_ratio(s1: str, s2: str) -> float:
+        """Normalized edit distance: 1.0 = identical, 0.0 = completely different."""
+        s1, s2 = s1.lower(), s2.lower()
+        if len(s1) < len(s2):
+            s1, s2 = s2, s1
+        if not s2:
+            return 0.0
+        prev = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            curr = [i + 1]
+            for j, c2 in enumerate(s2):
+                curr.append(min(
+                    curr[j] + 1,          # deletion
+                    prev[j + 1] + 1,      # insertion
+                    prev[j] + (c1 != c2)  # substitution
+                ))
+            prev = curr
+        dist = prev[-1]
+        return 1.0 - dist / max(len(s1), len(s2))
+
+    def merge_alias_entities(self) -> dict:
+        """Merge entity aliases using heuristic matching.
+
+        Rules:
+        - Abstract/category entities ("X category", "X子类") are skipped.
+        - One entity is considered an alias of another if ANY of:
+          a) It's a prefix of the longer name (e.g. "Mel" → "Melanie")
+          b) It's a subsequence of the longer name (e.g. "Bob" → "Robert")
+          c) Levenshtein ratio ≥ 0.40 (e.g. "Mike" → "Michael", ratio≈0.43)
+        - Min name length: 3 for English, 2 for CJK.
+        - The longer name becomes the canonical entity.
+        - After merging, fact content is also updated to replace
+          alias name with canonical name (word-boundary replacement for
+          English, safe substring for CJK).
+
+        Returns merge report dict.
+        """
+        import re as _re
+
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT entity_id, name FROM entities ORDER BY LENGTH(name) DESC"
+            ).fetchall()
+        entities = [(r["entity_id"], r["name"]) for r in rows]
+
+        id_to_name = dict(entities)
+
+        # Identify alias pairs
+        aliases = {}  # alias_id -> canonical_id
+        skip_ids = set()
+
+        for eid, name in entities:
+            if name.endswith('category') or name.endswith('子类') or name.endswith('抽象') or name.endswith('abstract'):
+                skip_ids.add(eid)
+
+        _STOP_WORDS = {
+            'the', 'a', 'an', 'and', 'or', 'in', 'on', 'at',
+            'to', 'for', 'of', 'by', 'with', 'is', 'it', 'be',
+            'up', 'no', 'go', 'my', 'we', 'he', 'she', 'me', 'us',
+        }
+
+        for alias_id, alias_name in entities:
+            if alias_id in skip_ids:
+                continue
+            for canon_id, canon_name in entities:
+                if canon_id in skip_ids or canon_id == alias_id:
+                    continue
+                # Determine short and long
+                if len(alias_name) < len(canon_name):
+                    short_name, long_name = alias_name, canon_name
+                    short_id, long_id = alias_id, canon_id
+                elif len(alias_name) > len(canon_name):
+                    short_name, long_name = canon_name, alias_name
+                    short_id, long_id = canon_id, alias_id
+                else:
+                    continue  # Same length, skip
+                min_len = 2 if _re.search(r'[\u4e00-\u9fff]', short_name) else 3
+                if len(short_name) < min_len:
+                    continue
+                if short_name.lower() in _STOP_WORDS:
+                    continue
+
+                # Three matching heuristics:
+                sn, ln = short_name.lower(), long_name.lower()
+                match = (
+                    ln.startswith(sn)                          # prefix
+                    or self._is_subsequence(sn, ln)            # subsequence
+                    or self._levenshtein_ratio(sn, ln) >= 0.40  # edit distance
+                )
+                if match:
+                    # short_name is alias → canonical = long_name
+                    aliases[short_id] = long_id
+
+        if not aliases:
+            return {"merged": 0, "pairs": []}
+
+        merged_pairs = []
+        for alias_id, canon_id in aliases.items():
+            alias_name = id_to_name.get(alias_id, "?")
+            canon_name = id_to_name.get(canon_id, "?")
+
+            with self._lock:
+                # Re-point fact_entities
+                self._conn.execute(
+                    "UPDATE OR IGNORE fact_entities SET entity_id=? WHERE entity_id=?",
+                    (canon_id, alias_id),
+                )
+                # Remove duplicates (same fact, same entity)
+                self._conn.execute(
+                    "DELETE FROM fact_entities WHERE rowid NOT IN ("
+                    "SELECT MIN(rowid) FROM fact_entities GROUP BY fact_id, entity_id)"
+                )
+                # Re-point entity_relations source/target
+                self._conn.execute(
+                    "UPDATE OR IGNORE entity_relations SET source_id=? WHERE source_id=?",
+                    (canon_id, alias_id),
+                )
+                self._conn.execute(
+                    "UPDATE OR IGNORE entity_relations SET target_id=? WHERE target_id=?",
+                    (canon_id, alias_id),
+                )
+                # Remove duplicate relations
+                self._conn.execute(
+                    "DELETE FROM entity_relations WHERE rowid NOT IN ("
+                    "SELECT MIN(rowid) FROM entity_relations "
+                    "GROUP BY source_id, target_id, relation)"
+                )
+                # Delete self-referential relations
+                self._conn.execute(
+                    "DELETE FROM entity_relations WHERE source_id = target_id"
+                )
+
+                # ── Update fact content text: replace alias name with canonical name ──
+                is_cjk = bool(_re.search(r'[\u4e00-\u9fff]', alias_name))
+                if is_cjk:
+                    # CJK: simple substring replacement
+                    alias_pat = _re.compile(_re.escape(alias_name))
+                else:
+                    # English: word-boundary replacement (case-insensitive)
+                    alias_pat = _re.compile(
+                        r'\b' + _re.escape(alias_name) + r'\b', _re.IGNORECASE
+                    )
+
+                for row in self._conn.execute(
+                    "SELECT fact_id, content FROM facts WHERE content LIKE ?",
+                    (f'%{alias_name}%',),
+                ).fetchall():
+                    fid, old_content = row["fact_id"], row["content"]
+                    new_content = alias_pat.sub(canon_name, old_content)
+                    if new_content == old_content:
+                        continue
+
+                    # Check for UNIQUE conflict: does new_content already exist?
+                    existing = self._conn.execute(
+                        "SELECT fact_id FROM facts WHERE content = ? AND fact_id != ?",
+                        (new_content, fid),
+                    ).fetchone()
+
+                    if existing:
+                        # Content already exists — merge entity links into the
+                        # existing fact, then delete this redundant fact.
+                        existing_fid = existing["fact_id"]
+                        # Re-point any fact_entities from the old fact to the existing one
+                        self._conn.execute(
+                            "UPDATE OR IGNORE fact_entities SET fact_id=? WHERE fact_id=?",
+                            (existing_fid, fid),
+                        )
+                        # Delete leftover fact_entities for the old fact
+                        self._conn.execute("DELETE FROM fact_entities WHERE fact_id=?", (fid,))
+                        # Delete the now-redundant fact
+                        self._conn.execute("DELETE FROM facts WHERE fact_id=?", (fid,))
+                        logger.debug(
+                            "Merged fact #%d (alias content) into fact #%d",
+                            fid, existing_fid,
+                        )
+                    else:
+                        # Safe to update content
+                        self._conn.execute(
+                            "UPDATE facts SET content=?, updated_at=datetime('now','localtime') WHERE fact_id=?",
+                            (new_content, fid),
+                        )
+                        # Re-compute embedding for the updated content
+                        try:
+                            from .embedding import get_embedding_service
+                            svc = get_embedding_service()
+                            vec = svc.encode_one(new_content)
+                            if vec is not None:
+                                self._conn.execute(
+                                    "UPDATE facts SET embedding=? WHERE fact_id=?",
+                                    (svc.serialize(vec), fid),
+                                )
+                        except Exception:
+                            pass
+
+                # Delete the alias entity
+                self._conn.execute("DELETE FROM entities WHERE entity_id=?", (alias_id,))
+                # Clear PPR cache entry
+                if hasattr(self, '_ppr_cache') and alias_id in self._ppr_cache:
+                    del self._ppr_cache[alias_id]
+                self._conn.commit()
+
+            merged_pairs.append({
+                "alias": alias_name,
+                "canonical": canon_name,
+                "alias_id": alias_id,
+                "canonical_id": canon_id,
+            })
+
+        return {"merged": len(aliases), "pairs": merged_pairs}
 
     def compute_ppr(
         self,
@@ -2093,7 +2424,7 @@ class MemoryStore:
             )
             self._conn.execute(
                 "UPDATE clusters SET member_count = member_count + 1, "
-                "updated_at = datetime('now') WHERE cluster_id = ?",
+                "updated_at = datetime('now','localtime') WHERE cluster_id = ?",
                 (cluster_id,),
             )
             # Find abstract entity for this cluster
@@ -2144,7 +2475,7 @@ class MemoryStore:
             )
             self._conn.execute(
                 "UPDATE clusters SET member_count = member_count - 1, "
-                "updated_at = datetime('now') WHERE cluster_id = ?",
+                "updated_at = datetime('now','localtime') WHERE cluster_id = ?",
                 (cluster_id,),
             )
             self._conn.commit()

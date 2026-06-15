@@ -3,7 +3,7 @@
 
 extraction:
   provider: openrouter
-  model: openai/gpt-oss-120b:free
+  model: owl-alpha
 
 answer:
   provider: openrouter

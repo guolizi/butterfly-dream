@@ -1,0 +1,325 @@
+{
+  "results": [
+    {
+      "question_id": "Q0",
+      "category": 1,
+      "question": "What did Caroline research?",
+      "ground_truth": "Adoption agencies",
+      "predicted": "Caroline was researching adoption agencies.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 2253.0
+    },
+    {
+      "question_id": "Q1",
+      "category": 1,
+      "question": "What is Caroline's identity?",
+      "ground_truth": "Transgender woman",
+      "predicted": "Caroline identifies as a transgender woman.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 62.6
+    },
+    {
+      "question_id": "Q2",
+      "category": 1,
+      "question": "What is Caroline's relationship status?",
+      "ground_truth": "Single",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 68.4
+    },
+    {
+      "question_id": "Q3",
+      "category": 1,
+      "question": "Where did Caroline move from 4 years ago?",
+      "ground_truth": "Sweden",
+      "predicted": "She moved here from her home country.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 59.3
+    },
+    {
+      "question_id": "Q4",
+      "category": 1,
+      "question": "What career path has Caroline decided to persue?",
+      "ground_truth": "counseling or mental health for Transgender people",
+      "predicted": "Caroline has decided to pursue a career in counseling and mental‑health work.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 82.7
+    },
+    {
+      "question_id": "Q5",
+      "category": 1,
+      "question": "What activities does Melanie partake in?",
+      "ground_truth": "pottery, camping, painting, swimming",
+      "predicted": "Melanie’s activities mentioned in the data include:\n\n- Roasting marshmallows and sharing stories around a campfire.  \n- Attending a concert where the band “Summer Sounds” performed.  \n- Participating in a charity race (which she found rewarding).  \n- Traveling with her family to the Grand Canyon.  \n- Showing a picture of her pet Oliver.  \n- Engaging in creative pursuits (she says creativity and family keep her at peace).",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 56.6
+    },
+    {
+      "question_id": "Q6",
+      "category": 1,
+      "question": "Where has Melanie camped?",
+      "ground_truth": "beach, mountains, forest",
+      "predicted": "Melanie has camped at the beach and in the mountains.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 55.2
+    },
+    {
+      "question_id": "Q7",
+      "category": 1,
+      "question": "What do Melanie's kids like?",
+      "ground_truth": "dinosaurs, nature",
+      "predicted": "Melanie’s kids like nature, swimming, the beach, parks (exploring and playing), and creative activities such as pottery.",
+      "score": 3,
+      "n_facts": 20,
+      "search_time_ms": 73.2
+    },
+    {
+      "question_id": "Q8",
+      "category": 1,
+      "question": "What books has Melanie read?",
+      "ground_truth": "\"Nothing is Impossible\", \"Charlotte's Web\"",
+      "predicted": "Melanie has read:\n\n- “Charlotte’s Web” (her favorite childhood book)  \n- A book that Caroline recommended (title not specified)  \n- A book she read last year that reminded her to pursue her dreams (title not specified)",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 58.2
+    },
+    {
+      "question_id": "Q9",
+      "category": 1,
+      "question": "What does Melanie do to destress?",
+      "ground_truth": "Running, pottery",
+      "predicted": "She relieves stress by going for runs.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 55.3
+    },
+    {
+      "question_id": "Q10",
+      "category": 1,
+      "question": "What LGBTQ+ events has Caroline participated in?",
+      "ground_truth": "Pride parade, school speech, support group",
+      "predicted": "Caroline has taken part in several LGBTQ+‑focused events, including:\n\n- Attending an LGBTQ support group on 7 May 2023.  \n- Participating in a parade (which she later said showed how much the LGBTQ+ community has grown).  \n- Attending a conference for the community (where she was excited to meet other people).  \n- Volunteering and sharing her story at the LGBTQ+ youth center.  \n- Joining a mentorship program for LGBTQ youth (on the weekend of 15 July 2023).",
+      "score": 3,
+      "n_facts": 20,
+      "search_time_ms": 58.7
+    },
+    {
+      "question_id": "Q11",
+      "category": 1,
+      "question": "What events has Caroline participated in to help children?",
+      "ground_truth": "Mentoring program, school speech",
+      "predicted": "Caroline has taken part in an adoption‑advice/assistance group and attended a community conference where she met other people.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 60.9
+    },
+    {
+      "question_id": "Q12",
+      "category": 1,
+      "question": "What did Melanie paint recently?",
+      "ground_truth": "sunset",
+      "predicted": "Melanie recently painted a horse.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 58.3
+    },
+    {
+      "question_id": "Q13",
+      "category": 1,
+      "question": "What activities has Melanie done with her family?",
+      "ground_truth": "Pottery, painting, camping, museum, swimming, hiking",
+      "predicted": "Melanie has gone camping with her family, visited the Grand Canyon, and attended a recent family gathering where they played games, ate food and hung out together.",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 68.4
+    },
+    {
+      "question_id": "Q14",
+      "category": 1,
+      "question": "In what ways is Caroline participating in the LGBTQ community?",
+      "ground_truth": "Joining activist group, going to pride parades, participating in an art show, mentoring program",
+      "predicted": "Caroline is actively involved in the LGBTQ community through a variety of actions, including:\n\n- **Volunteer work** – she volunteers at an LGBTQ+ youth center and plans to keep doing so.  \n- **Advocacy and awareness** – she spreads awareness, encourages others to get involved, and promotes LGBTQ rights.  \n- **Community participation** – she attends LGBTQ support groups, conferences, and events (e.g., Pride fest) and connects with other community members.  \n- **Creative support** – she creates inclusive, diverse artwork that supports LGBTQ+ causes.  \n- **Adoption advocacy** – she sought out and passed interviews with an adoption agency that assists LGBTQ+ individuals.  \n- **Personal visibility** – she is openly transitioning, which serves as representation and inspiration for others.",
+      "score": 3,
+      "n_facts": 20,
+      "search_time_ms": 70.4
+    },
+    {
+      "question_id": "Q15",
+      "category": 1,
+      "question": "How many times has Melanie gone to the beach in 2023?",
+      "ground_truth": "2",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 63.9
+    },
+    {
+      "question_id": "Q16",
+      "category": 1,
+      "question": "What kind of art does Caroline make?",
+      "ground_truth": "abstract art",
+      "predicted": "Caroline creates abstract paintings.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 58.4
+    },
+    {
+      "question_id": "Q17",
+      "category": 1,
+      "question": "Who supports Caroline when she has a negative experience?",
+      "ground_truth": "Her mentors, family, and friends",
+      "predicted": "Caroline is supported by her LGBTQ support group and the broader community of friends, family and mentors who accept and love her.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 60.2
+    },
+    {
+      "question_id": "Q18",
+      "category": 1,
+      "question": "What types of pottery have Melanie and her kids made?",
+      "ground_truth": "bowls, cup",
+      "predicted": "Melanie’s kids made pots, and Melanie herself created a black‑and‑white bowl (along with other pottery pieces).",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 69.7
+    },
+    {
+      "question_id": "Q19",
+      "category": 1,
+      "question": "What has Melanie painted?",
+      "ground_truth": "Horse, sunset, sunrise",
+      "predicted": "Melanie has painted a horse, a sunset‑inspired work, nature‑inspired paintings she did with her kids, a lake sunrise, and an abstract piece with peaceful blue streaks.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 54.9
+    },
+    {
+      "question_id": "Q20",
+      "category": 1,
+      "question": "What are Melanie's pets' names?",
+      "ground_truth": "Oliver, Luna, Bailey",
+      "predicted": "Melanie’s pets are named Bailey, Luna, and Oliver.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 70.3
+    },
+    {
+      "question_id": "Q21",
+      "category": 1,
+      "question": "What subject have Caroline and Melanie both painted?",
+      "ground_truth": "Sunsets",
+      "predicted": "Both Caroline and Melanie have painted sunsets.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 59.4
+    },
+    {
+      "question_id": "Q22",
+      "category": 1,
+      "question": "What symbols are important to Caroline?",
+      "ground_truth": "Rainbow flag, transgender symbol",
+      "predicted": "The necklace—its symbolism of love, faith and strength—is important to Caroline.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 57.9
+    },
+    {
+      "question_id": "Q23",
+      "category": 1,
+      "question": "What instruments does Melanie play?",
+      "ground_truth": "clarinet and violin",
+      "predicted": "Melanie plays the clarinet.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 57.0
+    },
+    {
+      "question_id": "Q24",
+      "category": 1,
+      "question": "What musical artists/bands has Melanie seen?",
+      "ground_truth": "Summer Sounds, Matt Patterson",
+      "predicted": "Melanie has seen performances by Bach, Mozart, and the band “Summer Sounds.”",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 60.4
+    },
+    {
+      "question_id": "Q25",
+      "category": 1,
+      "question": "What are some changes Caroline has faced during her transition journey?",
+      "ground_truth": "Changes to her body, losing unsupportive friends",
+      "predicted": "Caroline has experienced several changes during her transition, including:\n\n- **Shifts in relationships** – some friends stayed supportive while others could not handle her transition.  \n- **Physical and bodily changes** – she uses art to explore and understand her changing body.  \n- **Increased public visibility** – she gave a school‑event talk about her transgender journey.  \n- **Greater self‑acceptance and pride** – she feels proud of her authentic self and wants to use her story to help others.  \n- **Expanded creative expression** – painting and other art have become tools for processing and sharing her experience.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 67.4
+    },
+    {
+      "question_id": "Q26",
+      "category": 1,
+      "question": "What does Melanie do with her family on hikes?",
+      "ground_truth": "Roast marshmallows, tell stories",
+      "predicted": "She hikes with her family, playing games, sharing food and just hanging out together.",
+      "score": 2,
+      "n_facts": 20,
+      "search_time_ms": 59.0
+    },
+    {
+      "question_id": "Q27",
+      "category": 1,
+      "question": "What transgender-specific events has Caroline attended?",
+      "ground_truth": "Poetry reading, conference",
+      "predicted": "Caroline has attended a transgender support‑group meeting (7 May 2023) and a transgender poetry reading (6 October 2023).",
+      "score": 3,
+      "n_facts": 20,
+      "search_time_ms": 61.7
+    },
+    {
+      "question_id": "Q28",
+      "category": 1,
+      "question": "What book did Melanie read from Caroline's suggestion?",
+      "ground_truth": "\"Becoming Nicole\"",
+      "predicted": "Melanie read “Becoming Nicole” by Amy Ellis Nutt, which was Caroline’s recommendation.",
+      "score": 5,
+      "n_facts": 20,
+      "search_time_ms": 62.3
+    },
+    {
+      "question_id": "Q29",
+      "category": 1,
+      "question": "How many children does Melanie have?",
+      "ground_truth": "3",
+      "predicted": "2",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 56.3
+    },
+    {
+      "question_id": "Q30",
+      "category": 1,
+      "question": "When did Melanie go on a hike after the roadtrip?",
+      "ground_truth": "19 October 2023",
+      "predicted": "No information available.",
+      "score": 1,
+      "n_facts": 20,
+      "search_time_ms": 63.9
+    },
+    {
+      "question_id": "Q31",
+      "category": 1,
+      "question": "What items has Melanie bought?",
+      "ground_truth": "Figurines, shoes",
+      "predicted": "Figurines.",
+      "score": 4,
+      "n_facts": 20,
+      "search_time_ms": 67.8
+    }
+  ],
+  "label": "BASELINE"
+}
