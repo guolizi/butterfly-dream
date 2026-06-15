@@ -79,40 +79,64 @@ class QueryClassifier:
             r"\bwhere\s+(did|was|is|are)\b",
             r"\bhow\s+(many|much|long|old)\b",
             r"\bwhich\s+(one|of|of the)\b",
+            # 中文规则
+            r"\b(什么|哪个|谁|哪里|什么时候|多少|怎么)\b",
+            r"\b(名字|颜色|类型|日期|时间|地点|原因)\b",
         ],
         "causal": [
             r"\bwhy\s+(did|does|is|are|was|were)\b",
             r"\bwhat\s+(caused|led to|resulted in)\b",
             r"\breason\b",
             r"\bbecause\b",
+            # 中文规则
+            r"\b(为什么|为何|怎么(会|可能)|原因|导致|造成|引发|促使)\b",
+            r"\b(因为|所以|因此|于是|结果)\b",
         ],
         "prediction": [
             r"\b(will|would|going to|likely|probably)\b.*\b(next|future|eventually)\b",
             r"\bwhat\s+(will|would)\b.*\bdo\b",
             r"\bprediction\b",
             r"\bexpect\b",
+            # 中文规则
+            r"\b(会|将要|接下来|下一步|未来|之后|预测|预计|可能)\b",
+            r"\b(会怎样|会怎么做|会如何|会有什么)\b",
         ],
         "contradiction": [
             r"\b(contradict|conflict|inconsistent|contradiction)\b",
             r"\b(change|changed|different)\s+(mind|opinion|view)\b",
+            # 中文规则
+            r"\b(矛盾|冲突|不一致|前后矛盾|自相矛盾)\b",
+            r"\b(变了|改变了|不一样了|说过的|说过的话)\b",
         ],
         "relation": [
             r"\b(relationship|relation|connected|related)\b",
             r"\bhow\s+(are|is)\s+\w+\s+and\s+\w+\s+(related|connected)\b",
+            # 中文规则
+            r"\b(关系|联系|关联|相关|之间)\b",
+            r"\b(朋友|同事|家人|恋人|亲戚|认识)\b",
         ],
         "emotion": [
             r"\b(feel|feeling|emotion|mood|sentiment|happy|sad|angry|anxious)\b",
             r"\bhow\s+(is|are)\s+\w+\s+(feeling|doing)\b",
+            # 中文规则
+            r"\b(心情|情绪|感觉|感受|情感|态度)\b",
+            r"\b(开心|难过|生气|焦虑|伤心|快乐|沮丧|害怕|担心|满意)\b",
         ],
         "narrative": [
             r"\b(experience|story|journey|timeline|history|background)\b",
             r"\bwhat\s+(happened|occurred|transpired)\b",
             r"\btell me about\b",
+            # 中文规则
+            r"\b(经历|故事|经过|历程|过程|背景|历史|回忆)\b",
+            r"\b(发生了|做了什么|怎么了|怎么回事)\b",
         ],
         "persona": [
             r"\b(personality|character|temperament|person|like)\b",
             r"\bwhat\s+kind\s+of\s+(person|personality)\b",
             r"\bdescribe\s+\w+\b",
+            # 中文规则
+            r"\b(性格|人格|个性|为人|什么样的人|怎样的人|特点|特质)\b",
+            r"\b(描述|介绍|评价|觉得|认为)\s+\w+\b",
         ],
     }
 
@@ -241,8 +265,10 @@ class L0Retrieval(RetrievalSource):
 
 **三维评分 (现有 ThreeDimRetriever 的增强版)**:
 ```
-score = (α × relevance + β × recency + γ × importance) × trust × cooling_factor
+score = (α × relevance + β × recency + γ × importance) × trust × heat_zone_weight
 ```
+
+其中 `heat_zone_weight` 来自热度权重表（🔥=1.0, 🌤️=0.7, ❄️=0.4, 🧊=0.2），而非冷却系数。冷却系数决定事实处于哪个热度区间，热度区间决定权重。详见 §5 热度与检索的交互。
 
 **池间路由**: 根据 query 类型优先检索特定池
 
@@ -665,21 +691,34 @@ def cost_aware_route(intent: QueryIntent, active_layers: list[int]) -> list[int]
 
 ### 5.2 冷却系数叠加
 
-每条事实的冷却系数 = 各层叠加影响:
+每条事实的冷却系数 = 各层叠加影响（乘性系数，>1 加速冷却，<1 减速冷却）：
 
 ```
-cooling_factor = 1.0
-  - L1_boost:  importance / 10.0                    (0.1 ~ 1.0)
-  - L2_boost:  relation_density / max_density        (0.0 ~ 1.0)
-  - L3_boost:  has_abstract ? 0.8 : 1.0             (0.8 or 1.0)
-  - L4_boost:  is_narrative_key ? 0.9 : 1.0         (0.9 or 1.0)
-  - L5_boost:  is_core_trait ? 0.7 : 1.0            (0.7 or 1.0)
+冷却系数 = 1.0
+  × L1_factor:  importance ≤ 3 → 1.5  (低重要性加速冷却)
+  × L2_factor:  relation_density_high → 0.5  (高关系密度减速冷却)
+  × L3_factor:  has_abstract → 2.0  (已抽象替代加速冷却)
+  × L4_factor:  is_narrative_key → 0.3  (叙事关键节点减速冷却)
+  × L5_factor:  is_core_trait → 0.3  (核心特质减速冷却)
 
-cooling_factor = min(1.0, L1_boost × L2_boost × L3_boost × L4_boost × L5_boost)
+综合冷却系数 = 各层系数相乘
+- 系数 < 1 → 冷却减速（保留在热区更久）
+- 系数 > 1 → 冷却加速（更快冷却）
 ```
 
-- cooling_factor 越接近 0 → 越应该保留在热区
-- cooling_factor 越接近 1 → 越容易冷却
+**例子：**
+```
+事实: "Caroline 2023-05-08 参加了支持小组"
+  L1: importance=3 → 加速 × 1.5
+  L2: 12条关系链 → 减速 × 0.5
+  L3: 已抽象替代 → 加速 × 2.0
+  L4: 叙事关键节点 → 减速 × 0.3
+  ────────────────────────────
+  综合: 1.5 × 0.5 × 2.0 × 0.3 = 0.45
+  → 冷却很慢，长期保持温/热 ✅
+```
+
+> 与主文档 §7.7 冷却系数公式一致。
 
 ### 5.3 热度 → 检索策略映射
 
