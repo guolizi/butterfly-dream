@@ -129,24 +129,103 @@
 
 ---
 
-## 三、数据结构
+## 三、存储模型
 
-### 3.1 三表结构（最终形态）
+### 3.1 情感事件池（L1 第 4 个池）
+
+情感事件作为 L1 的第 4 个池，与事件记录池、静态知识池、行为模式池并列。
+
+```
+L1 池体系:
+
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  事件记录池    │  │  静态知识池    │  │  行为模式池    │  │  情感事件池    │
+│  (文本事实)    │  │  (去时间化)    │  │  (条件-行为)   │  │  (VAD 序列)   │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+       ↓                                                      ↓
+  推导层（非存储，查询时构建或睡眠周期物化）
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+  │  情感转变      │  │  情感模式      │  │  情感触发关联   │
+  │  (transitions)│  │  (patterns)   │  │  (triggers)   │
+  └──────────────┘  └──────────────┘  └──────────────┘
+```
+
+**为什么独立成池：**
+- 情感池的核心数据是**连续数值**（VAD 三维），不是文本，FTS5/embedding 检索不适用
+- 冷却规则不同（importance 特殊处理）
+- 单条情感事件没有独立意义，必须放在时间序列中才有价值
+- 与事件池通过 `context_fact_id` 关联，互不依赖存储
+
+**情感池 vs 事件池的关系：**
+
+```
+事件池: "Caroline 的宠物去世了" (fact_id=1001)
+    ↓ context_fact_id
+情感池: valence=-0.85, arousal=0.7, dominance=0.2, importance=0.95
+    ↑ 两条记录通过 context_fact_id 关联
+    ↑ 情感池是连续的线，事件池是线上的点
+```
+
+### 3.2 数据结构
+
+#### 情感事件池（Phase 1 一表）
+
+```sql
+emotion_events:
+  event_id, person, timestamp,
+  valence, arousal, dominance,         -- VAD 三维核心
+  emotion_label,                       -- 可选，方便人类阅读
+  intensity,                           -- 派生：√(v² + a² + d²)/√3
+  primary_fact_id,                     -- 主要触发事实（非空）
+  related_fact_ids,                    -- 关联事实列表（可选，TEXT[]）
+    -- 支持多因情感：同一天升职+朋友搬走 → 矛盾情感
+    -- primary_fact_id 是主要触发因素，related_fact_ids 是辅助因素
+  source (llm_extraction / l0_promotion / inferred),
+  importance (0.0~1.0),               -- 情感重要性
+  significance_reason,                 -- LLM 标注的重要性理由（可选）
+  trigger_topics (TEXT[]),             -- 提取的情感触发话题
+  notes
+```
+
+#### 事件池（新增 emotion_tag 字段）
+
+```sql
+event_facts:
+  fact_id, person, timestamp, content,
+  emotion_tag TEXT,                    -- 新增：轻量情感标签
+    -- null      = 中性/无情感（默认）
+    -- "开心"    = 具体情感标签
+    -- "positive" = 正向情感（valence > 0.3，自动派生）
+    -- "negative" = 负向情感（valence < -0.3，自动派生）
+    -- "mixed"   = 矛盾情感
+  ...
+```
+
+**emotion_tag 的作用：**
+- 让 L3 抽象层能**直接过滤**情感相关事实，无需每次 JOIN 情感池
+- 只存标签，不存 VAD 数值（避免冗余）
+- 需要详细 VAD 时 → 通过 `primary_fact_id` JOIN 到情感池
+
+**同步时机：**
+- 多维度提取时，同一 LLM 调用同时输出事件维度和情感维度
+  - `dimension: "event"` → 写入事件池（含 emotion_tag）
+  - `dimension: "emotion"` → 写入情感池（含完整 VAD）
+- 睡眠周期中如果情感池有更新，同步更新事件池的 emotion_tag
+
+#### 三表结构（最终形态，Phase 2 物化）
 
 ```sql
 -- 情感状态节点
 emotion_states:
   state_id, person, timestamp,
-  valence, arousal, dominance,         -- VAD 三维核心
-  emotion_label,                       -- 可选，方便人类阅读
-  intensity (从 VAD 综合计算),          -- 派生字段：√(v² + a² + d²)/√3
-  context_fact_id,                     -- 关联到触发该情感的事实
-  source (llm_extraction / l0_promotion / inferred),
-  importance (0.0~1.0),               -- 情感重要性（区别于 intensity）
-    -- intensity 是"有多强烈"，importance 是"对用户人生有多重要"
-    -- 宠物去世：intensity=0.9, importance=0.95
-    -- 被路人踩脚：intensity=0.8, importance=0.1
-  significance_reason,                 -- LLM 标注的重要性理由（可选）
+  valence, arousal, dominance,
+  emotion_label,
+  intensity,
+  primary_fact_id,
+  related_fact_ids,
+  source,
+  importance,
+  significance_reason,
   notes
 
 -- 情感转变
@@ -165,39 +244,17 @@ emotion_patterns:
   confidence, source_transition_ids,
   created_at, updated_at
 
--- 情感触发关联（支撑 LLM 情感回避）
+-- 情感触发关联
 emotion_triggers:
   trigger_id, person,
   trigger_type (topic / entity / event_type / location / ...),
-  trigger_value,                     -- 如 "身高"、"宠物"、"医院"
+  trigger_value,
   associated_valence, associated_arousal, associated_dominance,
-    -- 该触发物关联的典型 VAD 值（多次触发的均值）
-  trigger_count,                     -- 触发次数
+  trigger_count,
   last_triggered_at,
-  confidence,                        -- 关联的置信度（基于触发次数和一致性）
-  source_state_ids                   -- 来源情感状态节点
+  confidence,
+  source_state_ids
 ```
-
-### 3.2 初期实现（一表）
-
-```sql
-emotion_events:
-  event_id, person, timestamp,
-  valence, arousal, dominance,
-  emotion_label,
-  context_fact_id,
-  source,
-  importance (0.0~1.0),
-  significance_reason,
-  trigger_topics (TEXT[], 提取的情感触发话题)
-```
-
-查询时动态推导：
-- **transitions** = 按时间排序相邻 event 的 VAD 变化
-- **patterns** = 聚类相似 VAD 变化路径
-- **triggers** = 按 topic 聚合的 VAD 均值
-
-冷却：简单时间衰减（按 timestamp 降权），importance ≥ 0.8 永久保温
 
 ### 3.3 三个层次
 
@@ -208,6 +265,16 @@ emotion_events:
     ↓ 抽象
 情感模式（多次转变中归纳的规律）
 ```
+
+### 3.4 查询时动态推导（Phase 1）
+
+```sql
+-- transitions = 按时间排序相邻 event 的 VAD 变化
+-- patterns = 聚类相似 VAD 变化路径
+-- triggers = 按 topic 聚合的 VAD 均值
+```
+
+冷却：简单时间衰减（按 timestamp 降权），importance ≥ 0.8 永久保温
 
 ---
 
@@ -434,3 +501,4 @@ Phase 3（高级能力）:
 |:----|:-----|:----------|
 | 2026-06-14 | 初始讨论 | 问题分析、VAD 模型引入、三表结构、冷却框架、与各层关系 |
 | 2026-06-16 | 深度分析 | 四大核心能力明确、VAD 定稿、importance 机制、emotion_triggers、LLM 情感记忆服务。详见主架构文档 §十 讨论记录 |
+| 2026-06-16 | 存储模型定稿 | 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签。详见 §三 |

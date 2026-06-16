@@ -448,9 +448,11 @@ L0→L1 晋升时，LLM 提取事件维度时**尽量**填充结构化字段，�
 
 ---
 
-### 情感维度（独立维度，非池）
+### 情感事件池（L1 第 4 个池）
 
-情感作为独立维度，不存储为具体事实，而是存储**结构化的情感轨迹**。详见独立设计文档 `docs/v2-emotion-dimension.md`。
+情感事件作为 L1 的第 4 个池，与事件记录池、静态知识池、行为模式池并列。详见独立设计文档 `docs/v2-emotion-dimension.md`。
+
+情感池存储**结构化的 VAD 序列**，与事件池通过 `primary_fact_id` 关联——情感池是连续的线，事件池是线上的点。
 
 **核心定位：** 信号层，不是推理层。记录"发生了什么情感"，不负责"为什么"和"接下来会怎样"。
 
@@ -466,15 +468,17 @@ L0→L1 晋升时，LLM 提取事件维度时**尽量**填充结构化字段，�
 - **VAD 三维**替代单标签+强度，LLM 直接输出 VAD 值
 - **importance** 字段区分 intensity（多强烈）和 importance（多重要），≥ 0.8 永久保温
 - **emotion_triggers** 表支撑 LLM 情感回避（话题→VAD 映射）
+- 情感事件支持**多事实关联**（`primary_fact_id` + `related_fact_ids`）
+- 事件池新增 **emotion_tag** 轻量标签，供 L3 抽象层直接过滤，无需每次 JOIN 情感池
 - 初期一表（emotion_events），Phase 2 物化三表 + triggers
 
 **与各层的关系：**
 ```
-事件记录池 ← 触发 → 情感状态节点
-    ↓                      ↓
+事件记录池 ← 触发（primary_fact_id）→ 情感事件池
+    ↓                                  ↓
 时间链 ← 关联 → 情感转变 ← 抽象 → 情感模式
-    ↓                      ↓
-因果链          行为预测 / 情感理解 / LLM 对话
+    ↓                                  ↓
+因果链              行为预测 / 情感理解 / LLM 对话
 ```
 
 ---
@@ -1581,5 +1585,6 @@ sleep_cycle_log:
 | 2026-06-16 | 检索路由独立文档 | ✅ 将 §8 检索路由设计移入独立文档 `v2-retrieval-design.md`（早期探索版本，已废弃），新增两阶段检索（MemRL 启发）、效用驱动更新（Q 值学习）、检索反馈闭环、多步迭代检索等。后被新 `v2-retrieval-design.md` 替代 |
 | 2026-06-16 | 检索算法全面重构 — Pro 模型设计 | ✅ 放弃旧方案（线性加权+L2-L5附加上下文），改为四阶段检索管道：QueryClassifier（9种query类型）→ LayerRouter → ParallelRetrieval（各层统一RetrievalSource接口）→ FusionEngine（MMR重排序+结构化上下文包）。详见 `v2-retrieval-design.md` |
 | 2026-06-16 | 认知检索融合 — Parent-Child + 心理探针 + 马氏距离 + 反差检索 | ✅ 吸收外部方案，新增四个检索维度：① L3 Parent-Child 机制（抽象事实带回 L1 源事实）；② L5 心理探针检索（query 心理探针 → 历史相似心理状态记忆）；③ L3 聚类匹配使用马氏距离替代余弦相似度；④ L5 反差检索（检索历史上预测失败的反例记忆，用于自我修正）。详见 `v2-retrieval-design.md` §3.5/§3.7 |
-|| 2026-06-16 | SARR 状态感知检索融合 — 心境共振 + 因果子图 + 时间折叠 | ✅ 吸收 SARR 方案，新增三个机制：① FusionEngine 心境一致性共振评分（GMM 模式相似度提权）；② L2 因果子图游走（L1 命中触发因果回溯）；③ L4 时间折叠（叙事时间窗过滤 L1）。详见 `v2-retrieval-design.md` §3.4/§3.6/§6 |
+| 2026-06-16 | SARR 状态感知检索融合 — 心境共振 + 因果子图 + 时间折叠 | ✅ 吸收 SARR 方案，新增三个机制：① FusionEngine 心境一致性共振评分（GMM 模式相似度提权）；② L2 因果子图游走（L1 命中触发因果回溯）；③ L4 时间折叠（叙事时间窗过滤 L1）。详见 `v2-retrieval-design.md` §3.4/§3.6/§6 |
 | 2026-06-16 | 情感维度深度分析 — 四大核心能力 + VAD + importance + 情感触发关联 | ✅ 重写情感维度章节。核心变化：① 明确四大核心能力（记录/模式发现/状态感知/LLM 情感记忆服务）；② VAD 三维替代单标签+强度；③ 新增 importance 字段区分"多强烈"和"多重要"；④ 新增 emotion_triggers 表支撑情感回避；⑤ LLM 直接输出 VAD 值；⑥ importance ≥ 0.8 永久保温。详见 §4-情感维度 |
+| 2026-06-16 | 情感存储模型定稿 — 情感事件池 + 多事实关联 + emotion_tag | ✅ 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签，供 L3 抽象层直接过滤。详见 `docs/v2-emotion-dimension.md` |
