@@ -1304,7 +1304,86 @@ class FusionEngine:
         return context
 ```
 
-### 6.3 内容相似度与去重
+### 6.2.4 抽象-源事实折叠 (Fold/Unfold)
+
+**问题：** L3 检索通过 Parent-Child 回溯带回 L1 源事实，同时 L1 独立检索也可能命中同一组事实。FusionEngine 合并后产生信息冗余——抽象和源事实语义互补但信息重叠。
+
+**策略：** 在 MMR 重排序之前，增加折叠步骤——如果 L1 事实已被高置信度的 L3 抽象覆盖，则抑制 L1 事实的直接展示，存入展开池（Unfold Pool），仅在用户追问细节时返回。
+
+```python
+def _fold_abstract_sources(self, merged_results):
+    """折叠: 被 L3 抽象覆盖的 L1 事实抑制展示，存入展开池
+    
+    折叠条件（同时满足）:
+    1. L3 抽象事实的 abstracts_from 包含该 L1 事实 ID
+    2. L3 抽象事实的置信度 ≥ 0.7（足够可靠）
+    
+    不满足条件时保留 L1 事实（保守策略）。
+    """
+    # 1. 收集 L3 抽象的覆盖范围
+    abstract_coverage = {}  # {abstract_content: set(l1_ids)}
+    abstract_confidence = {}
+    for r in merged_results:
+        if r.source_layer == 3 and r.metadata.get("source_fact_ids"):
+            abstract_coverage[r.content] = set(r.metadata["source_fact_ids"])
+            abstract_confidence[r.content] = r.confidence
+    
+    # 2. 标记被高置信度抽象覆盖的 L1 事实
+    covered_l1_ids = set()
+    for abstract, l1_ids in abstract_coverage.items():
+        if abstract_confidence.get(abstract, 0) >= 0.7:
+            covered_l1_ids.update(l1_ids)
+    
+    # 3. 折叠: 抽象保留，被覆盖的 L1 移入展开池
+    folded = []
+    unfold_pool = []
+    for r in merged_results:
+        if r.source_layer == 1 and r.id in covered_l1_ids:
+            unfold_pool.append(r)
+        else:
+            folded.append(r)
+    
+    return folded, unfold_pool
+```
+
+**展开 (Unfold)：** 当用户追问"为什么"、"举个例子"、"具体说说"时，QueryClassifier 检测到追问意图，FusionEngine 从展开池中取出对应的 L1 源事实附加到上下文包中。
+
+```python
+def _unfold_sources(self, unfold_pool, intent, limit=3):
+    """展开: 用户追问细节时，从展开池返回被抑制的 L1 事实"""
+    if not unfold_pool:
+        return []
+    
+    # 按与 query 的相关性排序
+    if intent.embedding is not None:
+        for r in unfold_pool:
+            r.score = cosine_similarity(intent.embedding, r.embedding)
+        unfold_pool.sort(key=lambda x: x.score, reverse=True)
+    
+    return unfold_pool[:limit]
+```
+
+**对 FusionEngine.fuse() 的影响：** 在 MMR 重排序之前插入折叠步骤：
+
+```python
+def fuse(self, layer_results, intent, limit):
+    # 0. 跨层触发
+    self._cascade_trigger(layer_results, intent)
+    
+    # 1. 获取层权重 → 2. 层内归一化 → 3. 跨层加权合并
+    merged = self._merge_layers(layer_results, intent)
+    
+    # 3.5 抽象-源事实折叠 (新增)
+    folded, self.unfold_pool = self._fold_abstract_sources(merged)
+    
+    # 4. MMR 重排序 (基于折叠后的结果)
+    reranked = self._mmr_rerank(folded, intent.embedding, limit)
+    
+    # 5. 结构化输出
+    return self._assemble_output(reranked, intent)
+```
+
+**与 Parent-Child 的关系：** 折叠不替代 Parent-Child——Parent-Child 仍然在 L3 检索时带回源事实（用于验证抽象质量和计算置信度），折叠仅在融合阶段决定是否展示。两者正交。
 
 ```python
 def _content_fingerprint(self, content: str) -> str:
