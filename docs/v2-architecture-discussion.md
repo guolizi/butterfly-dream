@@ -1182,7 +1182,7 @@ L5 灵魂层：核心特质相关 → 冷却减速 × 0.3
 | ❄️ 冷 | 0.4 | fp16 量化 embedding + 无图检索 |
 | 🧊 冰 | 0.1 | 仅 FTS5 关键词 |
 
-默认检索覆盖 🔥+🌤️，`memory="deep"` 增加 ❄️，`memory="all"` 包括 🧊。`memory` 参数作为显式覆盖接口保留，但路由决策主要由 QueryClassifier 自动完成。
+默认检索覆盖 🔥+🌤️。`memory="deep"` 增加 ❄️，`memory="all"` 包括 🧊。`memory` 参数保留为**用户显式覆盖接口**——当用户要求"搜得更深"时，Agent 可主动调用扩展热度范围。默认路由由 QueryClassifier 自动完成，`memory` 参数仅用于显式覆盖，两者不冲突。
 
 **对比传统遗忘仲裁：**
 
@@ -1419,7 +1419,7 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
 
 **QueryClassifier**：将 query 分为 9 种类型（fact/causal/prediction/contradiction/relation/emotion/narrative/persona/general），每种类型对应不同的目标层和路由策略。两阶段分类：关键词规则（快速路径）+ LLM 兜底（低置信度时）。
 
-**LayerRouter**：根据 query 类型决定查哪些层，结合渐进激活检查（未激活层优雅降级）和成本感知路由（chat 场景仅 L0+L1）。
+**LayerRouter**：根据 query 类型决定查哪些层，结合渐进激活检查（未激活层优雅降级）。
 
 **ParallelRetrieval**：各层并行检索，每层实现统一 `RetrievalSource` 接口。各层检索策略：
 
@@ -1464,7 +1464,6 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
 | ⑥ | L4 叙事主干更新 | ④+⑤ 完成后 | 中（LLM 叙事生成） | Phase 3 |
 | ⑦ | L5 人格模型更新 | ⑥ 完成后 | 中（LLM 人格建模） | Phase 4 |
 | ⑧ | 检索策略降级 | ② 完成后 | 低（纯计算） | Phase 4 |
-| ⑨ | Q 值评估与衰减 | 无（可独立运行） | 低（纯计算） | Phase 1 |
 
 **依赖链：**
 
@@ -1508,13 +1507,10 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
 │    检查触发条件，计算本次需要处理的数据量           │
 │    估算总耗时，决定是否跳过某些阶段                │
 │                                                  │
-│  Phase 1: 数据准备（纯计算，~100ms）              │
+|  Phase 1: 数据准备（纯计算，~100ms）              │
 │    ① 热度衰减计算                                │
 │    ② L2 时间纠缠（统计层面）                      │
 │    ③ 标记待晋升的 L0 微事实                       │
-│    ⑨ Q 值评估与衰减（新增）                       │
-│      扫描近期被检索过的事实，更新 utility_score    │
-│      长期未检索的事实 Q 值向初始值衰减              │
 │                                                  │
 │  Phase 2: LLM 批量（高成本，核心阶段）             │
 │    ④ L0→L1 冷晋升（LLM 批量提取）                │
