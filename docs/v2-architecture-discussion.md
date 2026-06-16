@@ -1588,3 +1588,4 @@ sleep_cycle_log:
 | 2026-06-16 | SARR 状态感知检索融合 — 心境共振 + 因果子图 + 时间折叠 | ✅ 吸收 SARR 方案，新增三个机制：① FusionEngine 心境一致性共振评分（GMM 模式相似度提权）；② L2 因果子图游走（L1 命中触发因果回溯）；③ L4 时间折叠（叙事时间窗过滤 L1）。详见 `v2-retrieval-design.md` §3.4/§3.6/§6 |
 | 2026-06-16 | 情感维度深度分析 — 四大核心能力 + VAD + importance + 情感触发关联 | ✅ 重写情感维度章节。核心变化：① 明确四大核心能力（记录/模式发现/状态感知/LLM 情感记忆服务）；② VAD 三维替代单标签+强度；③ 新增 importance 字段区分"多强烈"和"多重要"；④ 新增 emotion_triggers 表支撑情感回避；⑤ LLM 直接输出 VAD 值；⑥ importance ≥ 0.8 永久保温。详见 §4-情感维度 |
 | 2026-06-16 | 情感存储模型定稿 — 情感事件池 + 多事实关联 + emotion_tag | ✅ 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签，供 L3 抽象层直接过滤。详见 `docs/v2-emotion-dimension.md` |
+| 2026-06-16 | 情感提取策略定稿 — 搭便车 + 两阶段写入 | ✅ 情感提取跟随多维度提取（不独立触发），L0→L1 实时写入初步 VAD + emotion_tag，L3 睡眠周期 refine（修正/合并/去误报/回填）。详见 `docs/v2-emotion-dimension.md` §四 |
