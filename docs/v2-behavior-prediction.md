@@ -76,7 +76,7 @@
 | **Arousal（唤醒度）** | 情感的激活程度 | 平静、放松 | 激动、紧张 |
 | **Dominance（支配度）** | 情感的控制感 | 无力、受控 | 掌控、自信 |
 
-> VAD 三维直接取自情感维度系统，无需额外映射。Dominance 虽然不在经典 circumplex 模型中，但对行为预测有实际价值——高支配度的人更可能采取主动行为，低支配度的人更可能回避。详见 `docs/v2-emotion-dimension.md`。
+> VAD 三维直接取自情感维度系统（emotion_events 最近真实记录或当前 LLM 多维度提取结果），无需训练映射。详见 `docs/v2-emotion-dimension.md`。
 
 ### 2.2 GMM 行为模式维度（替代 PCA）
 

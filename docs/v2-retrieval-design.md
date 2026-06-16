@@ -174,7 +174,9 @@ class QueryIntent:
     psych_probe: Optional[np.ndarray]  # 心理探针向量 (Phase 2+)
 ```
 
-**心理探针向量 (Psych Probe)**: 将 query 映射到 12 维心理空间（大五人格5 + 能量动机4 + VAD 3），用于检索历史上处于相似心理状态时的记忆。Phase 1 为 None，Phase 2+ 由轻量级分类器生成——从 query embedding 线性投影到 12 维心理空间（如 ridge regression / linear probe），**零额外 LLM 调用**。训练数据来自情感维度系统自动积累的历史心理状态标注。
+**心理探针向量 (Psych Probe)**: 将 query 映射到 12 维心理空间（大五人格5 + 能量动机4 + VAD 3），用于检索历史上处于相似心理状态时的记忆。Phase 1 为 None，Phase 2+ 由轻量级分类器生成。
+
+**VAD 3 维**直接从 emotion_events 取最近真实记录（或当前 LLM 多维度提取结果），**不参与线性投影训练**。只有大五人格 5 维 + 能量动机 4 维 = **9 维**需要从 query embedding 线性投影（如 ridge regression / linear probe），**零额外 LLM 调用**。训练数据来自行为模式池自动积累的标注。
 
 > 受"认知驱动的多维混合检索"方案启发。核心创新：不是搜"相似的句子"，而是搜"相似的心情"。详见 §3.7 L5 检索。
 
@@ -649,9 +651,13 @@ class L4Retrieval(RetrievalSource):
 ```
 用户 query: "我今天好累，什么都不想干"
     ↓
-QueryClassifier 生成心理探针: [开放性=0.3, 尽责性=0.2, 外向性=0.1, ...]
+QueryClassifier 生成心理探针:
+  ├─ 大五人格 + 能量动机（9 维）← 线性投影
+  │  [开放性=0.3, 尽责性=0.2, 外向性=0.1, ...]
+  └─ VAD（3 维）← 从 emotion_events 取最近真实记录
+     [valence=-0.3, arousal=0.2, dominance=0.3]
     ↓
-L5 检索: 找到历史上心理探针最相似的 N 条记忆
+L5 检索: 找到历史上 12 维心理探针最相似的 N 条记忆
     ↓
 返回: "上次类似状态(2024-10-05) → 画画释放情绪 → 效果良好"
        "再上次(2024-07-12) → 找Melanie聊天 → 效果更好"
@@ -1599,7 +1605,7 @@ def has_emotion_signal(text: str) -> bool:
 | 成本感知路由 | 场景感知层选择 | 1 天 |
 | 因果链检索 | 四层递进 (符号+统计) + 因果子图游走 | 2 天 |
 | 情感轨迹检索 | 情感路径搜索 | 1 天 |
-| 心理探针生成 | 轻量级分类器/LLM 生成 query 心理探针向量 | 2 天 |
+| 心理探针生成 | 轻量级分类器（9 维：大五人格 + 能量动机，VAD 从 emotion_events 直接取） | 2 天 |
 | 心境一致性共振 | FusionEngine 增加 mood_resonance 评分因子 | 1 天 |
 | 跨层触发机制 | FusionEngine 级联触发因果子图 + 时间折叠 | 1 天 |
 
