@@ -1598,3 +1598,4 @@ sleep_cycle_log:
 | 2026-06-16 | LLM 情感记忆服务接口定稿 — 自动注入 + 工具调用 | ✅ Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 `docs/v2-emotion-dimension.md` §九 |
 | 2026-06-16 | 情感模式与行为模式池协同定稿 — 多对多关联表 | ✅ 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 `docs/v2-emotion-dimension.md` §十 |
 | 2026-06-16 | 情感对象字段定稿 — emotion_target | ✅ emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 `docs/v2-emotion-dimension.md` §三 |
+| 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | ✅ 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `docs/v2-behavior-prediction.md` §十 |

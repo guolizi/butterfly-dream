@@ -760,7 +760,7 @@ L5 预测: "Caroline 压力大时会画画放松"（概率 0.8）
 
 **触发条件**: `prediction` 类型（自动附带，自我修正预测）、`contradiction` 类型（提供矛盾的历史证据）、`emotion` 类型（可选附带，发现情绪变化的反常模式）。
 
-**反差记忆的存储**: 反差检索需要"预测 vs 实际"的对比数据。在睡眠周期 L5 更新阶段记录：
+**反差记忆的存储**: 反差检索需要"预测 vs 实际"的对比数据。在睡眠周期 L5 更新阶段记录，统一使用 `behavior_predictions` 表（替代旧 `prediction_counterfactuals`）。详见 `v2-behavior-prediction.md` §十。
 
 ```sql
 CREATE TABLE prediction_counterfactuals (

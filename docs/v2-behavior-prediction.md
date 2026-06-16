@@ -653,7 +653,223 @@ Phase 2+（K≥1）：GMM 加权惊讶度
 
 ---
 
-## 九、待讨论的问题
+## 十、预测日志与情感反馈闭环
+
+### 10.1 问题
+
+现有设计只预测"用户会做什么行为"，但有两个空白：
+
+```
+空白 1：没有预测"用户带着什么情绪做这个行为"
+  "预测用户会去跑步" → 但不知道是"焦虑地去跑步"还是"兴奋地去跑步"
+
+空白 2：没有记录"行为后的情感变化"
+  "用户去跑步了" → 但不知道"跑步后情绪变好了还是更差了"
+  → 无法验证情感-行为模式是否真的有效
+```
+
+### 10.2 统一预测日志表
+
+替代旧的 `prediction_counterfactuals`（只存反差），改为通用预测日志：
+
+```sql
+-- 预测日志（统一替代 prediction_counterfactuals）
+behavior_predictions:
+  prediction_id,
+  person,
+  timestamp,
+
+  -- 预测内容
+  predicted_behavior TEXT,              -- 预测的行为（"去跑步"）
+  predicted_prob REAL,                  -- 预测概率
+  predicted_accompanying_emotion TEXT,  -- 预测用户会带着什么情绪做这个行为
+    -- "焦虑" / "兴奋" / "平静" / null（中性）
+    -- 例：预测"用户会去跑步"，同时预测"用户是带着焦虑去跑步的"
+  predicted_emotion_vad JSON,          -- 预测时用户的情绪状态（VAD）
+    -- 这是"预测时"的情绪快照，不是"预测的情绪"
+
+  -- 情感变化预期
+  expected_emotion_shift JSON,         -- 预测的行为会带来什么情感变化
+    -- 例：跑步后 valence+0.8, arousal-0.4, dominance+0.3
+    -- 来源：pattern_relations 中该行为模式的统计积累
+
+  -- 预测时的上下文
+  context_snapshot JSON,               -- 预测时的上下文快照
+  pattern_relation_id,                 -- 关联的情感-行为模式（如果有）
+
+  -- 实际结果（行为发生后回填）
+  actual_behavior TEXT,                -- 实际发生的行为（null=未发生）
+  actual_match REAL,                   -- 行为匹配度 0~1
+  actual_emotion_vad JSON,            -- 行为发生时的实际情绪
+  post_emotion_vad JSON,              -- 行为后的情绪
+  emotion_shift JSON,                 -- 实际情感变化（post - actual）
+  shift_match REAL,                   -- 预期情感变化 vs 实际变化的匹配度 0~1
+
+  -- 结果分类
+  outcome: 'fulfilled' | 'partial' | 'failed' | 'unobserved',
+    -- fulfilled  = 行为发生 + 情绪变化匹配预期
+    -- partial    = 行为发生但情绪变化不匹配
+    -- failed     = 行为未发生
+    -- unobserved = 尚未观察到结果
+
+  -- 情感反馈
+  emotion_outcome: 'improved' | 'worsened' | 'unchanged',
+    -- 行为后情绪是变好了还是变差了
+
+  -- 反差检索索引
+  embedding BLOB                       -- 用于反差检索的向量
+```
+
+### 10.3 数据流
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  阶段 1：预测时（L5 睡眠周期 / 查询时）                           │
+│                                                                   │
+│  behavior_predictions:                                            │
+│    predicted_behavior = "去跑步"                                   │
+│    predicted_prob = 0.8                                           │
+│    predicted_accompanying_emotion = "焦虑"                        │
+│    expected_emotion_shift = [+0.8, -0.4, +0.3]                   │
+│    outcome = 'unobserved'                                         │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+       ↓ 等待行为发生
+┌─────────────────────────────────────────────────────────────────┐
+│  阶段 2：行为发生后（L0→L1 多维度提取检测到行为）                   │
+│                                                                   │
+│  匹配预测：用户确实去跑步了                                        │
+│    → actual_behavior = "跑步"                                     │
+│    → actual_match = 0.95                                          │
+│                                                                   │
+│  提取行为时的情绪：                                               │
+│    → actual_emotion_vad = [-0.4, 0.7, 0.4]  （确实焦虑）          │
+│                                                                   │
+│  提取行为后的情绪（下一轮对话或时间推移）：                          │
+│    → post_emotion_vad = [+0.5, 0.3, 0.6]  （情绪好转了）          │
+│    → emotion_shift = [+0.9, -0.4, +0.2]                          │
+│    → shift_match = 0.85  （和预期很接近）                          │
+│    → outcome = 'fulfilled'                                        │
+│    → emotion_outcome = 'improved'                                 │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  阶段 3：反馈到模式（睡眠周期）                                     │
+│                                                                   │
+│  pattern_relations.correlation 更新：                              │
+│    shift_match 高（≥ 0.7）→ correlation 微增                      │
+│    shift_match 低（< 0.3）→ correlation 微降                      │
+│                                                                   │
+│  情感矛盾检测：                                                    │
+│    "暴饮暴食后情绪更差" → 标记情感矛盾                              │
+│    → L5 预测时降权                                                │
+│                                                                   │
+│  反差检索数据源：                                                  │
+│    WHERE outcome = 'failed' → 等价于旧 prediction_counterfactuals  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 10.4 情感矛盾检测
+
+与现有矛盾检测（行为 vs 人格）互补：
+
+```
+现有矛盾检测：
+  行为 vs 人格 → "用户是个自律的人，但暴饮暴食" → 行为矛盾
+
+新增情感矛盾：
+  行为 vs 情感结果 → "暴饮暴食后情绪更差" → 情感矛盾
+```
+
+**情感矛盾信号强度：**
+
+```
+emotion_contradiction_signal = (1 - shift_match) × outcome_weight
+
+shift_match = 0.1（预期情绪变好，实际变差）
+outcome_weight:
+  'worsened'  → 1.0（情绪恶化，强信号）
+  'unchanged' → 0.5（无变化，弱信号）
+  'improved'  → 0.0（情绪改善，无矛盾）
+
+例：暴饮暴食后情绪恶化
+  → emotion_contradiction_signal = (1 - 0.1) × 1.0 = 0.9
+  → 强情感矛盾信号
+```
+
+### 10.5 与 pattern_relations 的反馈
+
+```python
+# 睡眠周期中更新模式关联强度
+def update_pattern_relations():
+    # 取最近 N 条已完成的预测
+    predictions = db.query("""
+        SELECT * FROM behavior_predictions
+        WHERE outcome IN ('fulfilled', 'partial')
+        AND pattern_relation_id IS NOT NULL
+        AND timestamp > last_update
+    """)
+
+    for pred in predictions:
+        relation = db.get_pattern_relation(pred.pattern_relation_id)
+
+        # 更新 correlation
+        # shift_match 高 → 模式有效，correlation 上升
+        # shift_match 低 → 模式无效，correlation 下降
+        alpha = 0.1  # 学习率
+        relation.correlation += alpha * (pred.shift_match - relation.correlation)
+
+        # 更新 expected_emotion_shift（滑动平均）
+        if pred.emotion_shift is not None:
+            for i in range(3):
+                relation.expected_shift[i] += alpha * (
+                    pred.emotion_shift[i] - relation.expected_shift[i]
+                )
+
+        # 更新 sample_count
+        relation.sample_count += 1
+        relation.confidence = min(relation.sample_count / 10, 1.0) * relation.correlation
+
+        db.update_pattern_relation(relation)
+```
+
+### 10.6 与旧 prediction_counterfactuals 的关系
+
+```sql
+-- 旧表（只存反差）
+prediction_counterfactuals:
+  predicted_behavior, actual_behavior, ...  -- 只存失败案例
+
+-- 新表（统一日志）
+behavior_predictions:
+  ...全部预测...
+  WHERE outcome = 'failed'  → 等价于旧的反差检索数据
+  WHERE outcome = 'fulfilled' → 新增的成功案例数据
+  WHERE outcome = 'unobserved' → 等待验证的预测
+```
+
+旧表可废弃，由 `behavior_predictions` 统一替代。
+
+### 10.7 与情感维度的关系
+
+```
+emotion_events（情感事件池）
+  ↓ 预测时快照
+behavior_predictions.predicted_emotion_vad
+  ↓ 行为后对比
+behavior_predictions.post_emotion_vad
+  ↓ 反馈
+pattern_relations（情感-行为关联表）
+  ↓ 影响
+L5 预测先验
+```
+
+详见 `docs/v2-emotion-dimension.md` §十（情感模式与行为模式池的协同）。
+
+---
+
+## 十一、待讨论的问题
 
 - [ ] GMM 行为模式的 K 值选择策略（BIC/AIC 准则 vs 固定值）
 - [ ] 上下文嵌入的初始定义（预设常见上下文类型 vs 动态生成）
