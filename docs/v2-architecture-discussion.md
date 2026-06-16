@@ -1596,3 +1596,4 @@ sleep_cycle_log:
 | 2026-06-16 | 主动检索触发时机定稿 — 分级递进检索 | ✅ LLM 对话中分级递进检索：零成本关键词检测 → emotion_triggers（10~30ms）→ 完整情感检索（50~200ms）。详见 `docs/v2-retrieval-design.md` §8 |
 | 2026-06-16 | VAD 到 L5 接口定稿 — VAD 3 维直接取 | ✅ psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。仅大五人格+能量动机 9 维需训练。详见 `docs/v2-behavior-prediction.md` §2.1 |
 | 2026-06-16 | LLM 情感记忆服务接口定稿 — 自动注入 + 工具调用 | ✅ Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 `docs/v2-emotion-dimension.md` §九 |
+| 2026-06-16 | 情感模式与行为模式池协同定稿 — 多对多关联表 | ✅ 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 `docs/v2-emotion-dimension.md` §十 |

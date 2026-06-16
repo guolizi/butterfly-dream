@@ -18,8 +18,9 @@
 - [七、情感冷却设计](#七情感冷却设计)
 - [八、情感维度与各层的关系](#八情感维度与各层的关系)
 - [九、LLM 情感记忆服务接口设计](#九llm-情感记忆服务接口设计)
-- [十、初期实现建议](#十初期实现建议)
-- [十一、待讨论的问题](#十一待讨论的问题)
+- [十、情感模式与行为模式池的协同](#十情感模式与行为模式池的协同)
+- [十一、初期实现建议](#十一初期实现建议)
+- [十二、待讨论的问题](#十二待讨论的问题)
 - [附录：讨论记录](#附录讨论记录)
 
 ---
@@ -702,7 +703,200 @@ LLM 觉得不够 → 调用 query_emotion_timeline("user", ("2026-05-01", "2026-
 
 ---
 
-## 十、初期实现建议
+## 十、情感模式与行为模式池的协同
+
+### 10.1 问题
+
+情感模式（emotion_patterns）和行为模式（behavior_patterns）各自独立发现和存储，但天然相关：
+
+```
+行为模式："压力大时 → 去跑步"
+情感模式："当 valence 下降 + arousal 上升时，倾向于做高支配度活动"
+```
+
+它们描述的是**同一个规律的不同视角**，但目前没有交叉引用。情感模式缺少具体的消费场景，行为模式缺少情感上下文。
+
+### 10.2 核心思路：情感模式作为行为模式的上下文选择器
+
+```
+Phase 3 协同架构：
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    L3 睡眠周期（统一发现管道）                      │
+│                                                                   │
+│  事件池事实 + 情感池 VAD 序列                                      │
+│    ↓                                                              │
+│  统一模式发现（一次 LLM 调用，同时输出情感和行为两个视角）           │
+│    ├─ 行为模式："压力大时 → 去跑步"                                │
+│    └─ 情感模式："valence↓ + arousal↑ → 高支配度活动"              │
+│    ↓                                                              │
+│  两个模式通过关联表交叉引用                                         │
+│    └─ pattern_relations（多对多）                                  │
+└─────────────────────────────────────────────────────────────────┘
+       ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    L5 行为预测（使用协同）                         │
+│                                                                   │
+│  用户当前情感状态（VAD）                                           │
+│    ↓                                                              │
+│  匹配情感模式 → 找到关联的行为模式（多对多）                        │
+│    ↓                                                              │
+│  行为模式作为 GMM 的上下文先验                                      │
+│    → P(mode_k | emotion_pattern) 提升匹配模式的权重                │
+│    → 预测更精准                                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 10.3 数据结构：多对多关联表
+
+```sql
+-- 情感模式 ↔ 行为模式的多对多关联
+pattern_relations:
+  relation_id,
+  emotion_pattern_id REFERENCES emotion_patterns(pattern_id),
+  behavior_pattern_id REFERENCES behavior_patterns(pattern_id),
+  correlation FLOAT,              -- 关联强度 0~1
+    -- 0.0 = 无关联（默认）
+    -- 0.3 = 弱关联（偶发共存）
+    -- 0.7 = 强关联（高频伴随）
+    -- 1.0 = 必然伴随（理论上限）
+  sample_count INT,               -- 观察次数（correlation 的置信度基础）
+  last_observed_at,
+  confidence,                     -- min(sample_count / 10, 1.0) × correlation
+  created_at, updated_at
+
+-- 行为模式池新增字段
+behavior_patterns:
+  ...现有字段...
+  pattern_type: 'routine' | 'emotion-driven' | 'value-driven',
+    -- 'routine'        = 例行行为，无情感驱动（如"每周日游泳"）
+    -- 'emotion-driven' = 情感驱动的行为（如"焦虑时去跑步"）
+    -- 'value-driven'   = 价值观驱动的行为（如"坚持环保"）
+
+-- 情感模式保持现有结构不变
+emotion_patterns:
+  ...现有字段...  -- 无需新增字段，关联通过 pattern_relations 表
+```
+
+**为什么用关联表而非单字段引用：**
+
+```
+❌ 单字段引用（emotion_context → emotion_patterns.id）
+   情感模式 A → 行为模式 1（一对一，丢失了"焦虑也可能画画"的信息）
+
+✅ 多对多关联表
+   情感模式 A（焦虑）→ 行为模式 1（跑步）、行为模式 2（画画）
+   情感模式 B（兴奋）→ 行为模式 1（跑步）
+   → 完整保留"一种情感有多种应对方式"的多样性
+```
+
+### 10.4 关联的发现方式
+
+```python
+# Phase 3 L3 睡眠周期：统一模式发现
+def discover_patterns():
+    """
+    LLM 输入: 事件池事实 + 情感池 VAD 序列
+    LLM 输出: [
+        {
+            "behavior": "压力大时去跑步",
+            "emotion_context": "valence↓ + arousal↑",
+            "emotion_label": "焦虑",
+            "pattern_type": "emotion-driven",
+            "confidence": 0.85
+        },
+        {
+            "behavior": "每周日去游泳",
+            "emotion_context": null,   # 无情感关联
+            "pattern_type": "routine",
+            "confidence": 0.9
+        },
+        ...
+    ]
+    """
+    # 1. 从事件池 + 情感池提取候选模式对
+    # 2. 去重：与已有 emotion_patterns / behavior_patterns 匹配
+    # 3. 新建或更新 pattern_relations
+    # 4. 更新 correlation = 新观察次数 / 总观察次数
+```
+
+**关联强度的统计积累：**
+
+```
+同一情感模式和行为模式同时出现 1 次 → correlation = 0.1, confidence = 0.1
+同一情感模式和行为模式同时出现 5 次 → correlation = 0.5, confidence = 0.5
+同一情感模式和行为模式同时出现 10 次 → correlation = 0.8, confidence = 0.8
+```
+
+correlation 不是 LLM 一次性标注的，而是**多次观察的统计积累**，置信度随观察次数自然增长。
+
+### 10.5 L5 行为预测中的使用
+
+```
+用户当前状态:
+  VAD = (-0.5, 0.8, 0.3)  -- 焦虑
+
+Step 1: 匹配情感模式
+  → 匹配到 "焦虑模式" (pattern_id=3)
+    vector_region = {valence: [-0.7, -0.3], arousal: [0.6, 0.9], dominance: [0.2, 0.5]}
+
+Step 2: 通过 pattern_relations 找到关联的行为模式（多对多）
+  → pattern_relations WHERE emotion_pattern_id = 3:
+    ├─ behavior_pattern_id=7  "去跑步"    correlation=0.8, confidence=0.8
+    ├─ behavior_pattern_id=12 "画画"      correlation=0.5, confidence=0.5
+    └─ behavior_pattern_id=5  "暴饮暴食"  correlation=0.3, confidence=0.3
+
+Step 3: 提升 GMM 对应模式的先验概率
+  → P(mode_跑步 | context) += 0.2  (correlation × confidence = 0.64)
+  → P(mode_画画 | context) += 0.1  (correlation × confidence = 0.25)
+  → P(暴饮暴食 | context) += 0.05  (correlation × confidence = 0.09)
+  → 预测结果更倾向于"跑步"而非其他行为
+```
+
+### 10.6 生命周期协同
+
+两个模式走同一套生命周期状态机，但独立演进：
+
+```
+发现（L3 睡眠周期）
+  ↓ tentative（置信度 < 0.7）
+  ↓ 多次验证（同一模式出现 ≥ 3 次）
+confirming（置信度 0.7~0.9）
+  ↓ 时间稳定（持续 ≥ 2 个睡眠周期）
+confirmed（置信度 ≥ 0.9）
+  ↓ 被新模式替代
+evolved（通过 evolved_from 链接到新模式）
+  or
+superseded（被证伪，保留历史记录）
+```
+
+**关联的生命周期跟随两个模式中置信度较低的那一个：**
+
+```
+emotion_pattern confidence = 0.9, behavior_pattern confidence = 0.6
+  → pattern_relations.confidence = min(0.9, 0.6) = 0.6
+  → 行为模式还在 tentative 阶段，关联不可用
+```
+
+### 10.7 不做什么
+
+```
+❌ 不合并两个池 — 情感模式和行为模式存储结构不同，合并反而耦合
+   （情感模式是 VAD 空间中的区域，行为模式是条件-行为文本描述）
+
+❌ 不做情感→行为的强制映射 — 不是所有行为都有情感驱动
+   （routine 类型的行为如"每周日游泳"与情感无关）
+
+❌ 不做双向因果推理 — 不负责"因为情感模式 A 所以行为模式 B"
+   （因果推理是 L2 因果链的职责，这里只做关联映射）
+
+❌ 不做跨人关联 — 不比较不同用户的情感-行为关联模式
+   （那是社会模拟场景的职责，不在本设计范围内）
+```
+
+---
+
+## 十一、初期实现建议
 
 ```
 Phase 1（一表 + 基础能力 — 当前）:
@@ -722,7 +916,8 @@ Phase 2（三表物化 + 兼容准备）:
   双写：写入固定字段同时写 emotion_vector JSON
 
 Phase 3（高级能力 + 模型切换）:
-  情感模式与行为模式池协同
+  情感模式与行为模式池协同（pattern_relations 多对多关联表，统一发现管道）
+  L5 预测中情感模式作为 GMM 上下文先验（correlation × confidence 提权）
   跨人情感模式对比（社会模拟场景）
   情感轨迹预测（作为 L5 行为预测的子模块）
   可切换情感模型（如 21 维），查询逻辑根据 emotion_model 路由
@@ -730,7 +925,7 @@ Phase 3（高级能力 + 模型切换）:
 
 ---
 
-## 十一、待讨论的问题
+## 十二、待讨论的问题
 
 以下问题尚未深入，留待后续讨论：
 
@@ -740,7 +935,7 @@ Phase 3（高级能力 + 模型切换）:
 - [x] **主动检索的触发时机** — ✅ 已解决：分级递进检索（关键词检测 → emotion_triggers → 完整情感检索）。详见 `v2-retrieval-design.md` §8。
 - [x] **VAD 到 L5 的接口** — ✅ 已解决：psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1。
 - [x] **LLM 情感记忆服务的接口设计** — ✅ 已解决：Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九。
-- [ ] **情感模式与行为模式池的协同** — Phase 3 的详细设计？情感模式如何与行为模式走同一生命周期？
+- [x] **情感模式与行为模式池的协同** — ✅ 已解决：多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。详见 §十。
 - [ ] **多人物情感管理** — 每个角色独立情感轨迹？跨人情感关系怎么处理？
 - [ ] **情感轨迹预测** — 作为 L5 行为预测的子模块，预测精度和训练数据来源？
 - [ ] **情感触发关联的隐私问题** — 用户可能不希望系统记住某些情感触发关联（如特定创伤），如何处理删除/遗忘？
@@ -760,3 +955,4 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 主动检索触发时机定稿 | 分级递进检索：零成本关键词检测 → emotion_triggers（10~30ms）→ 完整情感检索（50~200ms）。详见 `v2-retrieval-design.md` §8 |
 | 2026-06-16 | VAD 到 L5 接口定稿 | psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1 |
 | 2026-06-16 | LLM 情感记忆服务接口定稿 | Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九 |
+| 2026-06-16 | 情感模式与行为模式池协同定稿 | 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 §十 |
