@@ -466,6 +466,8 @@ L0→L1 晋升时，LLM 提取事件维度时**尽量**填充结构化字段，�
 
 **关键设计决策：**
 - **VAD 三维**替代单标签+强度，LLM 直接输出 VAD 值
+- **emotion_model** 字段标记情感模型类型（当前 'vad-3d'），预留未来切换更精细模型的能力
+- **emotion_vector JSON** 通用情感向量，与固定字段双写，Phase 3 统一为向量
 - **importance** 字段区分 intensity（多强烈）和 importance（多重要），≥ 0.8 永久保温
 - **emotion_triggers** 表支撑 LLM 情感回避（话题→VAD 映射）
 - 情感事件支持**多事实关联**（`primary_fact_id` + `related_fact_ids`）
@@ -1589,3 +1591,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感维度深度分析 — 四大核心能力 + VAD + importance + 情感触发关联 | ✅ 重写情感维度章节。核心变化：① 明确四大核心能力（记录/模式发现/状态感知/LLM 情感记忆服务）；② VAD 三维替代单标签+强度；③ 新增 importance 字段区分"多强烈"和"多重要"；④ 新增 emotion_triggers 表支撑情感回避；⑤ LLM 直接输出 VAD 值；⑥ importance ≥ 0.8 永久保温。详见 §4-情感维度 |
 | 2026-06-16 | 情感存储模型定稿 — 情感事件池 + 多事实关联 + emotion_tag | ✅ 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签，供 L3 抽象层直接过滤。详见 `docs/v2-emotion-dimension.md` |
 | 2026-06-16 | 情感提取策略定稿 — 搭便车 + 两阶段写入 | ✅ 情感提取跟随多维度提取（不独立触发），L0→L1 实时写入初步 VAD + emotion_tag，L3 睡眠周期 refine（修正/合并/去误报/回填）。详见 `docs/v2-emotion-dimension.md` §四 |
+| 2026-06-16 | 情感模型兼容性设计 — emotion_model + 通用向量 | ✅ 新增 emotion_model 字段标记情感模型类型。存储层 JSON 通用向量 + 固定字段双写。推导层通用 vector_delta/vector_region。intensity 公式通用化。迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量。详见 `docs/v2-emotion-dimension.md` §二/§三/§九 |

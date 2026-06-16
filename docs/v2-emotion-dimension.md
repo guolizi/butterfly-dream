@@ -106,7 +106,25 @@
 | 自豪 | +0.7 | 0.6 | 0.8 |
 | 羞愧 | -0.5 | 0.4 | 0.2 |
 
-### 2.3 VAD 的好处
+### 2.4 情感模型兼容性
+
+当前使用 **VAD 三维模型**（valence, arousal, dominance）。架构设计预留了未来切换更精细情感模型的能力（如 21 维情感空间模型）。
+
+**兼容策略：**
+
+```sql
+emotion_model TEXT DEFAULT 'vad-3d'
+  -- 'vad-3d'     = 当前 VAD 三维（valence, arousal, dominance）
+  -- 'emotion-21d' = 未来 21 维情感空间
+  -- 其他模型可扩展
+```
+
+- 存储层用 `emotion_model` 字段标记当前模型，查询时根据模型选择对应的距离计算方式
+- intensity 公式通用化：`intensity = √(Σeᵢ²) / √dim`（任意维度适用）
+- 推导层（转变/模式）基于向量空间，不依赖固定维度数
+- 迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量
+
+详见 §三 存储模型和 §九 初期实现建议。
 
 1. **更丰富的情感表达**
    - 单标签+强度: "开心 0.8"
@@ -173,17 +191,24 @@ L1 池体系:
 ```sql
 emotion_events:
   event_id, person, timestamp,
-  valence, arousal, dominance,         -- VAD 三维核心
-  emotion_label,                       -- 可选，方便人类阅读
-  intensity,                           -- 派生：√(v² + a² + d²)/√3
-  primary_fact_id,                     -- 主要触发事实（非空）
-  related_fact_ids,                    -- 关联事实列表（可选，TEXT[]）
+  emotion_model TEXT DEFAULT 'vad-3d',   -- 情感模型类型
+    -- 'vad-3d'     = VAD 三维（当前）
+    -- 'emotion-21d' = 21 维情感空间（未来）
+  valence, arousal, dominance,          -- VAD 三维核心（当前模型专用）
+  emotion_vector JSON,                  -- 通用情感向量（未来扩展）
+    -- 当前：emotion_vector = [valence, arousal, dominance]
+    -- 未来 21 维：emotion_vector = [...21 个值...]
+    -- 写入时与固定字段同步，查询时优先使用固定字段（性能）
+  emotion_label,                        -- 可选，方便人类阅读
+  intensity,                            -- 通用公式：√(Σeᵢ²) / √dim
+  primary_fact_id,                      -- 主要触发事实（非空）
+  related_fact_ids,                     -- 关联事实列表（可选，TEXT[]）
     -- 支持多因情感：同一天升职+朋友搬走 → 矛盾情感
     -- primary_fact_id 是主要触发因素，related_fact_ids 是辅助因素
   source (llm_extraction / l0_promotion / inferred),
-  importance (0.0~1.0),               -- 情感重要性
-  significance_reason,                 -- LLM 标注的重要性理由（可选）
-  trigger_topics (TEXT[]),             -- 提取的情感触发话题
+  importance (0.0~1.0),                -- 情感重要性
+  significance_reason,                  -- LLM 标注的重要性理由（可选）
+  trigger_topics (TEXT[]),              -- 提取的情感触发话题
   notes
 ```
 
@@ -216,7 +241,9 @@ event_facts:
 -- 情感状态节点
 emotion_states:
   state_id, person, timestamp,
+  emotion_model TEXT DEFAULT 'vad-3d',
   valence, arousal, dominance,
+  emotion_vector JSON,
   emotion_label,
   intensity,
   primary_fact_id,
@@ -231,14 +258,15 @@ emotion_transitions:
   transition_id, person,
   from_state_id, to_state_id,
   transition_type (正向突破/负向冲击/累积升华/韧性恢复/...),
-  vad_delta (valence_change, arousal_change, dominance_change),
+  vector_delta JSON,                    -- 通用：后向量 - 前向量（逐元素差）
+  delta_magnitude FLOAT,                -- 变化幅度（标量，任意维度通用）
   trigger_fact_ids,
   pattern_id (可选)
 
 -- 情感模式
 emotion_patterns:
   pattern_id, person, description,
-  vad_region (在 VAD 空间中的区域描述),
+  vector_region JSON,                   -- 在情感空间中的区域描述（通用）
   confidence, source_transition_ids,
   created_at, updated_at
 
@@ -247,7 +275,7 @@ emotion_triggers:
   trigger_id, person,
   trigger_type (topic / entity / event_type / location / ...),
   trigger_value,
-  associated_valence, associated_arousal, associated_dominance,
+  associated_vector JSON,               -- 关联的典型情感向量（通用）
   trigger_count,
   last_triggered_at,
   confidence,
@@ -349,6 +377,8 @@ emotion_triggers:
 }
 {
   "dimension": "emotion",
+  "emotion_model": "vad-3d",
+  "emotion_vector": [-0.4, 0.7, 0.4],
   "valence": -0.4,
   "arousal": 0.7,
   "dominance": 0.4,
@@ -359,7 +389,7 @@ emotion_triggers:
 }
 ```
 
-注意：`emotion_tag` 是事件维度的字段（放在事件池），VAD 是情感维度的字段（放在情感池）。同一 LLM 调用同时输出两个维度。
+注意：`emotion_tag` 是事件维度的字段（放在事件池），VAD/emotion_vector 是情感维度的字段（放在情感池）。同一 LLM 调用同时输出两个维度。`emotion_vector` 与固定字段同步，未来切换模型时固定字段可为 NULL，以 `emotion_vector` 为准。
 
 ### 4.5 热路径（已有）
 
@@ -373,7 +403,7 @@ emotion_triggers:
 
 | 维度 | 含义 | 计算方式 | 用途 |
 |:----|:-----|:---------|:-----|
-| **intensity** | 情感有多强烈 | 从 VAD 综合计算（√(v²+a²+d²)/√3） | 冷却、检索排序 |
+| **intensity** | 情感有多强烈 | 通用公式：√(Σeᵢ²) / √dim（VAD 三维下 = √(v²+a²+d²)/√3） | 冷却、检索排序 |
 | **importance** | 这个情感事件对用户人生有多重要 | LLM 标注（0~1） | 永久保温、LLM 情感记忆召回 |
 
 ### 5.2 importance 标注规则
@@ -517,24 +547,27 @@ LLM 对话（能力 ❹）:
 ## 九、初期实现建议
 
 ```
-Phase 1（一表 + 基础能力）:
-  emotion_events 表（含 VAD + importance + trigger_topics）
+Phase 1（一表 + 基础能力 — 当前）:
+  emotion_events 表（含 VAD 固定字段 + emotion_model + emotion_vector）
   查询时动态推导 transitions / patterns / triggers
   冷却：简单时间衰减 + importance ≥ 0.8 永久保温
   LLM 对话：提供情感记忆查询接口（按 importance 排序检索）
+  情感模型：VAD 三维（emotion_model='vad-3d'）
 
-Phase 2（三表物化）:
+Phase 2（三表物化 + 兼容准备）:
   emotion_states（从 emotion_events 迁移）
-  emotion_transitions（物化推导结果）
-  emotion_patterns（物化聚类结果）
-  emotion_triggers（物化触发关联）
+  emotion_transitions（物化推导结果，通用 vector_delta）
+  emotion_patterns（物化聚类结果，通用 vector_region）
+  emotion_triggers（物化触发关联，通用 associated_vector）
   冷却：各层冷却系数叠加
   情感触发关联：睡眠周期中主动挖掘
+  双写：写入固定字段同时写 emotion_vector JSON
 
-Phase 3（高级能力）:
+Phase 3（高级能力 + 模型切换）:
   情感模式与行为模式池协同
   跨人情感模式对比（社会模拟场景）
   情感轨迹预测（作为 L5 行为预测的子模块）
+  可切换情感模型（如 21 维），查询逻辑根据 emotion_model 路由
 ```
 
 ---
@@ -564,3 +597,4 @@ Phase 3（高级能力）:
 | 2026-06-16 | 深度分析 | 四大核心能力明确、VAD 定稿、importance 机制、emotion_triggers、LLM 情感记忆服务。详见主架构文档 §十 讨论记录 |
 | 2026-06-16 | 存储模型定稿 | 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签。详见 §三 |
 | 2026-06-16 | 情感提取策略定稿 | 搭便车（跟随多维度提取，不独立触发）+ 两阶段写入（L0→L1 实时写入 + L3 睡眠周期 refine）。emotion_tag 由 LLM 直接填，L3 回填漏标。详见 §四 |
+| 2026-06-16 | 情感模型兼容性设计 | 新增 emotion_model 字段标记情感模型类型。存储层用 JSON 通用向量 + 固定字段双写。推导层改为通用 vector_delta/vector_region。intensity 公式通用化。迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量。详见 §二、§三、§九 |
