@@ -1466,7 +1466,102 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ---
 
-## 8. 分阶段实现路径
+## 8. LLM 对话中的主动情感检索
+
+### 8.1 问题
+
+LLM 对话中，情感数据（情感事件、情感触发关联）不是每次回复都需要，但需要时又很重要。如何在不显著增加响应延迟的前提下，让 LLM 在需要时能获取情感上下文？
+
+### 8.2 方案：分级递进检索
+
+```
+用户输入
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│  第一层：零成本关键词检测（has_emotion_signal?）              │
+│  规则：情感词/情感标点/情感强度词                             │
+│  → 成本：< 1ms                                              │
+│  → 精度：低（可能误报/漏报）                                  │
+└─────────────────────────────────────────────────────────────┘
+    ↓ 如果检测到信号
+┌─────────────────────────────────────────────────────────────┐
+│  第二层：轻量情感触发检索                                    │
+│  只查 emotion_triggers（静态知识池）                          │
+│  → 成本：10~30ms                                            │
+│  → 获取：当前话题的情感触发关联                               │
+└─────────────────────────────────────────────────────────────┘
+    ↓ 如果 triggers 显示强情感关联
+┌─────────────────────────────────────────────────────────────┐
+│  第三层：完整情感检索                                        │
+│  查情感池（emotion_events）+ 情感模式                        │
+│  → 成本：50~200ms                                           │
+│  → 获取：完整情感轨迹 + 相关情感记忆                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.3 决策树
+
+```
+用户输入
+    ↓
+关键词检测（< 1ms）
+  ├─ 无情感信号 → 直接回复（零延迟）
+  │
+  └─ 有情感信号 → 查 emotion_triggers（10~30ms）
+       ├─ 无强关联（confidence < 0.7）→ 直接回复（仅 10~30ms 延迟）
+       │
+       └─ 有强关联（confidence ≥ 0.7）→ 完整情感检索（50~200ms）
+            └─ LLM 回复（有完整情感上下文）
+```
+
+### 8.4 关键词检测规则（零成本）
+
+```python
+# 第一层：零成本关键词检测
+EMOTION_KEYWORDS = {
+    # 情感词
+    "开心", "难过", "生气", "焦虑", "压力", "烦", "累",
+    "伤心", "愤怒", "紧张", "害怕", "兴奋", "感动",
+    # 情感标点/语气
+    "!", "？", "唉", "哎", "哼", "切",
+    # 情感强度词
+    "太", "好", "真", "特别", "非常", "有点",
+    # 否定+情感组合
+    "不开心", "不高兴", "受不了", "忍不住",
+}
+
+def has_emotion_signal(text: str) -> bool:
+    """零成本情感信号检测"""
+    for keyword in EMOTION_KEYWORDS:
+        if keyword in text:
+            return True
+    return False
+```
+
+### 8.5 与 emotion_tag 的协同
+
+```
+关键词检测触发后 → 查 emotion_triggers
+  ├─ triggers 有强关联 → 完整检索情感池
+  └─ triggers 无关联但事件池 emotion_tag 非 null
+      → 轻量检索：只查最近 N 条情感事件（不查全量轨迹）
+```
+
+### 8.6 与主检索流程的关系
+
+主动情感检索与 §7 的主检索流程**正交**：
+
+| 维度 | 主检索流程（§7） | 主动情感检索（§8） |
+|:----|:---------------|:-----------------|
+| 触发方式 | 用户显式查询 | LLM 对话中主动触发 |
+| 触发时机 | 用户发送消息后 | LLM 回复前 |
+| 检索目标 | 所有层（L0-L5） | 情感池 + triggers |
+| 输出 | 统一排序结果 + 上下文包 | 情感上下文（注入 LLM prompt） |
+| 是否阻塞 | 阻塞（用户等待回复） | 分级阻塞（零/轻量/完整） |
+
+---
+
+## 9. 分阶段实现路径
 
 ### Phase 1: MVP (最小可行产品)
 
@@ -1528,9 +1623,9 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ---
 
-## 9. 与现有架构的整合点
+## 10. 与现有架构的整合点
 
-### 9.1 现有代码复用
+### 10.1 现有代码复用
 
 | 现有组件 | 新架构中的角色 | 修改程度 |
 |---------|--------------|---------|
@@ -1542,7 +1637,7 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 | `store.py` 的 facts 表 | L1 数据源 | 无需修改 |
 | `store.py` 的 entity_relations 表 | L2 数据源 | 无需修改 |
 
-### 9.2 新增存储需求
+### 10.2 新增存储需求
 
 | 新增数据 | 用途 | 存储位置 |
 |---------|------|---------|
@@ -1552,7 +1647,7 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 | `retrieval_cache` 表 | Phase 3 检索缓存 | 新表 |
 | `heat_metadata` 列 | 冷却系数追踪 | facts 表新增列 |
 
-### 9.3 向后兼容
+### 10.3 向后兼容
 
 - 新检索算法通过 `ButterflyDreamProvider` 的 `search()` 方法暴露
 - 现有 `ThreeDimRetriever.search()` 保持不动 (作为 L1 的内部实现)
@@ -1561,9 +1656,9 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ---
 
-## 10. 性能考虑
+## 11. 性能考虑
 
-### 10.1 延迟预算
+### 11.1 延迟预算
 
 | 阶段 | 目标延迟 | 说明 |
 |------|---------|------|
@@ -1579,7 +1674,7 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 | Fusion | < 20ms | 归一化 + 重排序 |
 | **Total** | **< 250ms** | 全量六层 |
 
-### 10.2 并行策略
+### 11.2 并行策略
 
 ```python
 # 各层检索并行执行
@@ -1593,7 +1688,7 @@ with ThreadPoolExecutor(max_workers=6) as executor:
         layer_results[layer] = future.result()
 ```
 
-### 10.3 缓存策略
+### 11.3 缓存策略
 
 ```python
 class RetrievalCache:
@@ -1623,9 +1718,9 @@ class RetrievalCache:
 
 ---
 
-## 11. 附录: 关键数据结构
+## 12. 附录: 关键数据结构
 
-### 11.1 QueryIntent
+### 12.1 QueryIntent
 
 ```python
 @dataclass
@@ -1638,7 +1733,7 @@ class QueryIntent:
     embedding: Optional[np.ndarray]     # 预计算 embedding
 ```
 
-### 11.2 RetrievalResult
+### 12.2 RetrievalResult
 
 ```python
 @dataclass
@@ -1653,7 +1748,7 @@ class RetrievalResult:
     fact_id: Optional[int]              # 关联的事实 ID
 ```
 
-### 11.3 FusionOutput
+### 12.3 FusionOutput
 
 ```python
 @dataclass
