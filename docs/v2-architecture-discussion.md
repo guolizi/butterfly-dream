@@ -1179,6 +1179,8 @@ L5 灵魂层：核心特质相关 → 冷却减速 × 0.3
 
 **核心理念：** "永远保留"是系统默认行为，但用户有权利真正删除自己的数据。删除不只是"检索不到"，而是从所有层中彻底移除。
 
+**删除需二次确认：** 用户请求真实删除时，系统必须二次确认（"确定要永久删除这条记录吗？此操作不可撤销"），确认完成后立即执行。
+
 | 删除级别 | 影响范围 | 操作 | 代价 |
 |:--------|:--------|:----|:----|
 | **L1 级删除** | 删除单条事实 | 从 L1 事实表删除，L0 微事实标记为 `deleted` | 低（单条 SQL） |
@@ -1206,6 +1208,81 @@ L5 灵魂层：核心特质相关 → 冷却减速 × 0.3
 睡眠周期中：
   受影响的 L5 维度 ← 基于剩余事实重新计算
   其他维度不变
+```
+
+#### 用户屏蔽层（不提，不删）
+
+**核心理念：** 大多数情况下用户不是想删数据，而是不想让系统提某些事。用 `user_blocks` 表记录"不提"，数据本身永远保留，检索时跳过。
+
+```sql
+-- 用户屏蔽记录（统一处理所有类型的屏蔽）
+user_blocks:
+  block_id, person,
+  block_type TEXT,          -- 屏蔽类型
+    -- 'trigger_topic'    = 屏蔽某个情感触发话题
+    -- 'trigger_entity'   = 屏蔽某个实体触发关联
+    -- 'fact'             = 屏蔽某条事实（不输出）
+    -- 'emotion_event'    = 屏蔽某条情感事件
+    -- 'behavior_pattern' = 屏蔽某个行为模式
+    -- 'emotion_pattern'  = 屏蔽某个情感模式
+    -- 'topic'            = 屏蔽某个话题（所有相关数据）
+  block_value TEXT,         -- 屏蔽的值
+    -- '身高' / '前任' / fact_id=1001 / event_id=50 / ...
+  blocked_at,
+  reason TEXT,              -- 用户提供的原因（可选）
+
+  UNIQUE(person, block_type, block_value)
+```
+
+**检索时过滤：** 所有检索管道统一在 FusionEngine 中过滤被屏蔽的内容：
+
+```python
+def _apply_blocks(results, blocks):
+    if not blocks:
+        return results
+    
+    blocked_facts = {b.block_value for b in blocks if b.block_type == 'fact'}
+    blocked_events = {b.block_value for b in blocks if b.block_type == 'emotion_event'}
+    blocked_topics = {b.block_value for b in blocks if b.block_type == 'topic'}
+    
+    return [
+        r for r in results
+        if r.fact_id not in blocked_facts
+        and getattr(r, 'event_id', None) not in blocked_events
+        and not any(t in str(r.content) for t in blocked_topics)
+    ]
+```
+
+**情感回避中的使用：**
+
+```python
+def get_emotion_triggers(person, topic):
+    return db.query("""
+        SELECT * FROM emotion_triggers
+        WHERE person = ?
+        AND (trigger_type, trigger_value) NOT IN (
+            SELECT block_type, block_value FROM user_blocks
+            WHERE person = ? AND block_type IN ('trigger_topic', 'trigger_entity')
+        )
+    """, person, person)
+```
+
+**与"永远保留"的关系：**
+
+```
+用户请求屏蔽 → 不是删除，只是记录"不提"
+    ↓
+数据：全部保留 ✅
+检索：跳过被屏蔽的内容 ✅
+可逆：取消屏蔽后数据立即可用 ✅
+派生：睡眠周期正常聚合，输出时过滤 ✅
+```
+
+**用户屏蔽 vs 真实删除：**
+
+```
+用户："别提身高这个话题" → user_blocks（不提，可逆）
+用户："把那条记录删了"   → 隐私擦除层（真删，需二次确认，不可逆）
 ```
 
 **与"永远保留"原则的关系：**
@@ -1599,3 +1676,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感模式与行为模式池协同定稿 — 多对多关联表 | ✅ 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 `docs/v2-emotion-dimension.md` §十 |
 | 2026-06-16 | 情感对象字段定稿 — emotion_target | ✅ emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 `docs/v2-emotion-dimension.md` §三 |
 | 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | ✅ 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `docs/v2-behavior-prediction.md` §十 |
+| 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | ✅ 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见 §4-遗忘机制 |

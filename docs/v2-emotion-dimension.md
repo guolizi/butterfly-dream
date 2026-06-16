@@ -962,7 +962,7 @@ Phase 3（高级能力 + 模型切换）:
 - [x] **情感模式与行为模式池的协同** — ✅ 已解决：多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。详见 §十。
 - [x] **多人物情感管理** — ✅ 已解决：emotion_events 新增 emotion_target 字段（TEXT），区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 §三。
 - [x] **情感轨迹预测** — ✅ 已解决：不需要独立模块。改为统一的 behavior_predictions 预测日志表，记录预测时的情绪 + 行为后的情感变化，形成情感反馈闭环。详见 `v2-behavior-prediction.md` §十。
-- [ ] **情感触发关联的隐私问题** — 用户可能不希望系统记住某些情感触发关联（如特定创伤），如何处理删除/遗忘？
+- [x] **情感触发关联的隐私问题** — ✅ 已解决：新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制。
 
 ---
 
@@ -982,3 +982,4 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 情感模式与行为模式池协同定稿 | 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 §十 |
 | 2026-06-16 | 情感对象字段定稿 — emotion_target | emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。LLM 提取时同步输出，零额外成本。详见 §三 |
 | 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `v2-behavior-prediction.md` §十 |
+| 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制 |
