@@ -1592,3 +1592,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感存储模型定稿 — 情感事件池 + 多事实关联 + emotion_tag | ✅ 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签，供 L3 抽象层直接过滤。详见 `docs/v2-emotion-dimension.md` |
 | 2026-06-16 | 情感提取策略定稿 — 搭便车 + 两阶段写入 | ✅ 情感提取跟随多维度提取（不独立触发），L0→L1 实时写入初步 VAD + emotion_tag，L3 睡眠周期 refine（修正/合并/去误报/回填）。详见 `docs/v2-emotion-dimension.md` §四 |
 | 2026-06-16 | 情感模型兼容性设计 — emotion_model + 通用向量 | ✅ 新增 emotion_model 字段标记情感模型类型。存储层 JSON 通用向量 + 固定字段双写。推导层通用 vector_delta/vector_region。intensity 公式通用化。迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量。详见 `docs/v2-emotion-dimension.md` §二/§三/§九 |
+| 2026-06-16 | 情感触发关联归属定稿 — 静态知识池 | ✅ emotion_triggers 归属静态知识池（非情感池）。triggers 是用户的稳定心理特征，不随情感事件冷却而消失。数据流：情感池聚合 → 静态知识池沉淀 → LLM 对话直接查询。详见 `docs/v2-emotion-dimension.md` §六 |
