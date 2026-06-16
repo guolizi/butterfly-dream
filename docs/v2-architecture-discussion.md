@@ -1595,3 +1595,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感触发关联归属定稿 — 静态知识池 | ✅ emotion_triggers 归属静态知识池（非情感池）。triggers 是用户的稳定心理特征，不随情感事件冷却而消失。数据流：情感池聚合 → 静态知识池沉淀 → LLM 对话直接查询。详见 `docs/v2-emotion-dimension.md` §六 |
 | 2026-06-16 | 主动检索触发时机定稿 — 分级递进检索 | ✅ LLM 对话中分级递进检索：零成本关键词检测 → emotion_triggers（10~30ms）→ 完整情感检索（50~200ms）。详见 `docs/v2-retrieval-design.md` §8 |
 | 2026-06-16 | VAD 到 L5 接口定稿 — VAD 3 维直接取 | ✅ psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。仅大五人格+能量动机 9 维需训练。详见 `docs/v2-behavior-prediction.md` §2.1 |
+| 2026-06-16 | LLM 情感记忆服务接口定稿 — 自动注入 + 工具调用 | ✅ Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 `docs/v2-emotion-dimension.md` §九 |
