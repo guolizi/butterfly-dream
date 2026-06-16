@@ -174,7 +174,7 @@ class QueryIntent:
     psych_probe: Optional[np.ndarray]  # 心理探针向量 (Phase 2+)
 ```
 
-**心理探针向量 (Psych Probe)**: 将 query 映射到 11 维心理空间（大五人格5 + 能量动机4 + 情绪效价2），用于检索历史上处于相似心理状态时的记忆。Phase 1 为 None，Phase 2+ 由轻量级分类器或 LLM 生成。
+**心理探针向量 (Psych Probe)**: 将 query 映射到 11 维心理空间（大五人格5 + 能量动机4 + 情绪效价2），用于检索历史上处于相似心理状态时的记忆。Phase 1 为 None，Phase 2+ 由轻量级分类器生成——从 query embedding 线性投影到 11 维心理空间（如 ridge regression / linear probe），**零额外 LLM 调用**。训练数据来自情感维度系统自动积累的历史心理状态标注。
 
 > 受"认知驱动的多维混合检索"方案启发。核心创新：不是搜"相似的句子"，而是搜"相似的心情"。详见 §3.7 L5 检索。
 
