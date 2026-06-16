@@ -186,6 +186,21 @@ L1 池体系:
     ↑ 情感池是连续的线，事件池是线上的点
 ```
 
+**触发事实 vs 情感对象：**
+
+`primary_fact_id` 和 `emotion_target` 是两个正交维度，共同描述一次情感体验：
+
+```
+primary_fact_id（触发事实）    emotion_target（情感对象）
+
+"老板在会议上批评了我"          对"老板"生气
+"朋友说我妈病了"               对"妈妈"担心
+"考试通过了"                   对"自己"自豪
+"莫名焦虑"                     null（无对象，mood）
+```
+
+触发事实回答"因为什么事"，情感对象回答"对谁/什么"。两者可以相同（对老板生气是因为老板做的事），也可以不同（被老板骂了但对自己生气）。
+
 ### 3.2 数据结构
 
 #### 情感事件池（Phase 1 一表）
@@ -202,6 +217,13 @@ emotion_events:
     -- 未来 21 维：emotion_vector = [...21 个值...]
     -- 写入时与固定字段同步，查询时优先使用固定字段（性能）
   emotion_label,                        -- 可选，方便人类阅读
+  emotion_target TEXT,                   -- 情感对象
+    -- null         = 无对象（mood，如"莫名焦虑"）
+    -- 'self'       = 对自己（自尊、自豪、羞愧）
+    -- 'person:老板' = 对某人
+    -- 'entity:工作' = 对实体/概念
+    -- 'event:考试'  = 对事件
+    -- 'place:办公室' = 对场所
   intensity,                            -- 通用公式：√(Σeᵢ²) / √dim
   primary_fact_id,                      -- 主要触发事实（非空）
   related_fact_ids,                     -- 关联事实列表（可选，TEXT[]）
@@ -247,6 +269,7 @@ emotion_states:
   valence, arousal, dominance,
   emotion_vector JSON,
   emotion_label,
+  emotion_target TEXT,                   -- 情感对象（同 emotion_events）
   intensity,
   primary_fact_id,
   related_fact_ids,
@@ -385,6 +408,7 @@ emotion_triggers:
   "arousal": 0.7,
   "dominance": 0.4,
   "emotion_label": "焦虑",
+  "emotion_target": null,               -- 无对象（mood）
   "importance": 0.5,
   "significance_reason": "用户主动表达压力，但未提及具体事件影响",
   "trigger_topics": ["工作"]
@@ -936,7 +960,7 @@ Phase 3（高级能力 + 模型切换）:
 - [x] **VAD 到 L5 的接口** — ✅ 已解决：psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1。
 - [x] **LLM 情感记忆服务的接口设计** — ✅ 已解决：Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九。
 - [x] **情感模式与行为模式池的协同** — ✅ 已解决：多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。详见 §十。
-- [ ] **多人物情感管理** — 每个角色独立情感轨迹？跨人情感关系怎么处理？
+- [x] **多人物情感管理** — ✅ 已解决：emotion_events 新增 emotion_target 字段（TEXT），区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 §三。
 - [ ] **情感轨迹预测** — 作为 L5 行为预测的子模块，预测精度和训练数据来源？
 - [ ] **情感触发关联的隐私问题** — 用户可能不希望系统记住某些情感触发关联（如特定创伤），如何处理删除/遗忘？
 
@@ -956,3 +980,4 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | VAD 到 L5 接口定稿 | psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1 |
 | 2026-06-16 | LLM 情感记忆服务接口定稿 | Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九 |
 | 2026-06-16 | 情感模式与行为模式池协同定稿 | 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 §十 |
+| 2026-06-16 | 情感对象字段定稿 — emotion_target | emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。LLM 提取时同步输出，零额外成本。详见 §三 |
