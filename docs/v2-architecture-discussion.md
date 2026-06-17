@@ -1503,8 +1503,31 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
   - 每个阶段执行前检查 checkpoint
   - 已完成的阶段跳过
   - 未完成的阶段从上一次中断点继续
-  - Phase 2 的 LLM 提取可以按"批"中断（每批 10 条事实）
 ```
+
+**checkpoint 粒度：每个 LLM 调用成功后写水位线**
+
+```
+Phase 2: L0→L1 冷晋升
+  checkpoint = {
+      "phase": "phase2_cold_promotion",
+      "last_processed_micro_fact_id": 370  ← 已成功晋升的微事实 ID
+  }
+
+  恢复时: SELECT * FROM micro_facts
+          WHERE id > last_processed_micro_fact_id
+          ORDER BY id LIMIT batch_size
+```
+
+**为什么不是阶段级或批级：**
+
+| 粒度 | 问题 | 示例 |
+|:----|:-----|:-----|
+| **阶段级**（当前） | LLM 调用中途失败 → 已写入和未写入边界模糊 | 批 38 写到第 5 条时失败，恢复后从批 38 重试 → 前 5 条重复 |
+| **批级** | 批内部分成功时无法精确恢复 | 同批 10 条中 7 条成功 3 条失败 → 重试整批浪费 |
+| **水位线级** ✅ | 精确到单条微事实，零重复零遗漏 | 恢复时 `WHERE id > 370`，精确无歧义 |
+
+**实现方式：** 每个 LLM 调用成功后，将本批最后一条微事实的 ID 写入 checkpoint。LLM 调用失败时不更新 checkpoint，下次重试同一批。checkpoint 表单行 UPDATE，成本可忽略。
 
 ### 7.5 增量原则
 
@@ -1722,3 +1745,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感对象字段定稿 — emotion_target | ✅ emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 `docs/v2-emotion-dimension.md` §三 |
 | 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | ✅ 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `docs/v2-behavior-prediction.md` §十 |
 | 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | ✅ 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见 §4-遗忘机制 |
+| 2026-06-17 | 睡眠周期 checkpoint 粒度修正 — 水位线级 | ✅ 从阶段级 checkpoint 改为每个 LLM 调用成功后写水位线（last_processed_micro_fact_id）。恢复时 WHERE id > checkpoint，精确到单条微事实，零重复零遗漏。详见 §7.4 |
