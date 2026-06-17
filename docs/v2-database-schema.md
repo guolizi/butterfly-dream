@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS behavior_patterns (
         -- 'value-driven'   = 价值观驱动的行为
 
     -- 演化链
-    evolved_from_pattern_id INTEGER REFERENCES behavior_patterns(pattern_id),
+    evolved_from_pattern_id INTEGER REFERENCES behavior_patterns(pattern_id) ON DELETE SET NULL,
 
     -- 源事实
     source_fact_ids     TEXT,                   -- 支撑该模式的 L1 事实 ID 列表（JSON 数组）
@@ -452,7 +452,7 @@ CREATE TABLE IF NOT EXISTS provenance (
                   CHECK(source_type IN ('llm_extraction', 'l0_promotion', 'l3_abstraction',
                                         'l4_narrative', 'user_input', 'historical_import')),
     source_session_id TEXT,                  -- 来源会话 ID
-    source_turn_id    INTEGER REFERENCES conversation_turns(turn_id),  -- 来源对话轮次
+    source_turn_id    INTEGER REFERENCES conversation_turns(turn_id) ON DELETE SET NULL,  -- 来源对话轮次
     confidence        REAL DEFAULT 0.7,      -- 来源可信度
     created_at        TEXT DEFAULT (datetime('now','localtime'))
 );
@@ -637,7 +637,7 @@ CREATE TABLE IF NOT EXISTS behavior_predictions (
 
     -- 预测时的上下文
     context_snapshot            TEXT,             -- 上下文快照（JSON）
-    pattern_relation_id         INTEGER REFERENCES pattern_relations(relation_id),  -- 关联的情感-行为模式
+    pattern_relation_id         INTEGER REFERENCES pattern_relations(relation_id) ON DELETE SET NULL,  -- 关联的情感-行为模式
 
     -- 实际结果（行为发生后回填）
     actual_behavior             TEXT,             -- 实际行为（null=未发生）
@@ -899,7 +899,7 @@ CREATE TABLE IF NOT EXISTS emotion_transitions (
     vector_delta    TEXT,                       -- 后向量 - 前向量（JSON 数组）
     delta_magnitude REAL,                       -- 变化幅度（标量）
     trigger_fact_ids TEXT,                      -- 触发事实 ID 列表（JSON 数组）
-    pattern_id      INTEGER REFERENCES emotion_patterns(pattern_id),  -- 关联的情感模式（可选）
+    pattern_id      INTEGER REFERENCES emotion_patterns(pattern_id) ON DELETE SET NULL,  -- 关联的情感模式（可选）
     created_at      TEXT DEFAULT (datetime('now','localtime'))
 );
 
