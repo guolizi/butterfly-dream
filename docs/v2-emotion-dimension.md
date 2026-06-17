@@ -470,23 +470,150 @@ emotion_triggers:
 | 维度 | 含义 | 计算方式 | 用途 |
 |:----|:-----|:---------|:-----|
 | **intensity** | 情感有多强烈 | 通用公式：√(Σeᵢ²) / √dim（VAD 三维下 = √(v²+a²+d²)/√3） | 冷却、检索排序 |
-| **importance** | 这个情感事件对用户人生有多重要 | LLM 标注（0~1） | 永久保温、LLM 情感记忆召回 |
+| **importance** | 这个情感事件对用户人生有多重要 | LLM 初始标注（0~1），后续动态衰减 + 回响修正 | 检索排序、情感记忆召回 |
 
-### 5.2 importance 标注规则
-
-| importance 范围 | 含义 | 例子 | 冷却行为 |
-|:--------------|:-----|:-----|:---------|
-| ≥ 0.9 | 人生里程碑级 | 宠物去世、结婚、升职、重大挫折 | 永久保温 |
-| 0.7 ~ 0.9 | 重要情感事件 | 重要考试通过、与挚友争吵 | 减速冷却 |
-| 0.4 ~ 0.7 | 日常情感事件 | 工作小成就、普通约会 | 正常冷却 |
-| < 0.4 | 轻微情感波动 | 被路人踩脚、看到好天气 | 加速冷却 |
-
-### 5.3 LLM 标注时机
+### 5.2 LLM 初始标注
 
 在多维度提取时同步标注。importance 的判断依据：
 - 事件对用户人生轨迹的潜在影响
 - 事件涉及的核心价值（亲情/友情/事业/健康等）
 - 用户在该事件上的情感投入程度（intensity × 持续时间）
+
+| importance 范围 | 含义 | 例子 |
+|:--------------|:-----|:-----|
+| ≥ 0.9 | 人生里程碑级 | 宠物去世、结婚、升职、重大挫折 |
+| 0.7 ~ 0.9 | 重要情感事件 | 重要考试通过、与挚友争吵 |
+| 0.4 ~ 0.7 | 日常情感事件 | 工作小成就、普通约会 |
+| < 0.4 | 轻微情感波动 | 被路人踩脚、看到好天气 |
+
+### 5.3 动态 importance 衰减
+
+**核心原则：importance 不是静态标签，而是随时间和新证据自然漂移的量。** 情感意义会随时间演化——分手时 importance=0.95，6 个月后走出来了，就不应再以同样权重影响对话。
+
+采用**幂律衰减**（心理学遗忘曲线的实证最优模型，Rubin & Wenzel 1996），结合三个调制因子：
+
+```
+importance(t) = initial_importance × (1 + α × Δt)^(-β)
+```
+
+| 参数 | 默认值 | 含义 | 心理学依据 |
+|:----|:------|:-----|:----------|
+| α | 0.1/月 | 基础衰减率 | 幂律遗忘 (Wixted & Carpenter 2007) |
+| Δt | — | 距离情感事件发生的时间（月） | — |
+| β | 见下 | 衰减指数，由三个因子调制 | — |
+
+**β 的计算：**
+
+```
+β = β_base × (1 - initial_importance) × valence_factor × resonance_factor
+```
+
+| 因子 | 取值 | 含义 | 心理学依据 |
+|:----|:----|:-----|:----------|
+| β_base | 0.5 | 全局基准 | 幂律衰减经验常数 |
+| (1 - importance) | 0~1 | 高 importance → 低 β → 慢衰减 | 情感增强效应 (Kensinger 2009) |
+| valence_factor | 0.8~1.2 | 正面衰减最慢，负面衰减最快 | Fading Affect Bias (Walker 1997) |
+| resonance_factor | 0.5~1.0 | 被频繁提及 → 衰减暂停 | 再巩固效应 (Nader 2000) |
+
+**valence_factor 取值：**
+
+| valence | factor | 含义 |
+|:-------|:------|:-----|
+| > +0.3 | 0.8 | 正面情感衰减最慢 |
+| -0.3 ~ +0.3 | 1.0 | 中性情感正常衰减 |
+| < -0.3 | 1.2 | 负面情感衰减最快 |
+
+**resonance_factor 取值（复用 emotion_triggers.confidence）：**
+
+| trigger_confidence | factor | 含义 |
+|:-----------------|:------|:-----|
+| ≥ 0.7 | 0.5 | 同一话题高频提及 → 衰减半速 |
+| 0.3 ~ 0.7 | 0.8 | 偶尔提及 → 衰减略慢 |
+| < 0.3 | 1.0 | 未提及 → 正常衰减 |
+
+**为什么复用 emotion_triggers：**
+- `emotion_triggers` 已经包含了最近 5 次事件的 VAD 加权平均 + 一致性判断（§6.3）
+- 高频 + 一致的情感反应 → 高 confidence → 说明这个话题确实有情感意义
+- 高频 + 不一致的情感反应 → 低 confidence → 说明用户只是随口说说，情感在变化
+- **不需要新增独立机制**
+
+### 5.4 计算示例
+
+```
+分手事件: initial_importance=0.95, valence=-0.8, 12 个月后
+
+β = 0.5 × (1 - 0.95) × 1.2(负面) × 1.0(未再提及)
+  = 0.5 × 0.05 × 1.2 × 1.0
+  = 0.03
+
+importance(12) = 0.95 × (1 + 0.1 × 12)^(-0.03)
+               = 0.95 × 2.2^(-0.03)
+               = 0.95 × 0.977
+               = 0.928
+→ 12 个月后仍然很高，但不再是永久保温
+
+午饭不好吃: initial_importance=0.2, valence=-0.2, 1 个月后
+
+β = 0.5 × (1 - 0.2) × 1.0(中性) × 1.0(未再提及)
+  = 0.5 × 0.8 × 1.0 × 1.0
+  = 0.4
+
+importance(1) = 0.2 × (1 + 0.1 × 1)^(-0.4)
+              = 0.2 × 1.1^(-0.4)
+              = 0.2 × 0.962
+              = 0.192
+→ 1 个月后快速衰减到接近 0
+
+被高频提及的工作压力: initial_importance=0.6, valence=-0.5, 3 个月后
+  trigger_confidence=0.8(高频提及)
+
+β = 0.5 × (1 - 0.6) × 1.2(负面) × 0.5(高频提及)
+  = 0.5 × 0.4 × 1.2 × 0.5
+  = 0.12
+
+importance(3) = 0.6 × (1 + 0.1 × 3)^(-0.12)
+              = 0.6 × 1.3^(-0.12)
+              = 0.6 × 0.969
+              = 0.581
+→ 因为被反复提及，衰减几乎被抵消
+```
+
+### 5.5 工程实现
+
+```python
+def compute_importance(initial_importance, delta_months, valence, trigger_confidence):
+    """计算当前 importance 值（幂律衰减 + 三因子调制）"""
+    alpha = 0.1  # 基础衰减率 /月
+
+    # valence 因子 (Fading Affect Bias)
+    if valence > 0.3:
+        valence_factor = 0.8
+    elif valence < -0.3:
+        valence_factor = 1.2
+    else:
+        valence_factor = 1.0
+
+    # resonance 因子 (再巩固效应，复用 emotion_triggers)
+    if trigger_confidence >= 0.7:
+        resonance_factor = 0.5
+    elif trigger_confidence >= 0.3:
+        resonance_factor = 0.8
+    else:
+        resonance_factor = 1.0
+
+    # 衰减指数
+    beta = 0.5 * (1 - initial_importance) * valence_factor * resonance_factor
+
+    # 幂律衰减
+    current = initial_importance * (1 + alpha * delta_months) ** (-beta)
+    return max(0.0, min(1.0, current))
+```
+
+### 5.6 计算时机
+
+- **查询时实时计算**：每次检索 emotion_events 时，`importance` 作为派生值实时计算（基于存储的 `initial_importance` + `timestamp` + 当前 `emotion_triggers.confidence`）
+- **睡眠周期 snapshot**：L3 睡眠周期中可以将当前 importance 值物化到 emotion_events 表（可选优化，减少查询时计算量）
+- **不改变存储结构**：`emotion_events` 表仍然存 `initial_importance`（LLM 初始标注），不存动态值
 
 ---
 
@@ -608,15 +735,26 @@ emotion_triggers 本身**不参与冷热分级**（永远存在，不降级）�
 
 ## 七、情感冷却设计
 
-情感维度参与整体冷热分级，但有独立的冷却规则：
+情感维度参与整体冷热分级，但有独立的冷却规则。**冷却规则基于动态 importance（§5.3），不再使用硬性的"永久保温"阈值。**
 
 ### 7.1 emotion_states
 
 | 冷却依据 | 加速条件 | 减速条件 |
 |:--------|:---------|:---------|
-| 时间衰减为主 | 关联事实冷却 | importance ≥ 0.7 |
+| 时间衰减为主 | 关联事实冷却 | importance 高（动态值大） |
 | | 低频人物 | 被 L4 标记为叙事关键情感节点 |
 | | | 被 L5 标记为人格特质相关 |
+
+冷却速度与动态 importance 的关系：
+
+```
+冷却速度 ∝ 1 / current_importance
+  → importance 接近 1.0（如刚发生的分手事件）: 冷却极慢
+  → importance 衰减到 0.5（如走出来的旧事）: 正常冷却
+  → importance 接近 0.0（如被遗忘的小事）: 快速冷却
+```
+
+不再使用 `importance ≥ 0.8 → 永久保温` 的硬规则——高 importance 事件的自然衰减已经极慢（β 极小），在叙事时间尺度上几乎不降。
 
 ### 7.2 emotion_transitions
 
@@ -634,9 +772,10 @@ emotion_triggers 本身**不参与冷热分级**（永远存在，不降级）�
 ### 7.4 加热规则
 
 - 被检索命中 → 热度 +1 级
-- importance ≥ 0.8 → 永久保温
 - 被 L4 标记为叙事关键情感节点 → 永久保温
 - 被 L5 标记为人格特质相关情感 → 永久保温
+
+注意：L4/L5 标记的"永久保温"与 §5.3 的动态 importance 不矛盾——L4/L5 的标记是**检索层面的热度保护**（确保叙事关键节点在检索中不被漏掉），而 importance 衰减是**语义层面的权重**（反映事件在用户人生中的当前意义）。两者独立作用。L4/L5 标记只影响检索热度，不影响 importance 衰减。
 
 ---
 
@@ -1048,7 +1187,7 @@ emotion_pattern confidence = 0.9, behavior_pattern confidence = 0.6
 Phase 1（一表 + 基础能力 — 当前）:
   emotion_events 表（emotion_vector 主存储 + GENERATED 派生列 + emotion_model）
   查询时动态推导 transitions / patterns / triggers
-  冷却：简单时间衰减 + importance ≥ 0.8 永久保温
+  冷却：动态 importance 幂律衰减（§5.3），查询时实时计算
   LLM 对话：自动注入情感上下文（分级递进检索），零 LLM 工作量
   情感模型：VAD 三维（emotion_model='vad-3d'）
 
@@ -1075,7 +1214,7 @@ Phase 3（高级能力 + 模型切换）:
 以下问题尚未深入，留待后续讨论：
 
 - [x] **情感提取的触发策略** — ✅ 已解决：搭便车（跟随多维度提取）+ 两阶段写入（L0→L1 实时写入 + L3 睡眠周期 refine）。详见 §四。
-- [x] **情感重要性的定义** — ✅ 已解决：LLM 标注 importance，区分 intensity（多强烈）和 importance（多重要）。详见 §五。
+- [x] **情感重要性的定义** — ✅ 已解决：LLM 标注 initial_importance，区分 intensity（多强烈）和 importance（多重要）。importance 采用幂律动态衰减（§5.3），非静态标签。详见 §五。
 - [x] **情感触发关联的归属** — ✅ 已解决：归属静态知识池。triggers 是用户的稳定心理特征，不随情感事件冷却而消失。详见 §六。
 - [x] **主动检索的触发时机** — ✅ 已解决：分级递进检索（关键词检测 → emotion_triggers → 完整情感检索）。详见 `v2-retrieval-design.md` §8。
 - [x] **VAD 到 L5 的接口** — ✅ 已解决：psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1。
@@ -1105,4 +1244,5 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 情感对象字段定稿 — emotion_target | emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。LLM 提取时同步输出，零额外成本。详见 §三 |
 | 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `v2-behavior-prediction.md` §十 |
 | 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制 |
-| 2026-06-17 | emotion_triggers 聚合策略修正 | 从"全历史均值 + 要求 VAD 一致性"改为"最近 5 次加权 + 不要求一致性"。低 confidence 本身就是信号（情感在演化）。情感演化由 emotion_events 时序 + query_emotion_timeline 覆盖。详见 §六 |
+|| 2026-06-17 | emotion_triggers 聚合策略修正 | 从"全历史均值 + 要求 VAD 一致性"改为"最近 5 次加权 + 不要求一致性"。低 confidence 本身就是信号（情感在演化）。情感演化由 emotion_events 时序 + query_emotion_timeline 覆盖。详见 §六 |
+|| 2026-06-17 | 动态 importance 衰减定稿 | importance 从静态标签改为幂律动态衰减（α=0.1/月），三因子调制：importance 高→慢衰减（情感增强效应）、负面→快衰减（Fading Affect Bias）、高频提及→衰减暂停（再巩固效应）。resonance_factor 复用 emotion_triggers.confidence。冷却规则移除"importance≥0.8→永久保温"硬阈值。详见 §五、§七 |
