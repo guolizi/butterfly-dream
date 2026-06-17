@@ -249,15 +249,15 @@ L1 池体系:
 - 情感池的核心数据是**连续数值**（VAD 三维），不是文本，FTS5/embedding 检索不适用
 - 冷却规则不同（importance 特殊处理）
 - 单条情感事件没有独立意义，必须放在时间序列中才有价值
-- 与事件池通过 `context_fact_id` 关联，互不依赖存储
+- 与事件池通过 `primary_fact_id` 关联，互不依赖存储
 
 **情感池 vs 事件池的关系：**
 
 ```
 事件池: "Caroline 的宠物去世了" (fact_id=1001)
-    ↓ context_fact_id
+    ↓ primary_fact_id
 情感池: valence=-0.85, arousal=0.7, dominance=0.2, importance=0.95
-    ↑ 两条记录通过 context_fact_id 关联
+    ↑ 两条记录通过 primary_fact_id 关联
     ↑ 情感池是连续的线，事件池是线上的点
 ```
 
@@ -422,7 +422,7 @@ emotion_triggers:
   trigger_count,
   last_triggered_at,
   confidence,
-  source_state_ids
+  source_event_ids
 ```
 
 ### 3.3 三个层次

@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS facts (
     -- 池间公共字段
     category        TEXT DEFAULT 'general',
     tags            TEXT DEFAULT '',
-    importance      REAL DEFAULT 5.0,          -- v1: 1.0~10.0 → v2: 0.0~1.0（迁移后）
+    importance      REAL DEFAULT 0.5,          -- 0.0~1.0 连续标度
     trust_score     REAL DEFAULT 0.5,
     retrieval_count INTEGER DEFAULT 0,
     helpful_count   INTEGER DEFAULT 0,
@@ -170,6 +170,18 @@ CREATE TABLE IF NOT EXISTS facts (
 
     UNIQUE(person, content)
 );
+
+-- Facts 表索引
+CREATE INDEX IF NOT EXISTS idx_facts_person_type
+    ON facts(person, type);
+CREATE INDEX IF NOT EXISTS idx_facts_importance
+    ON facts(importance DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_created
+    ON facts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_facts_content_date
+    ON facts(content_date);
+CREATE INDEX IF NOT EXISTS idx_facts_heat_zone
+    ON facts(heat_zone) WHERE heat_zone IN ('hot', 'warm');
 ```
 
 ### 3.2 行为模式池特有字段
@@ -235,6 +247,9 @@ CREATE TABLE IF NOT EXISTS entities (
     created_at  TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(person, name)
 );
+
+CREATE INDEX IF NOT EXISTS idx_entities_person_name
+    ON entities(person, name);
 
 -- 事实-实体关联
 CREATE TABLE IF NOT EXISTS fact_entities (
@@ -329,6 +344,9 @@ CREATE TABLE IF NOT EXISTS entity_relations (
     created_at  TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(source_id, target_id, relation)
 );
+
+CREATE INDEX IF NOT EXISTS idx_er_source_target
+    ON entity_relations(source_id, target_id);
 ```
 
 ### 4.2 因果链
@@ -790,9 +808,11 @@ CREATE TABLE IF NOT EXISTS emotion_states (
     intensity       REAL,
     primary_fact_id     INTEGER REFERENCES facts(fact_id),
     related_fact_ids    TEXT,
-    source              TEXT NOT NULL DEFAULT 'user',
+    source              TEXT NOT NULL DEFAULT 'user'
+                    CHECK(source IN ('user', 'assistant', 'l0_promotion', 'inferred')),
     initial_importance  REAL DEFAULT 0.5,
     significance_reason TEXT,
+    appraisal_dimensions TEXT,                   -- 认知评价维度（Phase 2+，可选）
     notes               TEXT,
     created_at          TEXT DEFAULT (datetime('now','localtime'))
 );
