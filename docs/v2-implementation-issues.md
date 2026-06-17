@@ -224,4 +224,77 @@ jieba 主要针对中文分词设计，对英文文本的 POS 标注不够准确
 | 🟢 P2 | 关键词长度过滤 | 英文 ≥ 3，中文 ≥ 2 |
 | 🟢 P2 | 纯数字/标点过滤 | 正则确保含字母或中文 |
 | 🟢 P2 | jieba 英文 POS 局限 | 混合分词策略或放宽 eng 过滤 |
-| ⚪ P3 | 数据集限制 | 按 session 编号排序导入 |
+|| ⚪ P3 | 数据集限制 | 按 session 编号排序导入 |
+|
+|---|
+
+## 11. L1 事实提取 Prompt（v2 优化版）
+
+### 用途
+从对话中提取 L1 事实，一次 LLM 调用输出 5 维度：event / knowledge / behavior / emotion / relation。
+
+### 优化过程
+用 session_1 反复调优 5 轮后确定的最终版本：
+
+| 轮次 | 问题 | 改进 |
+|:----:|:----|:----|
+| 1 | 无 behavior 类型、content_date 为 null、时间未标准化 | 明确 5 维度定义，增加时间解析规则 |
+| 2 | emotion 维度缺字段、relation 格式不对 | 每个维度独立字段格式，加 JSON 示例 |
+| 3 | 多了无关字段（type/category/tags 混入 emotion） | 严格约束每个维度的字段列表 |
+| 4 | 漏了关键事实 | 增加覆盖度检查提示 |
+| 5 ✅ | 基本完整 | 最终版本 |
+
+### 最终 Prompt 模板
+
+```markdown
+# L1 事实提取任务
+
+## 任务
+从以下对话中提取 {person} 的 L1 事实。对话是 {person} 和 {other_person} 在 **{session_time}** 的聊天。
+
+## 五个维度，每个维度有独立的字段格式
+
+### 1. 事件（dimension: "event"）
+有时间锚点的具体事件。**content_date 必填**，根据会话时间解析相对日期。
+```json
+{"dimension": "event", "content": "Caroline 参加了LGBTQ+心理咨询支持小组", "type": "event", "category": "social", "tags": "LGBTQ+,counseling,support_group", "importance": 0.7, "content_date": "2023-05-07", "emotion_tag": "positive", "entities": ["Caroline"], "structured_data": {"subject": "Caroline", "action": "参加", "object": "LGBTQ+心理咨询支持小组", "time": "2023-05-07", "location": null}}
+```
+
+### 2. 知识/属性（dimension: "knowledge"）
+无时间锚点的稳定特征、信念、价值观、偏好。**不需要 content_date**。
+```json
+{"dimension": "knowledge", "content": "Caroline 对心理咨询职业感兴趣", "type": "knowledge", "category": "career", "tags": "counseling,career,interest", "importance": 0.6, "emotion_tag": null, "entities": ["Caroline"]}
+```
+
+### 3. 行为模式（dimension: "behavior"）
+条件-行为规律、周期性行为、习惯。**不需要 content_date**。
+```json
+{"dimension": "behavior", "content": "Caroline 在感到被接纳时会主动探索职业方向", "type": "behavior", "category": "psychology", "tags": "acceptance,career_exploration,trigger", "importance": 0.6, "emotion_tag": null, "entities": ["Caroline"]}
+```
+
+### 4. 情感（dimension: "emotion"）
+情感事件，含 VAD 向量。**timestamp 必填**，使用会话时间。
+```json
+{"dimension": "emotion", "content": "Caroline 对加入支持小组感到开心和感激", "emotion_vector": [0.8, 0.7, 0.6], "emotion_label": "开心感激", "emotion_target": "event:support_group", "source": "user", "importance": 0.7, "significance_reason": "用户表达对加入小组的积极感受", "trigger_topics": ["支持小组", "LGBTQ+"], "timestamp": "2023-05-08T13:56:00"}
+```
+
+### 5. 关系（dimension: "relation"）
+人物关系。**不需要时间字段**。
+```json
+{"dimension": "relation", "relation": "friend_of", "source": "Caroline", "target": "Melanie", "weight": 0.8}
+```
+
+## 重要规则
+1. 时间解析：根据会话时间标准化相对日期（"昨天"=会话日期-1天，"上周五"=会话日期前的最近周五）
+2. 每个维度只输出该维度定义的字段，不要混入其他维度的字段
+3. 事件(content_date)和情感(timestamp)的时间字段不要留空
+4. 只提取 {person} 相关的事实
+5. 输出纯 JSON 数组，不要加 markdown 代码块标记或其他文字
+```
+
+### 实现注意事项
+1. **时间解析**：需要在调用前计算好相对日期（"昨天"、"上周"等），不能依赖 LLM 自己算
+2. **维度字段隔离**：每个维度有严格独立的字段列表，LLM 容易混入其他维度的字段，需要在 prompt 中反复强调
+3. **关系维度**：当前提取的 relation 是实体级（Caroline→Melanie），但数据库 `fact_relations` 表是事实级关联（fact_id→fact_id），实现时需要设计映射逻辑
+4. **entities 字段**：当前存到 `facts.entities` JSON 列，但未同步到 `entities` 表，实现时需要设计实体同步逻辑
+5. **emotion_triggers / emotion_states**：当前只提取了 emotion_events，triggers 和 states 需要额外处理
