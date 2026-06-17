@@ -986,7 +986,7 @@ def cost_aware_route(intent: QueryIntent, active_layers: list[int]) -> list[int]
 每条事实的冷却系数 = 各层叠加影响（乘性系数，>1 加速冷却，<1 减速冷却）：
 
 ```
-L1_factor:  importance ≤ 3 → 1.5  (低重要性加速冷却)
+L1_factor:  importance ≤ 3 → 1.5  (低重要性加速冷却，importance 标度 1~5)
 L2_factor:  relation_density_high → 0.5  (高关系密度减速冷却)
 L3_factor:  has_abstract → 2.0  (已抽象替代加速冷却)
 L4_factor:  is_narrative_key → 0.3  (叙事关键节点减速冷却)
