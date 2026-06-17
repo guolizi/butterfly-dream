@@ -443,7 +443,7 @@ emotion_triggers:
 -- triggers = 按 topic 聚合的 VAD 均值
 ```
 
-冷却：简单时间衰减（按 timestamp 降权），importance ≥ 0.8 永久保温
+冷却：动态 importance 幂律衰减（§5.3），查询时实时计算
 
 ---
 
