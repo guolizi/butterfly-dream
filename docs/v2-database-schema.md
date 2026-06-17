@@ -69,11 +69,15 @@ CREATE TABLE IF NOT EXISTS conversation_turns (
     role        TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
     content     TEXT NOT NULL,              -- 对话内容
     turn_order  INTEGER NOT NULL,           -- 轮次序号
+    content_date TEXT,                       -- 对话发生日期（ISO 格式，与 facts.content_date 一致）
     created_at  TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_turns_person_session
     ON conversation_turns(person, session_id, turn_order);
+
+CREATE INDEX IF NOT EXISTS idx_turns_content_date
+    ON conversation_turns(content_date);
 
 -- L0 FTS5 全文索引（对话轮次检索）
 CREATE VIRTUAL TABLE IF NOT EXISTS conversation_turns_fts
@@ -1136,6 +1140,7 @@ END;
 | 表 | 索引 | 用途 |
 |:--|:----|:-----|
 | `conversation_turns` | `idx_turns_person_session` | 按人物+会话查询对话轮次 |
+| `conversation_turns` | `idx_turns_content_date` | 按对话日期过滤 |
 | `conversation_turns` | `conversation_turns_fts` | FTS5 全文索引（BM25 排序） |
 | `micro_facts` | `idx_micro_person_keyword` | 按人物+关键词查微事实 |
 | `micro_facts` | `idx_micro_promoted` | 筛选未晋升的微事实 |
@@ -1199,7 +1204,10 @@ END;
 --    fact_relations, provenance, timeline_relations
 --    user_blocks, sleep_cycle_log, system_config
 
--- 3. facts 表新增列（ALTER TABLE）
+-- 3. conversation_turns 新增列
+ALTER TABLE conversation_turns ADD COLUMN content_date TEXT;
+
+-- 4. facts 表新增列（ALTER TABLE）
 ALTER TABLE facts ADD COLUMN type TEXT DEFAULT 'event';
 ALTER TABLE facts ADD COLUMN person TEXT DEFAULT 'unknown';
 ALTER TABLE facts ADD COLUMN heat_zone TEXT DEFAULT 'hot';
@@ -1209,7 +1217,7 @@ ALTER TABLE facts ADD COLUMN abstract_level INTEGER DEFAULT 0;
 ALTER TABLE facts ADD COLUMN is_abstract INTEGER DEFAULT 0;
 ALTER TABLE facts ADD COLUMN structured_data TEXT;
 
--- 4. importance 标度迁移（1.0~10.0 → 0.0~1.0）
+-- 5. importance 标度迁移（1.0~10.0 → 0.0~1.0）
 UPDATE facts SET importance = (importance - 1.0) / 9.0 WHERE importance > 1.0;
 ```
 
