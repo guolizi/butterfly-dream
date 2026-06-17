@@ -824,8 +824,6 @@ CREATE INDEX IF NOT EXISTS idx_et_person_type
     ON emotion_triggers(person, trigger_type);
 CREATE INDEX IF NOT EXISTS idx_et_confidence
     ON emotion_triggers(confidence DESC);
-CREATE INDEX IF NOT EXISTS idx_et_last_triggered
-    ON emotion_triggers(last_triggered_at);
 ```
 
 ### 8.3 情感状态节点（Phase 2 物化）
@@ -1161,7 +1159,6 @@ END;
 | `emotion_states` | `idx_es_person_time` | 按人物+时间查情感状态 |
 | `emotion_triggers` | `idx_et_person_type` | 按人物+类型查触发关联 |
 | `emotion_triggers` | `idx_et_confidence` | 按置信度排序 |
-| `emotion_triggers` | `idx_et_last_triggered` | 查过期触发关联 |
 | `emotion_transitions` | `idx_et_person` | 按人物查情感转变 |
 | `emotion_transitions` | `idx_et_from_state` | 按起始状态查转变 |
 | `emotion_transitions` | `idx_et_to_state` | 按目标状态查转变 |
