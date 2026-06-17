@@ -284,7 +284,7 @@ score = (α × relevance + β × recency + γ × importance) × trust × heat_zo
 | fact (事件) | 事件记录池 | 有时间锚点 |
 | fact (知识) | 静态知识池 | 去时间化稳定知识 |
 | prediction | 行为模式池 | 条件-行为规律 |
-| emotion | **情感事件池**（独立表 emotion_events） | 情感轨迹 + VAD 检索 |
+| emotion | **情感事件池**（渐进：先查静态知识池 emotion_triggers，triggers confidence ≥ 0.7 时再查情感事件池） | 情感轨迹 + VAD 检索 |
 
 **实现**:
 ```python
@@ -902,7 +902,7 @@ causal        | ✅  | ✅  | ✅  | ✅  | ⬜  | ⬜
 prediction    | ⬜  | ✅  | ✅  | ✅  | ✅  | ✅
 contradiction | ⬜  | ✅  | ✅  | ⬜  | ⬜  | ✅
 relation      | ⬜  | ✅  | ✅  | ⬜  | ⬜  | ⬜
-emotion       | ✅  | ✅  | ✅  | ✅  | ⬜  | ⬜
+emotion       | ⬜  | ✅  | ✅  | ✅  | ⬜  | ⬜
 narrative     | ⬜  | ✅  | ✅  | ✅  | ✅  | ⬜
 persona       | ⬜  | ✅  | ⬜  | ✅  | ✅  | ✅
 general       | ✅  | ✅  | ✅  | ⬜  | ⬜  | ⬜
@@ -1479,6 +1479,7 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 │      "results": [...],          # 统一排序结果                       │
 │      "context": {               # 结构化上下文包                      │
 │        "facts": [...],                                               │
+│        "emotion": {...},        # L1 情感池 + L3 情感模式（独立槽位）   
 │        "relations": [...],                                           │
 │        "patterns": [...],                                            │
 │        "narrative": "...",                                           │
@@ -1491,58 +1492,72 @@ def _content_similarity(self, a: RetrievalResult, b: RetrievalResult) -> float:
 
 ---
 
-## 8. LLM 对话中的主动情感检索
+## 8. L1 情感池的渐进检索策略
 
 ### 8.1 问题
 
-LLM 对话中，情感数据（情感事件、情感触发关联）不是每次回复都需要，但需要时又很重要。如何在不显著增加响应延迟的前提下，让 LLM 在需要时能获取情感上下文？
+LLM 对话中，情感数据（情感事件、情感触发关联）不是每次回复都需要，但需要时又很重要。如何在主检索管道的框架下，让情感池的检索成本随情感信号强度动态调整？
 
-### 8.2 方案：分级递进检索
+### 8.2 方案：L1 情感池渐进策略
+
+情感池的渐进检索**不是独立于主管道的流程**，而是 L1 检索内部的情感池实现策略：
 
 ```
 用户输入
     ↓
-┌─────────────────────────────────────────────────────────────┐
-│  第一层：零成本关键词检测（has_emotion_signal?）              │
-│  规则：情感词/情感标点/情感强度词                             │
-│  → 成本：< 1ms                                              │
-│  → 精度：低（可能误报/漏报）                                  │
-└─────────────────────────────────────────────────────────────┘
-    ↓ 如果检测到信号
-┌─────────────────────────────────────────────────────────────┐
-│  第二层：轻量情感触发检索                                    │
-│  只查 emotion_triggers（静态知识池）                          │
-│  → 成本：10~30ms                                            │
-│  → 获取：当前话题的情感触发关联                               │
-└─────────────────────────────────────────────────────────────┘
-    ↓ 如果 triggers 显示强情感关联
-┌─────────────────────────────────────────────────────────────┐
-│  第三层：完整情感检索                                        │
-│  查情感池（emotion_events）+ 情感模式                        │
-│  → 成本：50~200ms                                           │
-│  → 获取：完整情感轨迹 + 相关情感记忆                          │
-└─────────────────────────────────────────────────────────────┘
+QueryClassifier（含情感关键词规则）← 关键词检测在此完成
+    ↓
+LayerRouter → 决定目标层（如 emotion → L1+L2+L3）
+    ↓
+ParallelRetrieval:
+  ├── L0: 正常 FTS5 检索（不受情感信号影响）
+  ├── L1: 池间路由
+  │     ├── 事件记录池: 正常三维评分检索
+  │     ├── 静态知识池: 正常检索（含 emotion_triggers）
+  │     └── 情感事件池: 渐进策略 ← 本节内容
+  │           ├── 第一层: QueryClassifier 已检测情感信号
+  │           ├── 第二层: 查 emotion_triggers（10~30ms）
+  │           └── 第三层: 仅当 triggers confidence ≥ 0.7
+  │                 → 完整 emotion_events 检索（50~200ms）
+  ├── L2: 正常检索
+  └── L3: 正常检索
+    ↓
+FusionEngine → 合并所有结果（含情感槽位）
+    ↓
+LLM 回复
 ```
+
+**关键原则：**
+
+| 原则 | 说明 |
+|:----|:-----|
+| **情感检索不阻塞其他层** | L0/L1 其他池/L2/L3 与情感池并行检索，情感池的渐进策略仅影响自身 |
+| **无情感信号 ≠ 跳过主管道** | 即使无情感信号，L0/L1 其他池/L2 的正常检索照常进行 |
+| **关键词检测是 QueryClassifier 的一部分** | 情感关键词规则是 QueryClassifier 规则集的子集，不是独立的前置步骤 |
 
 ### 8.3 决策树
 
 ```
-用户输入
-    ↓
-关键词检测（< 1ms）
-  ├─ 无情感信号 → 直接回复（零延迟）
+QueryClassifier 规则匹配
+  ├─ 无情感信号 → L1 不查情感事件池，其他层照常
   │
-  └─ 有情感信号 → 查 emotion_triggers（10~30ms）
-       ├─ 无强关联（confidence < 0.7）→ 直接回复（仅 10~30ms 延迟）
+  └─ 有情感信号 → L1 情感事件池渐进检索：
+       ├─ 查 emotion_triggers（静态知识池，10~30ms）
+       │    ├─ confidence < 0.7 → 仅返回 triggers，不查 emotion_events
+       │    │
+       │    └─ confidence ≥ 0.7 → 完整 emotion_events 检索（50~200ms）
+       │         └─ 返回 triggers + emotion_events + emotion_patterns
        │
-       └─ 有强关联（confidence ≥ 0.7）→ 完整情感检索（50~200ms）
-            └─ LLM 回复（有完整情感上下文）
+       └─ 无 triggers 匹配但事件池 emotion_tag 非 null
+            → 轻量检索：只查最近 N 条情感事件（不查全量轨迹）
 ```
 
 ### 8.4 关键词检测规则（零成本）
 
+关键词检测是 QueryClassifier 规则匹配的一部分，用于判断是否需要触发情感池的渐进检索：
+
 ```python
-# 第一层：零成本关键词检测
+# 情感信号检测规则（QueryClassifier 的子集）
 EMOTION_KEYWORDS = {
     # 情感词
     "开心", "难过", "生气", "焦虑", "压力", "烦", "累",
@@ -1556,7 +1571,7 @@ EMOTION_KEYWORDS = {
 }
 
 def has_emotion_signal(text: str) -> bool:
-    """零成本情感信号检测"""
+    """零成本情感信号检测，作为 QueryClassifier 规则的一部分"""
     for keyword in EMOTION_KEYWORDS:
         if keyword in text:
             return True
@@ -1565,24 +1580,56 @@ def has_emotion_signal(text: str) -> bool:
 
 ### 8.5 与 emotion_tag 的协同
 
-```
-关键词检测触发后 → 查 emotion_triggers
-  ├─ triggers 有强关联 → 完整检索情感池
-  └─ triggers 无关联但事件池 emotion_tag 非 null
-      → 轻量检索：只查最近 N 条情感事件（不查全量轨迹）
+```python
+def emotion_pool_retrieve(intent, heat_zone, limit):
+    """L1 情感事件池的渐进检索"""
+    # 1. 先查 emotion_triggers（静态知识池）
+    triggers = store.query_triggers(intent.topics)
+
+    if not triggers:
+        # 2. 无 triggers 匹配 → 检查事件池 emotion_tag
+        if store.has_emotion_tag(intent.topics):
+            # 轻量检索：只查最近 N 条
+            return store.query_recent_emotions(
+                topics=intent.topics,
+                limit=limit,
+                max_age_days=7
+            )
+        return []  # 无情感数据
+
+    # 3. 有 triggers → 检查置信度
+    max_confidence = max(t.confidence for t in triggers)
+
+    if max_confidence < 0.7:
+        # 仅返回 triggers（不查 emotion_events）
+        return triggers
+
+    # 4. 强关联 → 完整检索
+    events = store.query_emotion_events(
+        topics=intent.topics,
+        source_filter="user",  # 自动注入仅 source=user
+        limit=limit
+    )
+    patterns = store.query_emotion_patterns(intent.topics)
+
+    return {
+        "triggers": triggers,
+        "events": events,
+        "patterns": patterns
+    }
 ```
 
 ### 8.6 与主检索流程的关系
 
-主动情感检索与 §7 的主检索流程**正交**：
+情感池渐进策略**嵌入**主检索管道，而非独立：
 
-| 维度 | 主检索流程（§7） | 主动情感检索（§8） |
-|:----|:---------------|:-----------------|
-| 触发方式 | 用户显式查询 | LLM 对话中主动触发 |
-| 触发时机 | 用户发送消息后 | LLM 回复前 |
-| 检索目标 | 所有层（L0-L5） | 情感池 + triggers |
-| 输出 | 统一排序结果 + 上下文包 | 情感上下文（注入 LLM prompt） |
-| 是否阻塞 | 阻塞（用户等待回复） | 分级阻塞（零/轻量/完整） |
+| 维度 | 主检索管道 | 情感池渐进策略 |
+|:----|:---------|:-------------|
+| 触发方式 | QueryClassifier 统一分类 | 情感关键词规则（QueryClassifier 子集） |
+| 执行时机 | ParallelRetrieval 阶段 | L1 检索内部，与其他层并行 |
+| 影响范围 | 所有层 | 仅 L1 情感事件池 |
+| 输出 | FusionEngine 统一融合 | 写入 FusionEngine 的 `emotion` 槽位 |
+| 阻塞性 | 各层并行，互不阻塞 | 情感池内部渐进，不阻塞其他层 |
 
 ---
 
