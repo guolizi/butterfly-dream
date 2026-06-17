@@ -250,7 +250,11 @@ emotion_events:
   related_fact_ids,                     -- 关联事实列表（可选，TEXT[]）
     -- 支持多因情感：同一天升职+朋友搬走 → 矛盾情感
     -- primary_fact_id 是主要触发因素，related_fact_ids 是辅助因素
-  source (llm_extraction / l0_promotion / inferred),
+  source (user / assistant / l0_promotion / inferred),
+    -- user       = 来自用户的真实情感（LLM 从用户消息中提取）
+    -- assistant  = LLM 回复中表达的情感（不注入 LLM 上下文，防止自我强化）
+    -- l0_promotion = 从 L0 晋升的情感事件
+    -- inferred   = 从模式推断的情感
   importance (0.0~1.0),                -- 情感重要性
   significance_reason,                  -- LLM 标注的重要性理由（可选）
   trigger_topics (TEXT[]),              -- 提取的情感触发话题
@@ -444,6 +448,7 @@ emotion_triggers:
   "dominance": 0.4,
   "emotion_label": "焦虑",
   "emotion_target": null,               -- 无对象（mood）
+  "source": "user",                     -- 从用户消息提取
   "importance": 0.5,
   "significance_reason": "用户主动表达压力，但未提及具体事件影响",
   "trigger_topics": ["工作"]
@@ -719,10 +724,37 @@ LLM 回复（上下文中已包含情感数据）
 | 数据 | 来源 | 触发条件 |
 |:----|:-----|:---------|
 | 当前话题的情感触发关联 | emotion_triggers（静态知识池） | 关键词检测到情感信号 |
-| 高 importance 情感记忆（top-3） | emotion_events | triggers 显示强关联（confidence ≥ 0.7） |
-| 最近 VAD 状态 | emotion_events（最近一条） | 任何情感信号 |
+| 高 importance 情感记忆（top-3） | emotion_events（仅 `source=user`） | triggers 显示强关联（confidence ≥ 0.7） |
+| 最近 VAD 状态 | emotion_events（最近一条，仅 `source=user`） | 任何情感信号 |
 
-**LLM 视角：** 它看到的上下文里已经有了"这个话题用户之前有过负面反应"或"用户最近情绪不太好"的信息，它自然就知道怎么回复。
+**情感源隔离规则：**
+
+自动注入时，emotion_events 的查询**只返回 `source=user` 的情感事件**，过滤掉 `source=assistant` 的记录。
+
+| 过滤规则 | 原因 |
+|:--------|:-----|
+| ✅ `source=user` → 注入 | 用户的真实情感，LLM 需要感知 |
+| ❌ `source=assistant` → 过滤 | LLM 自己回复中的情感，注入会形成自我强化循环 |
+| ✅ `source=l0_promotion` → 注入 | 从 L0 晋升的用户历史情感 |
+| ✅ `source=inferred` → 注入 | 从模式推断的情感，本质仍是用户的情感特征 |
+
+**为什么需要这个隔离：**
+
+```
+无隔离时（风险）:
+  用户: "我今天好难过"
+    ↓ LLM 提取 → emotion_events(source=assistant, valence=-0.7)
+    ↓ 自动注入 → LLM 看到"自己之前说难过"
+    ↓ LLM 回复: "你看起来很难过"（自我强化，循环加深）
+
+有隔离时（正确）:
+  用户: "我今天好难过"
+    ↓ LLM 提取 → emotion_events(source=user, valence=-0.7)
+    ↓ 自动注入（仅 source=user）→ LLM 看到用户的情感
+    ↓ LLM 回复: "发生什么事了？"（基于用户真实情感，自然回应）
+```
+
+注意：`source=assistant` 的情感事件**不是不存储**——它们仍然写入 emotion_events，用于 L3 睡眠周期的情感模式发现和 L4 叙事弧线分析。只是**不自动注入到 LLM 对话上下文**中。工具调用（§9.3）查询时也默认过滤 `source=assistant`，除非 LLM 明确要求查看自身情感历史。**LLM 视角：** 它看到的上下文里已经有了"这个话题用户之前有过负面反应"或"用户最近情绪不太好"的信息，它自然就知道怎么回复。
 
 ### 9.3 Phase 2+：工具调用（可选深度查询）
 
