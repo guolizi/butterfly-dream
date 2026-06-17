@@ -171,11 +171,6 @@ GOLDEN RULES (in order):
 3. Entity names, numbers, dates must be preserved exactly as mentioned
 4. "partner is pregnant" and "values family highly" are TWO separate facts at different specificity levels
 5. Use the ACTUAL names from the conversation content — never "User", "Assistant", "the user", "the assistant", "Participant 1", or "Participant 2". If the speakers introduce themselves as "Evan" and "Sam", use "Evan" and "Sam" in every fact.
-6. COREFERENCE RESOLUTION — resolve "we/us/our" carefully: When a speaker says "we" or "us", determine who is actually included. The default assumption is NOT the conversation partner. Look at the surrounding context. If the previous sentence mentions specific other people (e.g. "My friends, family and mentors..."), then "we" likely refers to the speaker AND those people — NOT the conversation partner. Extract the fact with the CORRECT participants.
-7. CAUSALITY & MOTIVATION — extract the "why" behind decisions and actions. When a person explains WHY they do something, extract that causal link explicitly. Format: "Because [cause], [person] [did/wants/plans action]". Include the full reasoning chain.
-8. COUNTERFACTUAL — extract "what if not" implications when STRONGLY implied (e.g. "I couldn't have done it without them", "Their support made all the difference"). Format: "Without [cause], [person] would [likely not / not have] [outcome]". Counterfactuals are HIGH importance (7-9).
-9. INTERACTION FACTS — when the speaker says they met/helped/connected with someone, extract a SEPARATE interaction fact about the meeting itself (who met/helped whom, where/when, context), not just the other person's story. The person's backstory should be a separate fact.
-10. SAME-SUBTOPIC MERGING — consolidate related details about the SAME narrow subtopic into one richer, natural-sounding fact. Different subtopics → KEEP separate. Decision rule: "Would a question about this topic need BOTH details to answer correctly?" If yes, merge. NEVER use ； ; | to join different subtopics.
 
 Output strictly a JSON array of objects. Each object has:
 - "content": str, the fact (plain text, one complete sentence)
@@ -192,16 +187,9 @@ Output strictly a JSON array of objects. Each object has:
   * At minimum include the primary subject person/thing name
   * ALIAS DETECTION: If a person is referred to by different names/nicknames (e.g. "Mel" and "Melanie", "Bob" and "Robert", "Mike" and "Michael"), they are THE SAME entity. Output only the FULL/CANONICAL name as the entity. Add the alias as a tag (e.g. "alias:Mel"). NEVER create separate entities for the same person.
 - "tags": str — comma-separated keywords
-- "importance": int 1-10. Detailed guide:
-  * 9-10: Major life events, identity-defining facts, irreversible decisions (e.g. transitioning, adopting a child, moving countries, coming out)
-  * 7-8: Important relationships (family, pets), significant choices, key milestones with specific dates, concrete future plans with exact dates, identity-level facts with location, named events
-  * 6-7: Past events with specific dates (one-time occurrences), personal milestones with timing. NOTE: exact dates (day-level) → 7; month-only timing → 6
-  * 5-6: Recurring activities with frequency, useful context with specific details, notable preferences, tentative plans/ideas. ALL personal hobbies/regular activities get at least 5
-  * 3-4: Minor details, temporary states, vague preferences, easily forgotten info
-  * 1-2: Trivial details, likely to change, not worth remembering
-  * OPINION facts: use the TOPIC's importance as anchor, then adjust. Core topic → 5-7; routine → 4-5; trivial → 3; generic encouragement → 2-3 or skip; recommendations → 5-7; relationship-defining → 5-6
+- "importance": int 1-10 (7-9 major life events, 4-6 significant details/plans/preferences, 1-3 minor)
 - "is_persistent": bool
-- "content_date": "YYYY-MM-DD" or null. CRITICAL: This must be the EVENT's actual date, not the conversation date. If the event is "last week", "a few days ago", or "yesterday", compute the real date relative to the session date shown in [Date: ...] and put the computed date here. For ongoing activities/identity traits with no specific event date, use the session date as approximation.
+- "content_date": "YYYY-MM-DD" or null. CRITICAL: This must be the EVENT's actual date, not the conversation date. If the event is "last week", "a few days ago", or "yesterday", compute the real date relative to the session date shown in [Date: ...] and put the computed date here.
 """
 
 
