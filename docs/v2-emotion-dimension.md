@@ -133,6 +133,74 @@ emotion_model TEXT DEFAULT 'vad-3d'
   - Phase 2：物化为三表时，`emotion_states` 继承同一模式（`emotion_vector` 主 + GENERATED 列）
   - Phase 3：切换模型时仅改 `emotion_model` 字段，INSERT/SELECT 无需修改——21D 数据的 GENERATED 列自动返回 NULL，查询代码自然 fallback 到 `emotion_vector`
 
+### 2.4 认知评价维度（Appraisal Dimensions）
+
+**VAD 是情感的结果，不是原因。** 同一个 VAD 值可以由完全不同的认知评价产生，而评价维度才是 L5 预测真正需要的结构化输入。
+
+**心理学基础：** Appraisal Theory（Scherer 2001 CPM、Lazarus 1991、Smith & Ellsworth 1985）认为情感不是由事件直接触发的，而是由人对事件的认知评价触发的：
+
+```
+事件 → 认知评价 → 生理反应 + 行为倾向 + 主观感受（VAD）
+```
+
+**为什么需要评价维度：**
+
+| 场景 | 只有 VAD | 有评价维度 |
+|:----|:--------|:----------|
+| 愤怒 | VAD=(-0.5, 0.9, 0.6) | 知道是因为不公平（fairness）还是因为自己无能（self-esteem） |
+| 恐惧 vs 焦虑 | VAD 几乎一样 | certainty 区分：恐惧=确定威胁，焦虑=不确定 |
+| L5 预测 | 需要多次观察才能发现模式 | 单次事件提取稳定特质（如公平敏感度） |
+
+#### 7 维标准评价维度
+
+从三大理论框架中筛选，选取标准：**区分度**（能否区分 VAD 无法区分的情绪对）× **预测性**（能否提升 L5 预测能力）× **LLM 可提取性**。
+
+| # | 维度 | 范围 | 来源 | 说明 |
+|:-|:----|:----|:----|:-----|
+| 1 | `goal_congruence` | -1~1 | 所有框架 | 事件是否符合期望/目标（-1=阻碍, +1=促进） |
+| 2 | `agency` | self/other/circumstance | Smith & Ellsworth 1985 | 责任归属（自己/他人/环境） |
+| 3 | `ego_involvement` | 见下 | Lazarus 1991 | 涉及什么自我价值 |
+| 4 | `certainty` | 0~1 | Smith & Ellsworth 1985 | 对结果是否确定（0=完全不确定, 1=完全确定） |
+| 5 | `novelty` | 0~1 | Scherer 2001 | 事件是否新奇/意外 |
+| 6 | `coping_potential` | 0~1 | Lazarus / Scherer | 能否应对（0=无法应对, 1=完全能应对） |
+| 7 | `norm_compatibility` | -1~1 | Scherer 2001 | 是否符合内/外部规范（-1=违反, +1=符合） |
+
+**`ego_involvement` 取值：**
+
+| 值 | 含义 | 例子 | 关联情绪 |
+|:--|:----|:----|:--------|
+| `null` | 无自我卷入 | 看到好天气 | 平静、开心 |
+| `self-esteem` | 自尊受损/提升 | 被表扬/批评 | 自豪、羞愧 |
+| `moral` | 道德价值冲突 | 做了亏心事 | 内疚、道德愤怒 |
+| `ego-ideal` | 未达自我标准 | 考试没考好 | 失望、羞耻 |
+| `meaning` | 意义感受损 | 失去亲人 | 悲伤、抑郁 |
+| `identity` | 身份认同 | 被歧视/被接纳 | 归属感、疏离 |
+
+**维度完备性检查：**
+
+| 能区分的情绪对 | 依赖的维度 |
+|:-------------|:---------|
+| 恐惧 vs 焦虑 | `certainty` |
+| 愤怒 vs 内疚 | `agency` + `ego_involvement` |
+| 自豪 vs 开心 | `ego_involvement` + `agency` |
+| 悲伤 vs 失望 | `ego_involvement` |
+| 愤怒 vs 厌恶 | `norm_compatibility` |
+| 希望 vs 绝望 | `coping_potential` + `certainty` |
+
+**与 VAD 的关系：并行提取，非串行推导。**
+
+评价维度和 VAD 是 LLM 同一调用中**并行输出**的，不是 VAD 从评价维度推导而来。原因：
+
+1. **多模态情感信号**（语音语调、表情）可以直接产生 VAD，不需要经过评价维度
+2. **有些情感没有明确的认知评价**（如莫名焦虑、药物引起的情绪变化）
+
+```
+✅ 并行: 事件 → LLM 同时输出 {VAD, appraisal_dimensions}
+❌ 串行: 事件 → appraisal_dimensions → VAD（丢失非认知情感信号）
+```
+
+**Phase 安排：** Phase 1 不提取评价维度（降低复杂度），Phase 2+ 开始同步提取。
+
 详见 §三 存储模型和 §九 初期实现建议。
 
 1. **更丰富的情感表达**
@@ -258,6 +326,17 @@ emotion_events:
   importance (0.0~1.0),                -- 情感重要性
   significance_reason,                  -- LLM 标注的重要性理由（可选）
   trigger_topics (TEXT[]),              -- 提取的情感触发话题
+  appraisal_dimensions JSON,            -- 认知评价维度（Phase 2+，可选）
+    -- {
+    --   "goal_congruence": -0.8,        -- 是否符合期望 (-1~1)
+    --   "agency": "other",              -- 责任归属 (self/other/circumstance)
+    --   "ego_involvement": "self-esteem", -- 自我卷入类型
+    --   "certainty": 0.9,               -- 结果确定性 (0~1)
+    --   "novelty": 0.3,                 -- 新奇程度 (0~1)
+    --   "coping_potential": 0.4,        -- 应对能力感知 (0~1)
+    --   "norm_compatibility": -0.5      -- 规范兼容性 (-1~1)
+    -- }
+    -- 详见 §2.4 认知评价维度
   notes
 ```
 
@@ -451,7 +530,16 @@ emotion_triggers:
   "source": "user",                     -- 从用户消息提取
   "importance": 0.5,
   "significance_reason": "用户主动表达压力，但未提及具体事件影响",
-  "trigger_topics": ["工作"]
+  "trigger_topics": ["工作"],
+  "appraisal_dimensions": {             -- Phase 2+，可选
+    "goal_congruence": -0.6,
+    "agency": "circumstance",
+    "ego_involvement": null,
+    "certainty": 0.3,
+    "novelty": 0.4,
+    "coping_potential": 0.4,
+    "norm_compatibility": 0.0
+  }
 }
 ```
 
@@ -668,6 +756,37 @@ Phase 2+:
   睡眠周期中主动挖掘隐性触发关联
   L3 抽象层发现"话题 A 总是伴随情感 B"的模式
   写入 emotion_triggers 表
+
+**Phase 3+（评价维度增强）：**
+  从 `appraisal_dimensions` 中提取用户的**评价模式**（person-level 稳定特质），
+  作为 emotion_triggers 的增强输入：
+
+  ```json
+  {
+    "pattern": "fairness_sensitivity",
+    "value": 0.8,
+    "confidence": 0.85,
+    "evidence": [
+      "事件 A: 被老板批评 → fairness=-0.7, anger",
+      "事件 B: 被朋友放鸽子 → fairness=-0.8, anger",
+      "事件 C: 看到社会新闻 → fairness=-0.6, sadness"
+    ]
+  }
+  ```
+
+  评价模式让 L5 能从**单次事件**中提取稳定特质，不需要多次重复观察：
+
+  ```
+  当前 L5 预测:
+    观察: "不公平事件 → 愤怒" 出现 5 次
+    模式: unfair_event → anger
+    预测: 下次不公平事件 → 愤怒
+
+  评价维度增强:
+    观察: 用户对公平的敏感度 (fairness_sensitivity = 0.8)
+    推理: 公平敏感度高 → 不公平事件 → 高愤怒
+    预测: 下次不公平事件 → 高愤怒（即使只观察到 1 次）
+  ```
 ```
 
 **为什么不用全历史均值：**
@@ -1191,20 +1310,24 @@ Phase 1（一表 + 基础能力 — 当前）:
   LLM 对话：自动注入情感上下文（分级递进检索），零 LLM 工作量
   情感模型：VAD 三维（emotion_model='vad-3d'）
 
-Phase 2（三表物化 + 兼容准备）:
+Phase 2（三表物化 + 兼容准备 + 评价维度）:
   emotion_states（从 emotion_events 迁移，继承 emotion_vector 主存储 + GENERATED 列模式）
   emotion_transitions（物化推导结果，通用 vector_delta）
   emotion_patterns（物化聚类结果，通用 vector_region）
   emotion_triggers（物化触发关联，通用 associated_vector）
   冷却：各层冷却系数叠加
   情感触发关联：睡眠周期中主动挖掘
+  appraisal_dimensions：LLM 多维度提取时同步输出（搭便车，多几个 token），
+    写入 emotion_events.appraisal_dimensions（可选，不强制）
 
-Phase 3（高级能力 + 模型切换）:
+Phase 3（高级能力 + 模型切换 + 评价模式）:
   情感模式与行为模式池协同（pattern_relations 多对多关联表，统一发现管道）
   L5 预测中情感模式作为 GMM 上下文先验（correlation × confidence 提权）
   跨人情感模式对比（社会模拟场景）
   情感轨迹预测（作为 L5 行为预测的子模块）
   可切换情感模型（如 21 维），查询逻辑根据 emotion_model 路由
+  评价模式发现：从 appraisal_dimensions 聚合用户稳定特质（如 fairness_sensitivity），
+    写入 emotion_triggers 作为增强输入，L5 预测样本效率提升
 ```
 
 ---
@@ -1224,6 +1347,7 @@ Phase 3（高级能力 + 模型切换）:
 - [x] **情感轨迹预测** — ✅ 已解决：不需要独立模块。改为统一的 behavior_predictions 预测日志表，记录预测时的情绪 + 行为后的情感变化，形成情感反馈闭环。详见 `v2-behavior-prediction.md` §九。
 - [x] **情感触发关联的隐私问题** — ✅ 已解决：新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制。
 - [x] **情感存储的模型兼容性** — ✅ 已解决：emotion_vector 为唯一主存储，固定字段为 GENERATED 派生列。INSERT 只写 emotion_vector，切换模型时无需修改代码。详见 §2.3。
+- [x] **认知评价维度（Appraisal Dimensions）** — ✅ 已解决：Phase 2+ 在 emotion_events 中新增 appraisal_dimensions JSON 字段（7 维标准维度：goal_congruence, agency, ego_involvement, certainty, novelty, coping_potential, norm_compatibility）。与 VAD 并行提取，非串行推导。Phase 3+ 从评价维度聚合用户稳定特质（评价模式），提升 L5 预测样本效率。详见 §2.4、§3.2、§6.3。
 
 ---
 
@@ -1246,3 +1370,4 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制 |
 || 2026-06-17 | emotion_triggers 聚合策略修正 | 从"全历史均值 + 要求 VAD 一致性"改为"最近 5 次加权 + 不要求一致性"。低 confidence 本身就是信号（情感在演化）。情感演化由 emotion_events 时序 + query_emotion_timeline 覆盖。详见 §六 |
 || 2026-06-17 | 动态 importance 衰减定稿 | importance 从静态标签改为幂律动态衰减（α=0.1/月），三因子调制：importance 高→慢衰减（情感增强效应）、负面→快衰减（Fading Affect Bias）、高频提及→衰减暂停（再巩固效应）。resonance_factor 复用 emotion_triggers.confidence。冷却规则移除"importance≥0.8→永久保温"硬阈值。详见 §五、§七 |
+|| 2026-06-17 | 认知评价维度定稿 | 新增 appraisal_dimensions（7 维：goal_congruence, agency, ego_involvement, certainty, novelty, coping_potential, norm_compatibility）。心理学基础：Appraisal Theory（Scherer CPM, Lazarus, Smith & Ellsworth）。与 VAD 并行提取（非串行推导），Phase 2+ 开始同步输出。Phase 3+ 从评价维度聚合用户稳定特质（评价模式），提升 L5 预测样本效率。详见 §2.4、§3.2、§4.4、§6.3、§11 |
