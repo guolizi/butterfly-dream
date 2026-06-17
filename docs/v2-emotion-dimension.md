@@ -128,7 +128,10 @@ emotion_model TEXT DEFAULT 'vad-3d'
 - 存储层用 `emotion_model` 字段标记当前模型，查询时根据模型选择对应的距离计算方式
 - intensity 公式通用化：`intensity = √(Σeᵢ²) / √dim`（任意维度适用）
 - 推导层（转变/模式）基于向量空间，不依赖固定维度数
-- 迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量
+- **迁移路径：Phase 1 emotion_vector 主存储 + GENERATED 派生列 → Phase 2 三表物化 → Phase 3 模型切换**
+  - Phase 1：`emotion_vector` 为唯一主存储，`valence/arousal/dominance` 为 GENERATED 派生列（从 `emotion_vector` 自动提取）
+  - Phase 2：物化为三表时，`emotion_states` 继承同一模式（`emotion_vector` 主 + GENERATED 列）
+  - Phase 3：切换模型时仅改 `emotion_model` 字段，INSERT/SELECT 无需修改——21D 数据的 GENERATED 列自动返回 NULL，查询代码自然 fallback 到 `emotion_vector`
 
 详见 §三 存储模型和 §九 初期实现建议。
 
@@ -215,11 +218,25 @@ emotion_events:
   emotion_model TEXT DEFAULT 'vad-3d',   -- 情感模型类型
     -- 'vad-3d'     = VAD 三维（当前）
     -- 'emotion-21d' = 21 维情感空间（未来）
-  valence, arousal, dominance,          -- VAD 三维核心（当前模型专用）
-  emotion_vector JSON,                  -- 通用情感向量（未来扩展）
-    -- 当前：emotion_vector = [valence, arousal, dominance]
+  emotion_vector JSON NOT NULL,          -- 唯一主存储：通用情感向量
+    -- 当前 VAD 3D：emotion_vector = [valence, arousal, dominance]
     -- 未来 21 维：emotion_vector = [...21 个值...]
-    -- 写入时与固定字段同步，查询时优先使用固定字段（性能）
+    -- 写入时只写 emotion_vector，不碰固定字段
+  valence REAL GENERATED ALWAYS AS (     -- 派生列，VAD 3D 时有效
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[0]')
+    END
+  ),
+  arousal REAL GENERATED ALWAYS AS (
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[1]')
+    END
+  ),
+  dominance REAL GENERATED ALWAYS AS (
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[2]')
+    END
+  ),
   emotion_label,                        -- 可选，方便人类阅读
   emotion_target TEXT,                   -- 情感对象
     -- null         = 无对象（mood，如"莫名焦虑"）
@@ -270,8 +287,22 @@ event_facts:
 emotion_states:
   state_id, person, timestamp,
   emotion_model TEXT DEFAULT 'vad-3d',
-  valence, arousal, dominance,
-  emotion_vector JSON,
+  emotion_vector JSON NOT NULL,          -- 唯一主存储（同 emotion_events）
+  valence REAL GENERATED ALWAYS AS (     -- 派生列
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[0]')
+    END
+  ),
+  arousal REAL GENERATED ALWAYS AS (
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[1]')
+    END
+  ),
+  dominance REAL GENERATED ALWAYS AS (
+    CASE WHEN emotion_model = 'vad-3d'
+    THEN json_extract(emotion_vector, '$[2]')
+    END
+  ),
   emotion_label,
   emotion_target TEXT,                   -- 情感对象（同 emotion_events）
   intensity,
@@ -419,7 +450,7 @@ emotion_triggers:
 }
 ```
 
-注意：`emotion_tag` 是事件维度的字段（放在事件池），VAD/emotion_vector 是情感维度的字段（放在情感池）。同一 LLM 调用同时输出两个维度。`emotion_vector` 与固定字段同步，未来切换模型时固定字段可为 NULL，以 `emotion_vector` 为准。
+注意：`emotion_tag` 是事件维度的字段（放在事件池），VAD/emotion_vector 是情感维度的字段（放在情感池）。同一 LLM 调用同时输出两个维度。`emotion_vector` 是唯一主存储，固定字段为 GENERATED 派生列。未来切换模型时，INSERT 只写 `emotion_vector` 无需修改，GENERATED 列自动返回 NULL，查询代码自然 fallback 到 `emotion_vector`。
 
 ### 4.5 热路径（已有）
 
@@ -983,20 +1014,19 @@ emotion_pattern confidence = 0.9, behavior_pattern confidence = 0.6
 
 ```
 Phase 1（一表 + 基础能力 — 当前）:
-  emotion_events 表（含 VAD 固定字段 + emotion_model + emotion_vector）
+  emotion_events 表（emotion_vector 主存储 + GENERATED 派生列 + emotion_model）
   查询时动态推导 transitions / patterns / triggers
   冷却：简单时间衰减 + importance ≥ 0.8 永久保温
   LLM 对话：自动注入情感上下文（分级递进检索），零 LLM 工作量
   情感模型：VAD 三维（emotion_model='vad-3d'）
 
 Phase 2（三表物化 + 兼容准备）:
-  emotion_states（从 emotion_events 迁移）
+  emotion_states（从 emotion_events 迁移，继承 emotion_vector 主存储 + GENERATED 列模式）
   emotion_transitions（物化推导结果，通用 vector_delta）
   emotion_patterns（物化聚类结果，通用 vector_region）
   emotion_triggers（物化触发关联，通用 associated_vector）
   冷却：各层冷却系数叠加
   情感触发关联：睡眠周期中主动挖掘
-  双写：写入固定字段同时写 emotion_vector JSON
 
 Phase 3（高级能力 + 模型切换）:
   情感模式与行为模式池协同（pattern_relations 多对多关联表，统一发现管道）
@@ -1020,8 +1050,9 @@ Phase 3（高级能力 + 模型切换）:
 - [x] **LLM 情感记忆服务的接口设计** — ✅ 已解决：Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九。
 - [x] **情感模式与行为模式池的协同** — ✅ 已解决：多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。详见 §十。
 - [x] **多人物情感管理** — ✅ 已解决：emotion_events 新增 emotion_target 字段（TEXT），区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。详见 §三。
-- [x] **情感轨迹预测** — ✅ 已解决：不需要独立模块。改为统一的 behavior_predictions 预测日志表，记录预测时的情绪 + 行为后的情感变化，形成情感反馈闭环。详见 `v2-behavior-prediction.md` §十。
+- [x] **情感轨迹预测** — ✅ 已解决：不需要独立模块。改为统一的 behavior_predictions 预测日志表，记录预测时的情绪 + 行为后的情感变化，形成情感反馈闭环。详见 `v2-behavior-prediction.md` §九。
 - [x] **情感触发关联的隐私问题** — ✅ 已解决：新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制。
+- [x] **情感存储的模型兼容性** — ✅ 已解决：emotion_vector 为唯一主存储，固定字段为 GENERATED 派生列。INSERT 只写 emotion_vector，切换模型时无需修改代码。详见 §2.3。
 
 ---
 
@@ -1033,7 +1064,7 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 深度分析 | 四大核心能力明确、VAD 定稿、importance 机制、emotion_triggers、LLM 情感记忆服务。详见主架构文档 §十 讨论记录 |
 | 2026-06-16 | 存储模型定稿 | 情感事件作为 L1 第 4 个池（独立于事件池）。emotion_events 支持多事实关联（primary_fact_id + related_fact_ids）。事件池新增 emotion_tag 轻量标签。详见 §三 |
 | 2026-06-16 | 情感提取策略定稿 | 搭便车（跟随多维度提取，不独立触发）+ 两阶段写入（L0→L1 实时写入 + L3 睡眠周期 refine）。emotion_tag 由 LLM 直接填，L3 回填漏标。详见 §四 |
-| 2026-06-16 | 情感模型兼容性设计 | 新增 emotion_model 字段标记情感模型类型。存储层用 JSON 通用向量 + 固定字段双写。推导层改为通用 vector_delta/vector_region。intensity 公式通用化。迁移路径：Phase 1 固定字段 → Phase 2 双写 → Phase 3 统一向量。详见 §二、§三、§九 |
+| 2026-06-16 | 情感模型兼容性设计 | 新增 emotion_model 字段标记情感模型类型。存储层以 emotion_vector JSON 为唯一主存储，固定字段改为 GENERATED 派生列（从 emotion_vector 自动提取）。推导层改为通用 vector_delta/vector_region。intensity 公式通用化。迁移路径：Phase 1 emotion_vector 主存储 + GENERATED 列 → Phase 2 三表物化 → Phase 3 模型切换。详见 §二、§三、§九 |
 | 2026-06-16 | 情感触发关联归属定稿 | emotion_triggers 归属静态知识池（非情感池）。triggers 是用户的稳定心理特征，不随情感事件冷却而消失。数据流：情感池聚合 → 静态知识池沉淀 → LLM 对话直接查询。详见 §六 |
 | 2026-06-16 | 主动检索触发时机定稿 | 分级递进检索：零成本关键词检测 → emotion_triggers（10~30ms）→ 完整情感检索（50~200ms）。详见 `v2-retrieval-design.md` §8 |
 | 2026-06-16 | VAD 到 L5 接口定稿 | psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1 |
