@@ -289,12 +289,13 @@ jieba 主要针对中文分词设计，对英文文本的 POS 标注不够准确
 2. 每个维度只输出该维度定义的字段，不要混入其他维度的字段
 3. 事件(content_date)和情感(timestamp)的时间字段不要留空
 4. 只提取 {person} 相关的事实
-5. 输出纯 JSON 数组，不要加 markdown 代码块标记或其他文字
+5. **entities 字段包含对话中涉及的所有实体（人物、组织、地点等），不要只输出 {person}**
+6. 输出纯 JSON 数组，不要加 markdown 代码块标记或其他文字
 ```
 
 ### 实现注意事项
 1. **时间解析**：需要在调用前计算好相对日期（"昨天"、"上周"等），不能依赖 LLM 自己算
 2. **维度字段隔离**：每个维度有严格独立的字段列表，LLM 容易混入其他维度的字段，需要在 prompt 中反复强调
-3. **关系维度**：当前提取的 relation 是实体级（Caroline→Melanie），但数据库 `fact_relations` 表是事实级关联（fact_id→fact_id），实现时需要设计映射逻辑
-4. **entities 字段**：当前存到 `facts.entities` JSON 列，但未同步到 `entities` 表，实现时需要设计实体同步逻辑
+3. **关系维度**：已修复 ✅ 写入 `entity_relations` 表（实体级），需要先确保 source/target 在 `entities` 表中有记录
+4. **entities 字段覆盖度**：当前只提取了目标人物（Caroline），需要补充规则要求包含对话中所有实体
 5. **emotion_triggers / emotion_states**：当前只提取了 emotion_events，triggers 和 states 需要额外处理
