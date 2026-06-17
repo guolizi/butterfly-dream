@@ -452,7 +452,7 @@ CREATE TABLE IF NOT EXISTS provenance (
                   CHECK(source_type IN ('llm_extraction', 'l0_promotion', 'l3_abstraction',
                                         'l4_narrative', 'user_input', 'historical_import')),
     source_session_id TEXT,                  -- 来源会话 ID
-    source_turn_id    INTEGER,              -- 来源对话轮次
+    source_turn_id    INTEGER REFERENCES conversation_turns(turn_id),  -- 来源对话轮次
     confidence        REAL DEFAULT 0.7,      -- 来源可信度
     created_at        TEXT DEFAULT (datetime('now','localtime'))
 );
@@ -865,7 +865,7 @@ CREATE TABLE IF NOT EXISTS emotion_states (
         )
         END
     ),
-    primary_fact_id     INTEGER REFERENCES facts(fact_id),
+    primary_fact_id     INTEGER REFERENCES facts(fact_id) ON DELETE SET NULL,
     related_fact_ids    TEXT,
     source              TEXT NOT NULL DEFAULT 'user'
                     CHECK(source IN ('user', 'assistant', 'l0_promotion', 'inferred')),
@@ -899,7 +899,7 @@ CREATE TABLE IF NOT EXISTS emotion_transitions (
     vector_delta    TEXT,                       -- 后向量 - 前向量（JSON 数组）
     delta_magnitude REAL,                       -- 变化幅度（标量）
     trigger_fact_ids TEXT,                      -- 触发事实 ID 列表（JSON 数组）
-    pattern_id      INTEGER,                    -- 关联的情感模式（可选）
+    pattern_id      INTEGER REFERENCES emotion_patterns(pattern_id),  -- 关联的情感模式（可选）
     created_at      TEXT DEFAULT (datetime('now','localtime'))
 );
 
