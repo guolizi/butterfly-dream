@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS promotion_queue (
     queue_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     person      TEXT NOT NULL,
     keyword     TEXT NOT NULL,              -- 关键词
-    miss_count  INTEGER DEFAULT 1,          -- 缺失计数
+    miss_count  INTEGER DEFAULT 1 CHECK(miss_count >= 1),          -- 缺失计数
     turn_ids    TEXT NOT NULL,              -- 关联的 turn_id 列表（JSON 数组）
     created_at  TEXT DEFAULT (datetime('now','localtime')),
     updated_at  TEXT DEFAULT (datetime('now','localtime')),
@@ -292,6 +292,7 @@ CREATE TABLE IF NOT EXISTS fact_entities (
 -- 用途：abstracts_from（L3 抽象→源事实）、contradicted_by（矛盾检测）
 CREATE TABLE IF NOT EXISTS fact_relations (
     relation_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    person        TEXT NOT NULL,              -- 所属人物（以人为中心）
     source_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     target_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     relation_type TEXT NOT NULL
@@ -438,6 +439,7 @@ CREATE TABLE IF NOT EXISTS timeline_relations (
 -- 溯源（事实来源追踪）
 CREATE TABLE IF NOT EXISTS provenance (
     provenance_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    person        TEXT NOT NULL,              -- 所属人物（以人为中心）
     fact_id       INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     source_type   TEXT NOT NULL
                   CHECK(source_type IN ('llm_extraction', 'l0_promotion', 'l3_abstraction',
@@ -652,6 +654,7 @@ CREATE TABLE IF NOT EXISTS behavior_predictions (
     -- 干预标记（自我实现预言隔离）
     intervened      INTEGER DEFAULT 0,       -- 1 = Agent 向用户表达过该预测
     intervened_prob REAL,                    -- 干预前的预测概率
+    intervened_at   TEXT,                    -- 干预发生时间
 
     -- 反差检索索引
     embedding       BLOB,
@@ -861,7 +864,8 @@ CREATE TABLE IF NOT EXISTS emotion_states (
     significance_reason TEXT,
     appraisal_dimensions TEXT,                   -- 认知评价维度（Phase 2+，可选）
     notes               TEXT,
-    created_at          TEXT DEFAULT (datetime('now','localtime'))
+    created_at          TEXT DEFAULT (datetime('now','localtime')),
+    updated_at          TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_es_person_time
@@ -889,6 +893,13 @@ CREATE TABLE IF NOT EXISTS emotion_transitions (
     pattern_id      INTEGER,                    -- 关联的情感模式（可选）
     created_at      TEXT DEFAULT (datetime('now','localtime'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_et_person
+    ON emotion_transitions(person);
+CREATE INDEX IF NOT EXISTS idx_et_from_state
+    ON emotion_transitions(from_state_id);
+CREATE INDEX IF NOT EXISTS idx_et_to_state
+    ON emotion_transitions(to_state_id);
 ```
 
 ### 8.5 情感模式（Phase 2 物化）
@@ -906,6 +917,11 @@ CREATE TABLE IF NOT EXISTS emotion_patterns (
     created_at          TEXT DEFAULT (datetime('now','localtime')),
     updated_at          TEXT DEFAULT (datetime('now','localtime'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_ep_person
+    ON emotion_patterns(person);
+CREATE INDEX IF NOT EXISTS idx_ep_confidence
+    ON emotion_patterns(confidence DESC);
 ```
 
 ### 8.6 情感-行为模式关联
@@ -914,6 +930,7 @@ CREATE TABLE IF NOT EXISTS emotion_patterns (
 -- 情感模式 ↔ 行为模式的多对多关联
 CREATE TABLE IF NOT EXISTS pattern_relations (
     relation_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    person              TEXT NOT NULL,              -- 所属人物（以人为中心）
     emotion_pattern_id  INTEGER REFERENCES emotion_patterns(pattern_id) ON DELETE CASCADE,
     behavior_pattern_id INTEGER REFERENCES behavior_patterns(pattern_id) ON DELETE CASCADE,
     correlation         REAL DEFAULT 0.0,       -- 关联强度 0~1
@@ -924,6 +941,11 @@ CREATE TABLE IF NOT EXISTS pattern_relations (
     updated_at          TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(emotion_pattern_id, behavior_pattern_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_pr_emotion_pattern
+    ON pattern_relations(emotion_pattern_id);
+CREATE INDEX IF NOT EXISTS idx_pr_behavior_pattern
+    ON pattern_relations(behavior_pattern_id);
 ```
 
 ---
@@ -984,7 +1006,7 @@ CREATE TABLE IF NOT EXISTS user_blocks (
     person      TEXT NOT NULL,
     block_type  TEXT NOT NULL
                 CHECK(block_type IN (
-                    'trigger_topic', 'trigger_entity',
+                    'trigger_topic', 'trigger_entity', 'trigger_event_type', 'trigger_location',
                     'fact', 'emotion_event',
                     'behavior_pattern', 'emotion_pattern',
                     'topic'
@@ -1125,6 +1147,13 @@ END;
 | `emotion_states` | `idx_es_person_time` | 按人物+时间查情感状态 |
 | `emotion_triggers` | `idx_et_person_type` | 按人物+类型查触发关联 |
 | `emotion_triggers` | `idx_et_confidence` | 按置信度排序 |
+| `emotion_transitions` | `idx_et_person` | 按人物查情感转变 |
+| `emotion_transitions` | `idx_et_from_state` | 按起始状态查转变 |
+| `emotion_transitions` | `idx_et_to_state` | 按目标状态查转变 |
+| `emotion_patterns` | `idx_ep_person` | 按人物查情感模式 |
+| `emotion_patterns` | `idx_ep_confidence` | 按置信度排序 |
+| `pattern_relations` | `idx_pr_emotion_pattern` | 按情感模式查关联行为 |
+| `pattern_relations` | `idx_pr_behavior_pattern` | 按行为模式查关联情感 |
 | `behavior_predictions` | `idx_bp_person_outcome` | 按人物+结果过滤 |
 | `behavior_predictions` | `idx_bp_timestamp` | 按时间排序 |
 | `narratives` | `idx_narr_person_active` | 获取当前叙事版本 |
@@ -1159,7 +1188,7 @@ END;
 
 -- 3. facts 表新增列（ALTER TABLE）
 ALTER TABLE facts ADD COLUMN type TEXT DEFAULT 'event';
-ALTER TABLE facts ADD COLUMN person TEXT DEFAULT '';
+ALTER TABLE facts ADD COLUMN person TEXT DEFAULT 'unknown';
 ALTER TABLE facts ADD COLUMN heat_zone TEXT DEFAULT 'hot';
 ALTER TABLE facts ADD COLUMN cooling_factor REAL DEFAULT 1.0;
 ALTER TABLE facts ADD COLUMN emotion_tag TEXT;
