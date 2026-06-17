@@ -409,7 +409,7 @@ CREATE TABLE IF NOT EXISTS causal_relations (
 -- 因果链辅助索引表（加速反向查询）
 CREATE TABLE IF NOT EXISTS causal_relation_members (
     relation_id   INTEGER NOT NULL REFERENCES causal_relations(relation_id) ON DELETE CASCADE,
-    cause_fact_id INTEGER NOT NULL,
+    cause_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     PRIMARY KEY (relation_id, cause_fact_id)
 );
 
@@ -637,7 +637,7 @@ CREATE TABLE IF NOT EXISTS behavior_predictions (
 
     -- 预测时的上下文
     context_snapshot            TEXT,             -- 上下文快照（JSON）
-    pattern_relation_id         INTEGER,          -- 关联的情感-行为模式
+    pattern_relation_id         INTEGER REFERENCES pattern_relations(relation_id),  -- 关联的情感-行为模式
 
     -- 实际结果（行为发生后回填）
     actual_behavior             TEXT,             -- 实际行为（null=未发生）
@@ -742,7 +742,7 @@ CREATE TABLE IF NOT EXISTS emotion_events (
     ),
 
     -- 事实关联
-    primary_fact_id     INTEGER REFERENCES facts(fact_id),  -- 主要触发事实
+    primary_fact_id     INTEGER REFERENCES facts(fact_id) ON DELETE SET NULL,  -- 主要触发事实
     related_fact_ids    TEXT,                    -- 关联事实列表（JSON 数组）
 
     -- 来源
@@ -888,8 +888,8 @@ CREATE INDEX IF NOT EXISTS idx_es_person_time
 CREATE TABLE IF NOT EXISTS emotion_transitions (
     transition_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     person          TEXT NOT NULL,
-    from_state_id   INTEGER REFERENCES emotion_states(state_id),
-    to_state_id     INTEGER REFERENCES emotion_states(state_id),
+    from_state_id   INTEGER REFERENCES emotion_states(state_id) ON DELETE SET NULL,
+    to_state_id     INTEGER REFERENCES emotion_states(state_id) ON DELETE SET NULL,
     transition_type TEXT NOT NULL
                     CHECK(transition_type IN (
                         'positive_breakthrough', 'negative_impact',
@@ -1210,7 +1210,7 @@ ALTER TABLE facts ADD COLUMN is_abstract INTEGER DEFAULT 0;
 ALTER TABLE facts ADD COLUMN structured_data TEXT;
 
 -- 4. importance 标度迁移（1.0~10.0 → 0.0~1.0）
-UPDATE facts SET importance = (importance - 1.0) / 9.0;
+UPDATE facts SET importance = (importance - 1.0) / 9.0 WHERE importance > 1.0;
 ```
 
 ### Phase 2（三表物化）
