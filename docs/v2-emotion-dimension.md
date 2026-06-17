@@ -608,7 +608,7 @@ L2 关系层:
   ← 情感触发关联为因果链提供"话题→情感"的模式输入
 
 L3 抽象层:
-  → 情绪转折检测（VAD 空间中的大位移 → 实时触发抽象管道）
+  → 情绪转折检测（VAD 位移阈值检测 + LLM 语义辅助，实时触发抽象管道）
   → 从 emotion_transitions 归纳 emotion_patterns
   → **睡眠周期中 refine 情感数据**（修正 VAD、合并同类事件、标记 false positive、回填 emotion_tag）
   ← 情感模式为行为预测提供输入
