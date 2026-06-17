@@ -61,7 +61,7 @@ L2: 关系层
 L1: 池（事实分类管理）
     ────────────────────────────────────
     事件记录池 | 静态知识池 | 行为模式池
-    + 情感维度（独立维度，非池）
+    + 情感事件池（第 4 个池，独立维度）
     ↑ 提取+分类
 
 L0: 工作记忆
@@ -1545,9 +1545,9 @@ Query → QueryClassifier → LayerRouter → ParallelRetrieval → FusionEngine
   - LLM 调用失败 → 跳过当前阶段，下次重试
 
 恢复机制：
-  - 每个阶段执行前检查 checkpoint
-  - 已完成的阶段跳过
+  - 外层调度按阶段（Phase 1/2/3/4/5）检查 checkpoint，已完成的阶段跳过
   - 未完成的阶段从上一次中断点继续
+  - Phase 2 内部按水位线恢复（每个 LLM 调用成功后写水位线）
 ```
 
 **checkpoint 粒度：每个 LLM 调用成功后写水位线**
@@ -1798,4 +1798,4 @@ sleep_cycle_log:
 | 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | ✅ 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `docs/v2-behavior-prediction.md` §十 |
 | 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | ✅ 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见 §4-遗忘机制 |
 | 2026-06-17 | 睡眠周期 checkpoint 粒度修正 — 水位线级 | ✅ 从阶段级 checkpoint 改为每个 LLM 调用成功后写水位线（last_processed_micro_fact_id）。恢复时 WHERE id > checkpoint，精确到单条微事实，零重复零遗漏。详见 §7.4 |
-| 2026-06-17 | 多模态情感信号接入确认 — VAD 统一汇合 | ✅ 无需新增字段或表结构。多模态信号（语音语调/表情/生理信号）统一映射到 VAD 空间后写入 emotion_events，通过 source 字段区分模态。上层消费方无需感知模态差异。详见 `docs/v2-emotion-dimension.md` §2.4 |
+| 2026-06-17 | 多模态情感信号接入确认 — VAD 统一汇合 | ✅ 无需新增字段或表结构。多模态信号（语音语调/表情/生理信号）统一映射到 VAD 空间后写入 emotion_events，通过 source 字段区分模态。上层消费方无需感知模态差异。详见 `docs/v2-emotion-dimension.md` §2.3 |

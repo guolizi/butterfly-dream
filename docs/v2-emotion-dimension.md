@@ -108,7 +108,7 @@
 | 自豪 | +0.7 | 0.6 | 0.8 |
 | 羞愧 | -0.5 | 0.4 | 0.2 |
 
-### 2.4 情感模型兼容性
+### 2.3 情感模型兼容性
 
 当前使用 **VAD 三维模型**（valence, arousal, dominance）。架构设计预留了未来切换更精细情感模型的能力（如 21 维情感空间模型）。
 
@@ -554,9 +554,19 @@ else:
     # 数据不足或不稳定，不自动使用
 ```
 
-### 6.5 触发关联的冷却
+### 6.5 触发关联的 confidence 衰减
 
-不参与冷热分级。触发关联是累积统计，只增不减。但如果长时间（> 6 个月）无新触发，confidence 逐渐衰减。
+emotion_triggers 本身**不参与冷热分级**（永远存在，不降级），但 confidence 随时间衰减：
+
+```
+不冷却：触发关联记录本身永远保留，不进入 ❄️/🧊 状态
+  → 用户对"身高"话题敏感这个知识，即使 1 年没提过，记录还在
+
+衰减：confidence 反映情感反应的时效性
+  → 长时间（> 6 个月）无新触发 → confidence 逐渐衰减
+  → 衰减不是删除，只是降低置信度——旧的情感反应仍然可用，但标注为低置信度
+  → 用户再次提到该话题 → 新触发 → confidence 恢复
+```
 
 ---
 
@@ -1028,8 +1038,8 @@ Phase 3（高级能力 + 模型切换）:
 | 2026-06-16 | 主动检索触发时机定稿 | 分级递进检索：零成本关键词检测 → emotion_triggers（10~30ms）→ 完整情感检索（50~200ms）。详见 `v2-retrieval-design.md` §8 |
 | 2026-06-16 | VAD 到 L5 接口定稿 | psych_probe 直接用 VAD 3 维（取代旧 2 维情绪效价），零映射。VAD 从 emotion_events 取最近真实记录，不参与线性投影训练。行为预测核心维度从 11 维→12 维。详见 `v2-behavior-prediction.md` §2.1 |
 | 2026-06-16 | LLM 情感记忆服务接口定稿 | Phase 1 自动注入兜底（分级递进检索），Phase 2+ 增加工具调用（query_emotion_memory / query_emotion_timeline / query_emotion_pattern）。详见 §九 |
-|| 2026-06-16 | 情感模式与行为模式池协同定稿 | 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 §十 |
-|| 2026-06-16 | 情感对象字段定稿 — emotion_target | emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。LLM 提取时同步输出，零额外成本。详见 §三 |
-|| 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `v2-behavior-prediction.md` §十 |
-|| 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制 |
-|| 2026-06-17 | emotion_triggers 聚合策略修正 | 从"全历史均值 + 要求 VAD 一致性"改为"最近 5 次加权 + 不要求一致性"。低 confidence 本身就是信号（情感在演化）。情感演化由 emotion_events 时序 + query_emotion_timeline 覆盖。详见 §六 |
+| 2026-06-16 | 情感模式与行为模式池协同定稿 | 多对多关联表（pattern_relations），情感模式作为 GMM 上下文先验。统一发现管道（L3 睡眠周期一次 LLM 调用输出两个视角）。关联强度统计积累，生命周期跟随低置信度方。详见 §十 |
+| 2026-06-16 | 情感对象字段定稿 — emotion_target | emotion_events 新增 emotion_target TEXT 字段，区分 mood（null）/ 对自己（self）/ 对他人（person:xxx）/ 对实体（entity:xxx）/ 对事件（event:xxx）/ 对场所（place:xxx）。与 primary_fact_id（触发事实）正交。LLM 提取时同步输出，零额外成本。详见 §三 |
+| 2026-06-16 | 情感轨迹预测定稿 — 预测日志 + 情感反馈闭环 | 不需要独立的情感轨迹预测模块。改为统一的 behavior_predictions 表（替代 prediction_counterfactuals），记录预测时的情绪 + 行为后的情感变化，形成反馈闭环。详见 `v2-behavior-prediction.md` §十 |
+| 2026-06-16 | 隐私问题定稿 — user_blocks 屏蔽表 | 新增 user_blocks 屏蔽表（不提，不删）。用户说"别提这个" → 记录屏蔽，检索时跳过，数据永远保留。真实删除需二次确认。详见主架构文档 §4-遗忘机制 |
+| 2026-06-17 | emotion_triggers 聚合策略修正 | 从"全历史均值 + 要求 VAD 一致性"改为"最近 5 次加权 + 不要求一致性"。低 confidence 本身就是信号（情感在演化）。情感演化由 emotion_events 时序 + query_emotion_timeline 覆盖。详见 §六 |
