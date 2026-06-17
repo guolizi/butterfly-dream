@@ -399,6 +399,8 @@ CREATE TABLE IF NOT EXISTS causal_relations (
     signals_json    TEXT,                       -- 多信号评分详情（JSON）
     validated_by    TEXT DEFAULT 'statistical'
                     CHECK(validated_by IN ('statistical', 'llm', 'rule', 'llm_only')),
+    status          TEXT DEFAULT 'active'
+                    CHECK(status IN ('active', 'pending_llm_verify', 'verified', 'rejected')),
     rule_match_count INTEGER DEFAULT 0,         -- 符号规则匹配数（Layer 0 专用）
     rule_ids        TEXT,                       -- 匹配的规则 ID 列表（JSON 数组）
     created_at      TEXT DEFAULT (datetime('now','localtime'))
@@ -415,6 +417,8 @@ CREATE INDEX IF NOT EXISTS idx_crm_cause
     ON causal_relation_members(cause_fact_id);
 CREATE INDEX IF NOT EXISTS idx_cr_effect
     ON causal_relations(effect_fact_id);
+CREATE INDEX IF NOT EXISTS idx_cr_person
+    ON causal_relations(person);
 ```
 
 ### 4.3 时间链
@@ -431,6 +435,9 @@ CREATE TABLE IF NOT EXISTS timeline_relations (
     created_at     TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(earlier_fact_id, later_fact_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_tl_person
+    ON timeline_relations(person);
 ```
 
 ### 4.4 溯源
@@ -666,6 +673,8 @@ CREATE INDEX IF NOT EXISTS idx_bp_person_outcome
     ON behavior_predictions(person, outcome);
 CREATE INDEX IF NOT EXISTS idx_bp_timestamp
     ON behavior_predictions(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_bp_pattern_rel
+    ON behavior_predictions(pattern_relation_id);
 ```
 
 ---
@@ -771,8 +780,8 @@ CREATE TABLE IF NOT EXISTS emotion_events (
 -- 情感事件索引
 CREATE INDEX IF NOT EXISTS idx_ee_person_time
     ON emotion_events(person, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_ee_source
-    ON emotion_events(source);
+CREATE INDEX IF NOT EXISTS idx_ee_person_source
+    ON emotion_events(person, source);
 CREATE INDEX IF NOT EXISTS idx_ee_primary_fact
     ON emotion_events(primary_fact_id);
 ```
@@ -815,6 +824,8 @@ CREATE INDEX IF NOT EXISTS idx_et_person_type
     ON emotion_triggers(person, trigger_type);
 CREATE INDEX IF NOT EXISTS idx_et_confidence
     ON emotion_triggers(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_et_last_triggered
+    ON emotion_triggers(last_triggered_at);
 ```
 
 ### 8.3 情感状态节点（Phase 2 物化）
@@ -937,6 +948,7 @@ CREATE TABLE IF NOT EXISTS pattern_relations (
     sample_count        INTEGER DEFAULT 0,      -- 观察次数
     last_observed_at    TEXT,
     confidence          REAL DEFAULT 0.0,       -- min(sample_count / 10, 1.0) × correlation
+    expected_shift      TEXT,                   -- 预期情感变化向量（JSON: [dV, dA, dD]）
     created_at          TEXT DEFAULT (datetime('now','localtime')),
     updated_at          TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(emotion_pattern_id, behavior_pattern_id)
@@ -1140,13 +1152,16 @@ END;
 | `entities` | `idx_entities_person_name` | 按人物+名称查实体 |
 | `entity_relations` | `idx_er_source_target` | 实体图 PPR 检索 |
 | `causal_relations` | `idx_cr_effect` | 按结果查原因 |
+| `causal_relations` | `idx_cr_person` | 按人物查因果链 |
 | `causal_relation_members` | `idx_crm_cause` | 按原因查结果 |
+| `timeline_relations` | `idx_tl_person` | 按人物查时间链 |
 | `emotion_events` | `idx_ee_person_time` | 按人物+时间查情感轨迹 |
-| `emotion_events` | `idx_ee_source` | 按来源过滤 |
+| `emotion_events` | `idx_ee_person_source` | 按人物+来源过滤 |
 | `emotion_events` | `idx_ee_primary_fact` | 按触发事实关联 |
 | `emotion_states` | `idx_es_person_time` | 按人物+时间查情感状态 |
 | `emotion_triggers` | `idx_et_person_type` | 按人物+类型查触发关联 |
 | `emotion_triggers` | `idx_et_confidence` | 按置信度排序 |
+| `emotion_triggers` | `idx_et_last_triggered` | 查过期触发关联 |
 | `emotion_transitions` | `idx_et_person` | 按人物查情感转变 |
 | `emotion_transitions` | `idx_et_from_state` | 按起始状态查转变 |
 | `emotion_transitions` | `idx_et_to_state` | 按目标状态查转变 |
@@ -1156,6 +1171,7 @@ END;
 | `pattern_relations` | `idx_pr_behavior_pattern` | 按行为模式查关联情感 |
 | `behavior_predictions` | `idx_bp_person_outcome` | 按人物+结果过滤 |
 | `behavior_predictions` | `idx_bp_timestamp` | 按时间排序 |
+| `behavior_predictions` | `idx_bp_pattern_rel` | 按情感-行为关联查预测 |
 | `narratives` | `idx_narr_person_active` | 获取当前叙事版本 |
 | `persona_snapshots` | `idx_ps_person_version` | 按版本查询快照 |
 | `sleep_cycle_log` | `idx_scl_person_status` | 查询最近睡眠周期 |
@@ -1194,6 +1210,7 @@ ALTER TABLE facts ADD COLUMN cooling_factor REAL DEFAULT 1.0;
 ALTER TABLE facts ADD COLUMN emotion_tag TEXT;
 ALTER TABLE facts ADD COLUMN abstract_level INTEGER DEFAULT 0;
 ALTER TABLE facts ADD COLUMN is_abstract INTEGER DEFAULT 0;
+ALTER TABLE facts ADD COLUMN structured_data TEXT;
 
 -- 4. importance 标度迁移（1.0~10.0 → 0.0~1.0）
 UPDATE facts SET importance = (importance - 1.0) / 9.0;
