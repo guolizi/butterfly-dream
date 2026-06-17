@@ -257,9 +257,9 @@ class L0Retrieval(RetrievalSource):
         return fts_results
 ```
 
-### 3.3 L1 — 三池 (Fact Pools)
+### 3.3 L1 — 四池 (Fact Pools + Emotion Pool)
 
-**数据特性**: 事件记录池 / 静态知识池 / 行为模式池 (统一 facts 表, type 字段区分)
+**数据特性**: 事件记录池 / 静态知识池 / 行为模式池 / 情感事件池 (统一 facts 表, type 字段区分，emotion_events 独立表)
 
 **检索方式**:
 
@@ -284,7 +284,7 @@ score = (α × relevance + β × recency + γ × importance) × trust × heat_zo
 | fact (事件) | 事件记录池 | 有时间锚点 |
 | fact (知识) | 静态知识池 | 去时间化稳定知识 |
 | prediction | 行为模式池 | 条件-行为规律 |
-| emotion | 事件记录池 + 情感维度 | 情感轨迹 |
+| emotion | **情感事件池**（独立表 emotion_events） | 情感轨迹 + VAD 检索 |
 
 **实现**:
 ```python

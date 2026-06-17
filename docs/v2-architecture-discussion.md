@@ -1656,6 +1656,7 @@ sleep_cycle_log:
 | **Phase 1（MVP）** | 固定 12 维核心维度（9 维映射 + 3 维 VAD 直接取）+ LLM Teacher 离线标注 + Student 多任务回归 + 条件高斯+三层递进上下文偏移 + Ledoit-Wolf 收缩 | ≥ 1 条（群体先验兜底） |
 | **Phase 2（增强）** | GMM 行为模式维度 + embedding 映射模型训练 + GMM 多模式预测 + 群体先验 | ≥ 200 条 |
 | **Phase 3（演进）** | 漂移检测 + 群体先验库 + 主动学习 + 校准 | ≥ 500 条 |
+| **Phase 4（成熟）** | 人格模型版本管理 + 检索策略自动降级 | 依赖 L4 叙事稳定 |
 
 > 详见 [`docs/v2-behavior-prediction.md`](v2-behavior-prediction.md) — 包含维度详解、向量映射方案、条件概率预测、空间成熟度、漂移检测、矛盾检测衔接等完整设计。
 
