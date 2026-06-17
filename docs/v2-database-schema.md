@@ -74,6 +74,27 @@ CREATE TABLE IF NOT EXISTS conversation_turns (
 
 CREATE INDEX IF NOT EXISTS idx_turns_person_session
     ON conversation_turns(person, session_id, turn_order);
+
+-- L0 FTS5 全文索引（对话轮次检索）
+CREATE VIRTUAL TABLE IF NOT EXISTS conversation_turns_fts
+    USING fts5(content, person, content=conversation_turns, content_rowid=turn_id);
+
+CREATE TRIGGER IF NOT EXISTS turns_ai AFTER INSERT ON conversation_turns BEGIN
+    INSERT INTO conversation_turns_fts(rowid, content, person)
+        VALUES (new.turn_id, jieba_segment(new.content), new.person);
+END;
+
+CREATE TRIGGER IF NOT EXISTS turns_ad AFTER DELETE ON conversation_turns BEGIN
+    INSERT INTO conversation_turns_fts(conversation_turns_fts, rowid, content, person)
+        VALUES ('delete', old.turn_id, old.content, old.person);
+END;
+
+CREATE TRIGGER IF NOT EXISTS turns_au AFTER UPDATE ON conversation_turns BEGIN
+    INSERT INTO conversation_turns_fts(conversation_turns_fts, rowid, content, person)
+        VALUES ('delete', old.turn_id, old.content, old.person);
+    INSERT INTO conversation_turns_fts(rowid, content, person)
+        VALUES (new.turn_id, jieba_segment(new.content), new.person);
+END;
 ```
 
 ### 2.2 微事实索引
@@ -168,6 +189,9 @@ CREATE TABLE IF NOT EXISTS facts (
     -- 嵌入向量
     embedding       BLOB,                       -- 512-dim float32 稠密向量
 
+    -- 结构化事件字段（符号规则引擎 Layer 0 使用，可选）
+    structured_data TEXT,                       -- JSON: {"subject":"Caroline","action":"报名","object":"课程","time":"2024-03","location":null}
+
     UNIQUE(person, content)
 );
 
@@ -182,6 +206,8 @@ CREATE INDEX IF NOT EXISTS idx_facts_content_date
     ON facts(content_date);
 CREATE INDEX IF NOT EXISTS idx_facts_heat_zone
     ON facts(heat_zone) WHERE heat_zone IN ('hot', 'warm');
+CREATE INDEX IF NOT EXISTS idx_facts_person_abstract
+    ON facts(person, is_abstract) WHERE is_abstract = 1;
 ```
 
 ### 3.2 行为模式池特有字段
@@ -281,6 +307,8 @@ CREATE TABLE IF NOT EXISTS fact_relations (
 
 CREATE INDEX IF NOT EXISTS idx_fr_target
     ON fact_relations(target_fact_id);
+CREATE INDEX IF NOT EXISTS idx_fr_source
+    ON fact_relations(source_fact_id);
 CREATE INDEX IF NOT EXISTS idx_fr_type
     ON fact_relations(relation_type);
 ```
@@ -366,7 +394,7 @@ CREATE TABLE IF NOT EXISTS causal_relations (
         -- rule     = 符号规则
     confidence      REAL DEFAULT 0.5,
     layer           INTEGER DEFAULT 0,         -- 0=符号规则, 1=短程, 2=中程, 3=长程
-    abstracted_by   INTEGER,                   -- 中程关联的 L3 抽象事实 ID
+    abstracted_by   INTEGER REFERENCES facts(fact_id) ON DELETE SET NULL,
     signals_json    TEXT,                       -- 多信号评分详情（JSON）
     validated_by    TEXT DEFAULT 'statistical'
                     CHECK(validated_by IN ('statistical', 'llm', 'rule', 'llm_only')),
@@ -481,7 +509,8 @@ CREATE TABLE IF NOT EXISTS narratives (
     embedding     BLOB,                       -- 叙事摘要的 embedding
     source_ids    TEXT,                       -- 构建该叙事的 L1-L3 事实 ID 列表（JSON 数组）
     is_active     INTEGER DEFAULT 1,          -- 1=当前版本
-    created_at    TEXT DEFAULT (datetime('now','localtime'))
+    created_at    TEXT DEFAULT (datetime('now','localtime')),
+    updated_at    TEXT DEFAULT (datetime('now','localtime'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_narr_person_active
@@ -689,8 +718,16 @@ CREATE TABLE IF NOT EXISTS emotion_events (
         -- 'event:xxx'  = 对事件
         -- 'place:xxx'  = 对场所
 
-    -- 强度
-    intensity       REAL,                        -- √(Σeᵢ²) / √dim
+    -- 强度（GENERATED 列，从 emotion_vector 自动计算）
+    intensity       REAL GENERATED ALWAYS AS (
+        CASE WHEN emotion_model = 'vad-3d'
+        THEN sqrt(
+            (json_extract(emotion_vector, '$[0]') * json_extract(emotion_vector, '$[0]') +
+             json_extract(emotion_vector, '$[1]') * json_extract(emotion_vector, '$[1]') +
+             json_extract(emotion_vector, '$[2]') * json_extract(emotion_vector, '$[2]')) / 3.0
+        )
+        END
+    ),
 
     -- 事实关联
     primary_fact_id     INTEGER REFERENCES facts(fact_id),  -- 主要触发事实
@@ -724,7 +761,8 @@ CREATE TABLE IF NOT EXISTS emotion_events (
         -- }
 
     notes           TEXT,
-    created_at      TEXT DEFAULT (datetime('now','localtime'))
+    created_at      TEXT DEFAULT (datetime('now','localtime')),
+    updated_at      TEXT DEFAULT (datetime('now','localtime'))
 );
 
 -- 情感事件索引
@@ -805,7 +843,16 @@ CREATE TABLE IF NOT EXISTS emotion_states (
 
     emotion_label   TEXT,
     emotion_target  TEXT,
-    intensity       REAL,
+    trigger_topics      TEXT,                    -- JSON 数组
+    intensity       REAL GENERATED ALWAYS AS (
+        CASE WHEN emotion_model = 'vad-3d'
+        THEN sqrt(
+            (json_extract(emotion_vector, '$[0]') * json_extract(emotion_vector, '$[0]') +
+             json_extract(emotion_vector, '$[1]') * json_extract(emotion_vector, '$[1]') +
+             json_extract(emotion_vector, '$[2]') * json_extract(emotion_vector, '$[2]')) / 3.0
+        )
+        END
+    ),
     primary_fact_id     INTEGER REFERENCES facts(fact_id),
     related_fact_ids    TEXT,
     source              TEXT NOT NULL DEFAULT 'user'
@@ -816,6 +863,9 @@ CREATE TABLE IF NOT EXISTS emotion_states (
     notes               TEXT,
     created_at          TEXT DEFAULT (datetime('now','localtime'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_es_person_time
+    ON emotion_states(person, timestamp DESC);
 ```
 
 ### 8.4 情感转变（Phase 2 物化）
@@ -1054,6 +1104,7 @@ END;
 | 表 | 索引 | 用途 |
 |:--|:----|:-----|
 | `conversation_turns` | `idx_turns_person_session` | 按人物+会话查询对话轮次 |
+| `conversation_turns` | `conversation_turns_fts` | FTS5 全文索引（BM25 排序） |
 | `micro_facts` | `idx_micro_person_keyword` | 按人物+关键词查微事实 |
 | `micro_facts` | `idx_micro_promoted` | 筛选未晋升的微事实 |
 | `facts` | `idx_facts_person_type` | 按人物+池类型过滤 |
@@ -1061,6 +1112,7 @@ END;
 | `facts` | `idx_facts_created` | 按创建时间排序 |
 | `facts` | `idx_facts_content_date` | 按事件日期过滤 |
 | `facts` | `idx_facts_heat_zone` | 按热度分区检索 |
+| `facts` | `idx_facts_person_abstract` | 筛选 L3 抽象事实 |
 | `behavior_patterns` | `idx_bp_person_status` | 按人物+状态过滤 |
 | `behavior_patterns` | `idx_bp_confidence` | 按置信度排序 |
 | `entities` | `idx_entities_person_name` | 按人物+名称查实体 |
@@ -1070,6 +1122,7 @@ END;
 | `emotion_events` | `idx_ee_person_time` | 按人物+时间查情感轨迹 |
 | `emotion_events` | `idx_ee_source` | 按来源过滤 |
 | `emotion_events` | `idx_ee_primary_fact` | 按触发事实关联 |
+| `emotion_states` | `idx_es_person_time` | 按人物+时间查情感状态 |
 | `emotion_triggers` | `idx_et_person_type` | 按人物+类型查触发关联 |
 | `emotion_triggers` | `idx_et_confidence` | 按置信度排序 |
 | `behavior_predictions` | `idx_bp_person_outcome` | 按人物+结果过滤 |
@@ -1081,6 +1134,7 @@ END;
 | `heat_log` | `idx_hl_person` | 查人物热度变更记录 |
 | `retrieval_cache` | `idx_rc_expires` | 清理过期缓存 |
 | `fact_relations` | `idx_fr_target` | 反向查抽象源事实 |
+| `fact_relations` | `idx_fr_source` | 正向查抽象目标事实 |
 | `fact_relations` | `idx_fr_type` | 按关系类型过滤 |
 | `provenance` | `idx_prov_fact` | 按事实查来源 |
 | `cluster_members` | `idx_cm_fact` | 按事实查所属聚类 |
@@ -1098,6 +1152,7 @@ END;
 
 -- 2. 新增 v2 表
 --    conversation_turns, micro_facts, promotion_queue
+--    conversation_turns_fts（FTS5 虚拟表 + 同步触发器）
 --    emotion_events, emotion_triggers
 --    fact_relations, provenance, timeline_relations
 --    user_blocks, sleep_cycle_log, system_config
@@ -1164,6 +1219,7 @@ INSERT INTO emotion_states (person, timestamp, emotion_model, emotion_vector, ..
 ```
 L0 工作记忆:
   conversation_turns ──→ micro_facts
+  conversation_turns_fts (FTS5 虚拟表)
        │
        │ (promotion_queue → 热晋升标记)
        ▼
