@@ -1,12 +1,12 @@
-# 🦋 Butterfly Dream v2 — 语义检索 + 三层本体 + PPR 图展开
+# 🦋 Butterfly Dream v1.1 — 语义检索 + 三层本体 + PPR 图展开
 
-> **v2 分支**在 v1（main）的 HRR 向量编码 + 三维检索基础上，引入了 **神经语义嵌入**、**三层本体架构** 和 **PPR 多跳图展开**，从根本上解决了 v1 的语义鸿沟问题。
+> **v1.1 分支**在 v1（main）的 HRR 向量编码 + 三维检索基础上，引入了 **神经语义嵌入**、**三层本体架构** 和 **PPR 多跳图展开**，从根本上解决了 v1 的语义鸿沟问题。
 
 ---
 
 ## 目录
 
-- [v2 新增特性](#v2-新增特性)
+- [v1.1 新增特性](#v11-新增特性)
 - [架构总览](#架构总览)
 - [三层本体（Three-layer Ontology）](#三层本体three-layer-ontology)
 - [神经语义嵌入](#神经语义嵌入)
@@ -14,14 +14,14 @@
 - [PPR 多跳图展开](#ppr-多跳图展开)
 - [检索流水线](#检索流水线)
 - [配置与代码](#配置与代码)
-- [v1 vs v2 对比](#v1-vs-v2-对比)
+- [v1 vs v1.1 对比](#v1-vs-v11-对比)
 - [性能](#性能)
 
 ---
 
-## v2 新增特性
+## v1.1 新增特性
 
-| 特性 | v1 (main) | v2 |
+| 特性 | v1 (main) | v1.1 |
 |------|-----------|----|
 | **实体表示** | 扁平实体（全部 type=unknown） | **三层本体**：具体实体 → 抽象实体（type=abstract）→ 关系边 |
 | **聚类** | 成员↔成员 `is_member_of`（O(n²)） | 抽象→成员 `includes` 边（O(n)） |
@@ -51,7 +51,7 @@
 
 ## 三层本体（Three-layer Ontology）
 
-v2 将 flat 实体关系重组为语义层次：
+v1.1 将 flat 实体关系重组为语义层次：
 
 ```
 L1: 具体实体（entities, type='unknown'）
@@ -74,10 +74,10 @@ L3: includes 关系（entity_relations, relation='includes'）
 
 ### 表结构
 
-v2 中以下表是核心，所有列名均使用 `*_id` 模式（`fact_id`, `entity_id`, `cluster_id`, `relation_id` 等）：
+v1.1 中以下表是核心，所有列名均使用 `*_id` 模式（`fact_id`, `entity_id`, `cluster_id`, `relation_id` 等）：
 
 ```sql
--- facts 表 — 核心事实存储（v2 新增 embedding 列）
+-- facts 表 — 核心事实存储（v1.1 新增 embedding 列）
 CREATE TABLE facts (
     fact_id          INTEGER PRIMARY KEY AUTOINCREMENT,
     content          TEXT NOT NULL UNIQUE,         -- 事实文本
@@ -92,7 +92,7 @@ CREATE TABLE facts (
     created_at       TEXT DEFAULT (datetime('now')),
     updated_at       TEXT DEFAULT (datetime('now')),
     hrr_vector       BLOB,                         -- v1 旧编码（回退用）
-    embedding        BLOB                          -- 🔥 v2 主力 — bge-small-zh 512-dim float32
+    embedding        BLOB                          -- 🔥 v1.1 主力 — bge-small-zh 512-dim float32
 );
 
 -- entities 表 — 实体（L1 具体 + L2 抽象）
@@ -102,7 +102,7 @@ CREATE TABLE entities (
     entity_type TEXT DEFAULT 'unknown',             -- 'unknown'（具体）或 'abstract'（抽象）
     aliases     TEXT DEFAULT '',                    -- 预留别名字段（当前未使用）
     created_at  TEXT DEFAULT (datetime('now')),
-    embedding   BLOB                               -- 🔥 v2 — 实体名嵌入向量
+    embedding   BLOB                               -- 🔥 v1.1 — 实体名嵌入向量
 );
 
 -- entity_relations 表 — 关系边（L3：co_occur + includes）
@@ -171,7 +171,7 @@ CREATE TABLE merge_log (
 ### 嵌入替换
 
 ```
-HRR 向量（v1）         神经嵌入（v2）
+HRR 向量（v1）         神经嵌入（v1.1）
 1024 维, 无语义        512 维, 语义密集
 余弦≈0.5 随便都是      cosine(跳绳,游泳)=0.50 ← 运动类
 只能用 HRR decode      cosine(小明,小红)=0.62 ← 人名类
@@ -193,7 +193,7 @@ hrr_weight=0.10   ← 旧数据回退
 
 **问题**：v1 中 query 必须包含已知实体名才能触发图展开。写意查询"有什么运动推荐"无实体命中 → 0 结果。
 
-**v2 方案**：Stage 1.6 将 query embedding 与所有抽象实体做余弦匹配：
+**v1.1 方案**：Stage 1.6 将 query embedding 与所有抽象实体做余弦匹配：
 
 ```
 query: "有什么运动推荐"
@@ -217,7 +217,7 @@ query: "有什么运动推荐"
 
 **问题**：v1 用 BFS，depth≤2 内所有事实平等入池，不分远近。
 
-**v2 方案**：Personalized PageRank（幂迭代），每个实体得到 visit probability → 事实按 PPR 降权。
+**v1.1 方案**：Personalized PageRank（幂迭代），每个实体得到 visit probability → 事实按 PPR 降权。
 
 ```
 PPR 画像（种子=跳绳, α=0.85）:
@@ -357,9 +357,9 @@ store.create_cluster(
 
 ---
 
-## v1 vs v2 对比
+## v1 vs v1.1 对比
 
-| 场景 | v1 (main) | v2 |
+| 场景 | v1 (main) | v1.1 |
 |------|-----------|-----|
 | "有什么运动推荐" | 0 结果 | **4 结果** 🎉 |
 | "推荐一些活动" (无实体名) | 0 结果 | **通过 step-back 找到** ✅ |
@@ -371,7 +371,7 @@ store.create_cluster(
 
 ## 性能
 
-| 操作 | v1 | v2 |
+| 操作 | v1 | v1.1 |
 |------|----|----|
 | 单次嵌入编码 | — | ~5ms (CPU, bge-small-zh) |
 | FTS5 搜索 (~1000 facts) | ~3ms | ~3ms |
@@ -388,7 +388,7 @@ store.create_cluster(
 
 ### 表全景
 
-| 表 | 写入时机 | 读取时机 | v2 新增 |
+| 表 | 写入时机 | 读取时机 | v1.1 新增 |
 |----|---------|---------|--------|
 | `facts` | `add_fact()` | `search()` FTS5 + 评分 | `embedding` 列 |
 | `facts_fts` | 同步 trigger | `MATCH` 查询 | — |
@@ -450,7 +450,7 @@ INSERT INTO facts (content, category, tags, importance, is_persistent, content_d
 VALUES ('小明喜欢跳绳…', 'preference', '小明,跳绳,运动', 7.0, 1, '2023-01-19', <hrr>, <bge-embedding>);
 ```
 
-`facts` 表字段说明（v2 新增字段加 🔥 标记）：
+`facts` 表字段说明（v1.1 新增字段加 🔥 标记）：
 
 | 列 | 类型 | 说明 |
 |---|---|---|
@@ -463,7 +463,7 @@ VALUES ('小明喜欢跳绳…', 'preference', '小明,跳绳,运动', 7.0, 1, '
 | `is_persistent` | INTEGER | 1 = 长期记忆 |
 | `content_date` | TEXT | 事件日期 YYYY-MM-DD |
 | `hrr_vector` | BLOB | 8192 bytes — v1 旧编码（回退用） |
-| `embedding` 🔥 | BLOB | 2048 bytes — **v2 主力** — bge-small-zh 512-dim float32 |
+| `embedding` 🔥 | BLOB | 2048 bytes — **v1.1 主力** — bge-small-zh 512-dim float32 |
 
 **Step 2 — `_link_entities()` 创建/关联实体**
 
@@ -553,7 +553,7 @@ PPR 画像（种子=跳绳, α=0.85）：
   游泳(2-hop) ppr=0.009 → boost=0.50×
 ```
 
-### v2 编码链路
+### v1.1 编码链路
 
 ```
 事实文本 ──bge-small-zh──→ embedding(512-dim) ──serialize──→ facts.embedding (BLOB)
@@ -573,4 +573,4 @@ PPR 画像（种子=跳绳, α=0.85）：
 
 - **guolizi** — 架构设计 & 实现
 
-> 🤝 v2 的三层本体与 PPR 方案受知识图谱推理研究启发，step-back 抽象匹配受「先抽象后具体」的 LLM reasoning 思路影响。
+> 🤝 v1.1 的三层本体与 PPR 方案受知识图谱推理研究启发，step-back 抽象匹配受「先抽象后具体」的 LLM reasoning 思路影响。
