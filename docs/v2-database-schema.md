@@ -2,7 +2,7 @@
 
 > 开始时间：2026-06-17
 > 状态：设计稿
-> 范围：六层记忆架构（L0-L5）所有持久化存储的完整数据库 Schema 设计
+> 范围：六层记忆架构（L0-L5）所有持久化存储的完整 Schema 设计
 > 数据库：SQLite（WAL 模式，`PRAGMA journal_mode=WAL`）
 
 ---
@@ -38,7 +38,37 @@
 | **统一时间格式** | 所有时间字段使用 ISO 8601 文本格式（`datetime('now')` 本地时间） |
 | **JSON 扩展** | SQLite 的 `json_extract()` 用于灵活字段 |
 
-### 1.2 命名约定
+### 1.2 记忆主体模型
+
+记忆系统是 **agent 的认知层**，记录 agent 从对话中观察到和学习到的一切。
+
+```
+         agent（主体，记忆的拥有者）
+        ┌──────────────────────────────┐
+        │   🧠 Butterfly Dream         │
+        │   (agent 的认知层)            │
+        │                              │
+        │   person=Caroline 的事实      │
+        │   person=Mel 的事实           │
+        │   person=Neko-chan 的事实     │
+        │   person=主人 的事实           │
+        │   ...                        │
+        └──────────────────────────────┘
+                 ↑ 观察
+        ┌──────────────────┐
+        │   对话中的世界     │
+        │ Caroline ↔ Mel   │
+        │ 主人 ↔ Neko-chan  │
+        └──────────────────┘
+```
+
+关键含义：
+- **所有对话参与者都是平等主体**，每个人都有自己的 L1-L5 记忆
+- **agent 自身也是主体**，拥有自己的事实、行为模式、情感模型和人格（L5）
+- `person` 字段在 L0 表示**说话人**，在 L1-L5 表示**事实/模式/模型所属人**
+- 不需要 `role` 字段——`person` 已经表达了谁说了什么，系统架构标签对记忆内容无意义
+
+### 1.3 命名约定
 
 - 表名：`snake_case`，复数形式
 - 主键：`{table}_id` 自增 INTEGER
@@ -46,13 +76,13 @@
 - 外键：引用表名去掉复数后缀 + `_id`（如 `emotion_events.event_id`）
 - 索引：`idx_{table}_{column}`
 
-### 1.3 数据库文件
+### 1.4 数据库文件
 
 ```
 $HERMES_HOME/memories/memory_store.db
 ```
 
-所有 L0-L5 数据存储在同一个 SQLite 文件中。不同用户通过 `person` 字段隔离（以人为中心的记忆模型）。
+所有 L0-L5 数据存储在同一个 SQLite 文件中。不同人物通过 `person` 字段隔离。
 
 ---
 
@@ -62,11 +92,12 @@ $HERMES_HOME/memories/memory_store.db
 
 ```sql
 -- 原始对话轮次
+-- person = 实际说话人（Caroline / Mel / Neko-chan / 主人 / ...）
+-- 不需要 role 字段：person 已表达谁说了什么，系统架构标签对记忆内容无意义
 CREATE TABLE IF NOT EXISTS conversation_turns (
     turn_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    person      TEXT NOT NULL,              -- 所属人物
+    person      TEXT NOT NULL,              -- 实际说话人
     session_id  TEXT NOT NULL,              -- 会话 ID
-    role        TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
     content     TEXT NOT NULL,              -- 对话内容
     turn_order  INTEGER NOT NULL,           -- 轮次序号
     content_date TEXT,                       -- 对话发生日期（ISO 格式，与 facts.content_date 一致）
@@ -108,7 +139,7 @@ END;
 -- 纯本地构建：jieba 分词 + 停用词过滤 + 名词性短语规则
 CREATE TABLE IF NOT EXISTS micro_facts (
     micro_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    person      TEXT NOT NULL,
+    person      TEXT NOT NULL,              -- 说话人
     keyword     TEXT NOT NULL,              -- 关键词（jieba 分词结果）
     turn_id     INTEGER NOT NULL REFERENCES conversation_turns(turn_id) ON DELETE CASCADE,
     snippet     TEXT NOT NULL,              -- 原文片段
@@ -149,9 +180,10 @@ CREATE TABLE IF NOT EXISTS promotion_queue (
 
 ```sql
 -- 统一事实表（事件记录池 / 静态知识池 / 行为模式池）
+-- person = 事实所属人（Caroline / Mel / Neko-chan / 主人 / ...）
 CREATE TABLE IF NOT EXISTS facts (
     fact_id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    person          TEXT NOT NULL,              -- 所属人物
+    person          TEXT NOT NULL,              -- 事实所属人
     content         TEXT NOT NULL,              -- 事实内容
     type            TEXT NOT NULL DEFAULT 'event'
                     CHECK(type IN ('event', 'knowledge', 'behavior')),
@@ -269,7 +301,7 @@ CREATE INDEX IF NOT EXISTS idx_bp_confidence
 -- 实体表
 CREATE TABLE IF NOT EXISTS entities (
     entity_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    person      TEXT NOT NULL,              -- 所属人物（以人为中心）
+    person      TEXT NOT NULL,              -- 实体所属人（谁认知中的这个实体）
     name        TEXT NOT NULL,
     entity_type TEXT DEFAULT 'unknown',
     aliases     TEXT DEFAULT '',            -- 别名列表（逗号分隔）
@@ -296,7 +328,7 @@ CREATE TABLE IF NOT EXISTS fact_entities (
 -- 用途：abstracts_from（L3 抽象→源事实）、contradicted_by（矛盾检测）
 CREATE TABLE IF NOT EXISTS fact_relations (
     relation_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    person        TEXT NOT NULL,              -- 所属人物（以人为中心）
+    person        TEXT NOT NULL,              -- 所属人物
     source_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     target_fact_id INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     relation_type TEXT NOT NULL
@@ -450,7 +482,7 @@ CREATE INDEX IF NOT EXISTS idx_tl_person
 -- 溯源（事实来源追踪）
 CREATE TABLE IF NOT EXISTS provenance (
     provenance_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    person        TEXT NOT NULL,              -- 所属人物（以人为中心）
+    person        TEXT NOT NULL,              -- 所属人物
     fact_id       INTEGER NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
     source_type   TEXT NOT NULL
                   CHECK(source_type IN ('llm_extraction', 'l0_promotion', 'l3_abstraction',
@@ -555,6 +587,7 @@ CREATE TABLE IF NOT EXISTS narrative_emotion_nodes (
 
 ```sql
 -- 人格模型（结构化存储）
+-- agent 自身也有 persona_models（person='Neko-chan'），即 agent 的自我认知
 CREATE TABLE IF NOT EXISTS persona_models (
     model_id    INTEGER PRIMARY KEY AUTOINCREMENT,
     person      TEXT NOT NULL UNIQUE,
@@ -943,7 +976,7 @@ CREATE INDEX IF NOT EXISTS idx_ep_confidence
 -- 情感模式 ↔ 行为模式的多对多关联
 CREATE TABLE IF NOT EXISTS pattern_relations (
     relation_id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    person              TEXT NOT NULL,              -- 所属人物（以人为中心）
+    person              TEXT NOT NULL,              -- 所属人物
     emotion_pattern_id  INTEGER REFERENCES emotion_patterns(pattern_id) ON DELETE CASCADE,
     behavior_pattern_id INTEGER REFERENCES behavior_patterns(pattern_id) ON DELETE CASCADE,
     correlation         REAL DEFAULT 0.0,       -- 关联强度 0~1

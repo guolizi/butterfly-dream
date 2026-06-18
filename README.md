@@ -1,215 +1,112 @@
-# 🦋 Butterfly Dream — 全维记忆插件 for Hermes Agent
+# 🦋 Butterfly Dream v2 — 六层记忆架构
 
 > *"昔者庄周梦为蝴蝶，栩栩然蝴蝶也。"*
+>
 > 记忆如蝶，翩跹于时间、意义与关联的多维空间。
 
-**Butterfly Dream** 是一个为 [Hermes Agent](https://hermes-agent.nousresearch.com) 设计的全维记忆插件，**完整实现了从 LLM 自动提取到三维检索的全链路**：重要性评分、分类标签、中文分词、实体关系图、事实合并、多媒体存储、熔断/过滤等。从纯文本事实到图片/音频/视频，从单轮搜索到多跳推理，让 Agent 的记忆既有宽度又有深度——同时确保可靠性。
+**Butterfly Dream v2** 是下一代记忆系统，采用六层架构（L0-L5），以 **agent 的认知层** 为视角，记录从对话中观察到和学习到的一切。
 
-> 🤝 感谢 [Holographic](https://github.com/nousresearch/hermes-agent) 项目的参考实现，为 Butterfly Dream 的早期版本提供了宝贵基础。
+---
 
-## ✨ 特性
+## 🏗️ 架构总览
 
-### 🧠 核心记忆
-
-- **🗣️ LLM 自动提取** — LLM 在对话压缩和会话结束时**自动**分析对话、提取值得记住的事实，带重要性/分类/标签，无需手动调用
-- **🧠 三维检索** — 同时衡量语义相关性、时间衰减和事实重要性，告别单纯向量搜索
-- **🧬 事实合并** — 同实体/同主题事实自动归并，冲突检测标记矛盾，杜绝冗余堆积
-- **🕰️ 时间感知** — 基于指数衰减的时效性评分，近期事实自然权重更高
-- **⭐ 重要性评分** — LLM 自动评估每条事实的重要性（1-10），关键信息永不沉没
-- **🏷️ 持久标记** — LLM 自动判断事实是否跨会话持久（身份/架构/配置=true，临时状态=false），配合 `persistent_only` 过滤实现精准检索
-- **📊 信任度反馈** — 用户可标记有用/无用，好事实上升、坏事实下沉
-- **🔗 实体关系图** — 自动提取实体并建立关系，支持多跳推理
-- **📅 时间线查询** — 按创建时间正序查看某实体的全部事实变更历史，追踪偏好和决策的演化过程
-
-### 🖼️ 多媒体
-
-- **🖼️ 多媒体记忆** — 图片/音频/视频文件的存储与检索，支持描述/字幕/语音转写的 FTS5 全文搜索
-- **📦 自动压缩** — 图片(Pillow→JPEG)、视频(ffmpeg→H.264)、音频(ffmpeg→MP3)自动压缩，默认开启，可配置质量/码率/分辨率
-- **🛡️ 大文件保护** — 超过 `max_size_mb`（默认 100MB）的文件跳过压缩，避免长时间卡顿
-
-### 🛡️ 可靠性
-
-- **🔇 琐事消息过滤** — 自动跳过 "ok"、"好的"、"👍" 等无信息量对话，LLM 只处理有内容的对话
-- **⚡ 熔断保护** — 连续 3 次 LLM 提取失败后自动冷却 120 秒，避免 API 异常导致级联失败
-- **🧵 线程安全** — 异步提取使用锁保护共享状态，多线程环境零竞态
-- **🔗 跨源去重** — LLM 自动提取与 on_memory_write 镜像之间自动去重 (Jaccard ≥ 0.7 跳过写入)
-- **🔤 中文分词** — FTS5 全文搜索接入 jieba 分词引擎，混合中文/英文内容正确索引，告别 CJK 不可搜索
-
-### 🔧 通用
-
-- **🔄 增量更新** — 新事实无缝加入，无需重建索引
-- **🧩 HRR 向量编码** — 基于 Holographic Reduced Representations 的高密度语义编码
-- **🔌 即插即用** — 标准 Hermes MemoryProvider 接口，一行配置启用
-
-## 📦 安装
-
-### 方式一：直接复制（推荐）
-
-```bash
-git clone https://github.com/guolizi/butterfly-dream.git
-cp -r butterfly-dream/src/butterfly_dream $HERMES_HOME/plugins/butterfly-dream
+```
+L0 ─ 工作记忆 ──── 原始对话轮次 + 微事实索引
+  ↓ 晋升（热/冷）
+L1 ─ 事实池 ────── 事件 / 知识 / 行为模式 / 情感事件
+  ↓ 抽象
+L2 ─ 关系层 ────── 实体关系图 / 因果链 / 时间链
+  ↓ 聚类
+L3 ─ 抽象层 ────── GMM 聚类 / 概念抽象
+  ↓ 叙事化
+L4 ─ 叙事层 ────── 人生主线 / 关键节点
+  ↓ 人格化
+L5 ─ 灵魂层 ────── 人格模型 / 行为预测
 ```
 
-### 方式二：pip 安装
+### 核心设计原则
 
-```bash
-pip install butterfly-dream
-```
+| 原则 | 说明 |
+|:----|:-----|
+| **永远保留** | 数据不删除，只有冷热分级 |
+| **以人为中心** | 所有对话参与者都是平等主体，每人都有自己的 L1-L5 |
+| **agent 也是主体** | agent 拥有自己的事实、情感和人格模型（L5） |
+| **遗忘 = 检索策略分级** | 永不删，只按热度降级检索优先级 |
+| **并行提取** | VAD 情感评价和事实维度并行提取，非串行推导 |
+| **算法优先** | 确定性代码优先于 LLM prompt |
 
-## ⚙️ 配置
+---
 
-Butterfly Dream 支持两种配置方式（**推荐使用独立配置**）：
+## 🧱 六层详解
 
-### 方式一：独立配置文件（推荐）
+### L0 — 工作记忆
 
-创建 `$HERMES_HOME/butterfly_config.yaml`，只放 butterfly-dream 专属配置：
+原始对话轮次存储 + 关键词索引。`person` 字段记录实际说话人，不需要 `role` 字段。
 
-```yaml
-# ~/.hermes/butterfly_config.yaml
-db_path: $HERMES_HOME/butterfly_memory.db
-llm_extract: true
-extraction_model:
-  provider: deepseek
-  model: deepseek-v4-flash
-retrieval:
-  relevance_weight: 0.4
-  recency_weight: 0.3
-  importance_weight: 0.3
-recency_half_life_days: 30
-extract_interval: 20          # 每 20 轮通过 sync_turn 提取一次（0=关闭）
-debug_logging: false          # 开启后写入 ~/.hermes/logs/butterfly.log
-min_trust_threshold: 0.3
-default_trust: 0.5
-```
+- `conversation_turns` — 原始对话轮次
+- `micro_facts` — 关键词 → turn_id 索引（jieba 分词）
+- `promotion_queue` — 热晋升标记队列
 
-### 方式二：Hermes 全局配置（向后兼容）
+### L1 — 事实池
 
-在 `$HERMES_HOME/config.yaml` 中放入 `plugins.butterfly-dream` 下：
+四个池：事件记录池、静态知识池、行为模式池、情感事件池。前三个共用 `facts` 表，通过 `type` 区分。
 
-```yaml
-plugins:
-  butterfly-dream:
-    enabled: true
-    db_path: $HERMES_HOME/memory_store.db
-    llm_extract: true
-    extraction_model:
-      provider: deepseek
-      model: deepseek-v4-flash
-    retrieval:
-      relevance_weight: 0.4
-      recency_weight: 0.3
-      importance_weight: 0.3
-    recency_half_life_days: 30
-    extract_interval: 20
-    debug_logging: false
-    min_trust_threshold: 0.3
-    default_trust: 0.5
-```
+- `facts` — 统一事实表（event / knowledge / behavior）
+- `behavior_patterns` — 行为模式生命周期
+- `emotion_events` — 情感事件（VAD 三维 + GENERATED 列）
+- `emotion_triggers` — 情感触发关联
+- `entities` / `fact_entities` — 实体体系
+- `fact_relations` — 事实间关系（抽象/矛盾/支持）
 
-> 💡 **提示**：两种方式同时存在时，独立配置文件中的值**覆盖** Hermes 全局配置中的同名键。不重要的配置（`debug_logging`、`extract_interval` 等）建议放独立配置文件，Hermes 的 `config.yaml` 只保留必要的启动项。
+### L2 — 关系层
 
-### 依赖
+- `entity_relations` — 实体关系图（PPR 检索）
+- `causal_relations` — 三层因果链（短程/中程/长程）
+- `timeline_relations` — 时间链
+- `provenance` — 溯源追踪
 
-```bash
-pip install numpy          # HRR 向量编码（可选，但强烈推荐）
-pip install nltk           # WordNet 词形还原（FTS5 查询扩展）
-pip install Pillow         # 图片压缩缩略图
-pip install ffmpeg-python  # 音视频压缩
-pip install jieba          # 中文分词（FTS5 全文搜索）
-```
+### L3 — 抽象层
 
-## 🔗 FTS5 中文检索说明
+- `clusters` / `cluster_members` — GMM 聚类
 
-Butterfly Dream 使用 SQLite FTS5 作为全文搜索引擎。FTS5 默认的 `unicode61` tokenizer 以空格分词，因此中文文本（无空格）原本会被当做单个 token 索引，完全不可搜索。
+### L4 — 叙事层
 
-解决方案是在 **索引侧** 和 **查询侧** 都接入 jieba 分词：
+- `narratives` — 叙事主干 + 版本管理
+- `narrative_emotion_nodes` — 关键情感节点
 
-1. **索引侧**：FTS5 sync trigger 调用 `jieba_segment()` SQLite 函数，在内容进入 FTS5 索引前，用 jieba 分词并在词间插入空格。
-2. **查询侧**：`_sanitize_fts_query()` 对用户查询同样进行 jieba 分词，确保查询 token 与索引 token 匹配。
+### L5 — 灵魂层
 
-**效果**：
-- `"用户喜欢喝咖啡和编程"` → jieba 分为 `["用户", "喜欢", "喝咖啡", "和", "编程"]` → 搜索 `"喜欢 编程"` 命中 ✓
-- 英中混合 `"love 猫咪"` → 英文和中文 token 均可独立搜索 ✓
-- 单一 jieba 复合词（如 `"喝咖啡"`）按完整词索引，子串 `"咖啡"` 无法命中——但 Agent 搜索时知道完整概念，可搜 `"喝咖啡"` 或 `"coffee"`
+- `persona_models` — 人格模型（大五 + 特质 + GMM）
+- `persona_snapshots` — 人格版本快照
+- `behavior_predictions` — 行为预测日志
 
-> ⚠️ jieba 首次加载约需 0.6 秒（载入词典），NLTK WordNet 首次使用约需 2 秒（载入语料库），合计约 **2.6 秒**冷启动时间。首次初始化 `MemoryStore` 时会有一次载入延迟，后续搜索不受影响。
+---
 
-## 🧠 三维检索使用示例
+## 📚 文档
 
-```python
-from butterfly_dream import ButterflyDreamMemoryProvider
+| 文档 | 说明 |
+|:----|:-----|
+| [`docs/v2-architecture-discussion.md`](docs/v2-architecture-discussion.md) | 架构设计讨论 |
+| [`docs/v2-database-schema.md`](docs/v2-database-schema.md) | 完整数据库 Schema |
+| [`docs/v2-retrieval-design.md`](docs/v2-retrieval-design.md) | 检索系统设计 |
+| [`docs/v2-emotion-dimension.md`](docs/v2-emotion-dimension.md) | 情感维度设计 |
+| [`docs/v2-behavior-prediction.md`](docs/v2-behavior-prediction.md) | 行为预测设计 |
+| [`docs/v2-implementation-issues.md`](docs/v2-implementation-issues.md) | 实现问题记录 |
+| [`docs/v2-db-viewer.md`](docs/v2-db-viewer.md) | 数据库查看器 |
 
-# ... 正常使用 Hermes agent ...
-
-# 1. 存储事实
-await agent.tools.fact_store(action="add", content="用户喜欢用 VS Code 写 Python", importance=7)
-
-# 2. 三维检索（默认 balanced 权重）
-results = await agent.tools.fact_store(
-    action="search",
-    query="用户偏好编辑器",
-    scenario="chat",       # chat / technical / longterm / qa / balanced
-    limit=5,
-)
-
-# 3. 实体中心检索
-await agent.tools.fact_store(action="probe", entity="VS Code")
-
-# 4. 排序推理
-await agent.tools.fact_store(action="reason", entities=["VS Code", "Python"])
-
-# 5. 矛盾检测
-await agent.tools.fact_store(action="contradict")
-
-# 6. 时间线查询
-await agent.tools.fact_store(action="timeline", entity="VS Code", min_importance=3)
-
-# 7. 实体摘要卡
-await agent.tools.fact_store(action="summarize", entity="VS Code")
-
-# 8. 反馈训练
-await agent.tools.fact_feedback(action="helpful", fact_id=1)
-```
+---
 
 ## 🧪 评测
 
-评测体系包含 **业界标准基准评测** 和 **自有场景单元测试** 两部分。
-
-### 业界标准基准 (eval/) <span id="benchmarks"></span>
+评测体系基于业界标准基准：
 
 | 基准 | 来源 | 题数 | 类别 |
 |:----|:----:|:----:|:----|
-| **LoCoMo** | ACL 2024 | 1986 | 5 类：单跳 / 多跳 / 跨会话 / 时序推理 / 对抗 |
-| **LongMemEval** | ICLR 2025 | 500 | 时序推理 / 多会话 / 知识更新 |
-| **PersonaMem** | COLM 2025 | 589 | 偏好演化 / 事实回忆 / 泛化推理 |
+| **LoCoMo** | ACL 2024 | 1986 | 单跳 / 多跳 / 跨会话 / 时序推理 / 对抗 |
 
 详见 [`eval/README.md`](eval/README.md)。
 
-### ⚡ 性能
-
-| 指标 | LoCoMo | LongMemEval | PersonaMem |
-|:----|:-----:|:----------:|:---------:|
-| 平均分 (1-5) | **3.27** | TBD | TBD |
-| 准确率 (≥4) | **54.4%** | TBD | TBD |
-| 平均检索时间 | **~12ms**/query | — | — |
-
-- 评测模型：**GPT-OSS-120B**（OpenRouter free）—— 提取 + 回答 + 评判均使用同一模型
-- 检索管线在 646 条事实库中平均 **12ms** 完成 FTS5 搜索 + 三维评分 + 多样性重排序（预热后）
-- 冷启动（NLTK WordNet + jieba 词典首次加载）约 **2.6s**，后续搜索不受影响
-
-### 自有场景单元测试 (tests/)
-
-提取+检索管道的黑盒测试，覆盖中英文单/多会话场景。详见 `tests/bd_scenarios.py`。
-
-```bash
-# 运行自有场景测试
-python3 -m pytest tests/test_bd_scenarios.py -v
-
-# 运行业界基准
-python3 eval/locomo/run_locomo.py              # LoCoMo
-python3 eval/longmemeval/run_longmemeval.py    # LongMemEval
-python3 eval/personamem/run_personamem.py      # PersonaMem
-```
+---
 
 ## 📄 许可证
 
