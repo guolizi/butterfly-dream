@@ -299,19 +299,19 @@ CREATE INDEX IF NOT EXISTS idx_bp_confidence
 
 ```sql
 -- 实体表
+-- 全局唯一实体名，不区分认知视角（简化设计）
+-- 如需查询「谁提到了这个实体」，通过 fact_entities → facts.person 回溯
 CREATE TABLE IF NOT EXISTS entities (
     entity_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    person      TEXT NOT NULL,              -- 实体所属人（谁认知中的这个实体）
-    name        TEXT NOT NULL,
-    entity_type TEXT DEFAULT 'unknown',
-    aliases     TEXT DEFAULT '',            -- 别名列表（逗号分隔）
-    embedding   BLOB,                       -- 512-dim float32
-    created_at  TEXT DEFAULT (datetime('now','localtime')),
-    UNIQUE(person, name)
+    name        TEXT NOT NULL UNIQUE,          -- 实体名称（全局唯一）
+    entity_type TEXT DEFAULT 'unknown',        -- person / organization / place / ...
+    aliases     TEXT DEFAULT '',               -- 别名列表（逗号分隔）
+    embedding   BLOB,                          -- 512-dim float32
+    created_at  TEXT DEFAULT (datetime('now','localtime'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_entities_person_name
-    ON entities(person, name);
+CREATE INDEX IF NOT EXISTS idx_entities_name
+    ON entities(name);
 
 -- 事实-实体关联
 CREATE TABLE IF NOT EXISTS fact_entities (
@@ -1185,7 +1185,7 @@ END;
 | `facts` | `idx_facts_person_abstract` | 筛选 L3 抽象事实 |
 | `behavior_patterns` | `idx_bp_person_status` | 按人物+状态过滤 |
 | `behavior_patterns` | `idx_bp_confidence` | 按置信度排序 |
-| `entities` | `idx_entities_person_name` | 按人物+名称查实体 |
+| `entities` | `idx_entities_name` | 按名称查实体 |
 | `entity_relations` | `idx_er_source_target` | 实体图 PPR 检索 |
 | `causal_relations` | `idx_cr_effect` | 按结果查原因 |
 | `causal_relations` | `idx_cr_person` | 按人物查因果链 |
